@@ -9,6 +9,10 @@ enum class Status {
 
     fun isTerminal() = this != PLAYING && this != CHECK
 
+    fun isDraw() = this == Status.STALEMATE || this == Status.NO_CAPTURE_NOR_PAWN_MOVEMENT_FIFTY_MOVES
+
+    fun isCheck() = this == Status.CHECK || this == Status.CHECKMATE
+
     fun getDescription(player: Player): String {
         return when (this) {
             Status.PLAYING -> "Playing"

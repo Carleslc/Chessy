@@ -54,6 +54,8 @@ data class Position(val row: Int, val column: Int) {
 
     fun isOutOfBounds() = row < 0 || row > 7 || column < 0 || column > 7
 
+    fun opponentRow(player: Player) = if (player == Player.WHITE) row == 0 else row == 7
+
     /** Returns this position in algebraic chess notation. **/
     override fun toString(): String {
         return toAlgebraicChessNotation(this)

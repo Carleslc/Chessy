@@ -2,38 +2,30 @@ package core
 
 import pieces.Piece
 import pieces.isEmpty
-import pieces.isEmptyOrOpponent
 
-class Move(val from: Position, val to: Position, val currentBoard: Board) {
+val moveComparator = compareBy<Move>({ it.isCapture() }, { EVALUATOR.getMaxScore(it.nextBoard) }, { it.origin?.type?.preference })
+
+data class Move(val from: Position, val to: Position, private val currentBoard: Board) : Comparable<Move> {
 
     val nextBoard: Board by lazy {
         currentBoard.applied(this)
     }
 
-    val target: Piece? = currentBoard[to]
+    val origin by lazy {
+        currentBoard[from]
+    }
+
+    val target by lazy {
+        currentBoard[to]
+    }
+
+    fun isCapture() = !target.isEmpty()
 
     fun isCapture(player: Player): Boolean {
-        val piece = currentBoard[to]
-        return if (piece.isEmpty()) false else piece!!.player != player
+        return if (target.isEmpty()) false else target!!.player != player
     }
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as Move
-
-        if (from != other.from) return false
-        if (to != other.to) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        var result = from.hashCode()
-        result = 31 * result + to.hashCode()
-        return result
-    }
+    override fun compareTo(other: Move) = moveComparator.compare(this, other)
 
     override fun toString(): String {
 

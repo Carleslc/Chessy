@@ -1,10 +1,10 @@
 package pieces
 
-enum class PieceType(val weight: Int, val notation: String) {
-    KING    (32767, "K"),
-    QUEEN   (1100, "Q"),
-    ROOK    (500, "R"),
-    BISHOP  (320, "B"),
-    KNIGHT  (320, "N"),
-    PAWN    (100, "P");
+enum class PieceType(val notation: String, val weight: Int, val preference: Int) {
+    PAWN    ("P", 100, 4),
+    KNIGHT  ("N", 325, 5),
+    BISHOP  ("B", 350, 5),
+    ROOK    ("R", 500, 2),
+    QUEEN   ("Q", 900, 3),
+    KING    ("K", 32767, 1);
 }

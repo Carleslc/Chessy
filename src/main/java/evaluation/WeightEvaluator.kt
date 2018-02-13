@@ -1,9 +1,15 @@
 package evaluation
 
 import core.Board
+import core.Position
+import pieces.Piece
 
-class WeightEvaluator : Evaluator {
+class WeightEvaluator(depth: Depth) : StatusEvaluator(depth) {
 
-    override fun getScore(board: Board): Int = board.getPieces().sumBy { it.value.type.weight }
+    private val weight: (Map.Entry<Position, Piece>) -> Score = { it.value.type.weight }
+
+    override fun getScore(board: Board): Score = with (board) {
+        return super.getScore(board) + getPieces().sumBy(weight) - getPieces(turn.opponent()).sumBy(weight)
+    }
 
 }

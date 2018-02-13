@@ -1,7 +1,18 @@
 package core
 
-enum class Player {
-    WHITE, BLACK;
+import core.Player.Declarations.CHESSY
+import core.Player.Declarations.PLAYER
+
+enum class Player(val notation: Char) {
+    WHITE ('\u25A1'),
+    BLACK ('\u25A0');
+
+    object Declarations {
+        val START = Player.WHITE
+
+        val CHESSY = Player.WHITE
+        val PLAYER = CHESSY.opponent()
+    }
 
     fun opponent(): Player = if (this == WHITE) BLACK else WHITE
 
@@ -11,5 +22,5 @@ enum class Player {
 
     fun getName() = if (isChessy()) "CHESSY" else "PLAYER"
 
-    override fun toString() = if (this == WHITE) "\u25A1" else "\u25A0"
+    override fun toString() = notation.toString()
 }

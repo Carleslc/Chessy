@@ -1,16 +1,24 @@
 package core
 
+import core.Player.Declarations.CHESSY
+import core.Player.Declarations.PLAYER
+import evaluation.WeightEvaluator
 import exceptions.InvalidMovementException
 import exceptions.NotationException
-import me.carleslc.kotlin.extensions.collections.getRandom
-import java.util.*
+import me.carleslc.kotlin.extensions.time.measureAndPrint
+import search.MixedCacheEvaluator
+import search.search
+import search.searchDebug
+import java.util.concurrent.TimeUnit
 
-val CHESSY = Player.WHITE
-val PLAYER = CHESSY.opponent()
+val EVALUATOR = MixedCacheEvaluator(WeightEvaluator(2), WeightEvaluator(3))
+val PARALLEL = false
+
+val TEST = "begin"
 
 fun main(args: Array<String>) {
-    var endGame = false
-    var board = Board.new()
+    var board = if (TEST.isNotBlank()) Board.parseFile("tests/$TEST.board") else Board.new()
+    var endGame = board.isEndGame()
 
     println("Game Started\n")
     println(board)
@@ -18,8 +26,9 @@ fun main(args: Array<String>) {
     while (!endGame) {
         board.printStatus()
         println()
-        val move = if (board.turn.isChessy()) playChessy(board) else playPlayer(board)
+        println("Legal Moves (${board.legalMoves.size}): ${board.legalMoves}")
         println()
+        val move = if (board.turn.isChessy()) playChessy(board) else playPlayer(board)
         println(move)
         println()
         board = move.nextBoard
@@ -31,7 +40,7 @@ fun main(args: Array<String>) {
 }
 
 fun playPlayer(board: Board): Move {
-    println("PLAYER TURN ($PLAYER), Score: ${board.getScore()}\n")
+    println("PLAYER TURN ($PLAYER), Score: ${EVALUATOR.getScore(board)}\n")
     var valid = false
     var move: Move? = null
     while (!valid) {
@@ -42,7 +51,7 @@ fun playPlayer(board: Board): Move {
             print("TO: ")
             val to = Position.fromAlgebraicChessNotation(readLine()!!)
             move = Move(from, to, board)
-            if (!board.isValid(move, PLAYER)) {
+            if (move !in board.legalMoves) {
                 throw InvalidMovementException()
             }
             valid = true
@@ -58,12 +67,9 @@ fun playPlayer(board: Board): Move {
 }
 
 fun playChessy(board: Board): Move {
-    println("CHESSY TURN ($CHESSY), Score: ${board.getScore()}\n")
+    println("CHESSY TURN ($CHESSY), Score: ${EVALUATOR.getScore(board)}\n")
     println("Thinking...")
-
-    // TODO
-
-    // Testing
-    val moves = ArrayList(board.moves)
-    return moves.getRandom()
+    return measureAndPrint(TimeUnit.MILLISECONDS) {
+        searchDebug(board, 1).move
+    }
 }

@@ -1,3 +1,3 @@
 package exceptions
 
-class NotationException : RuntimeException("Invalid algebraic chess position notation")
+class NotationException : Exception("Invalid algebraic chess position notation")

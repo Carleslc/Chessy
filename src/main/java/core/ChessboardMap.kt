@@ -7,15 +7,15 @@ internal class ChessboardMap(private val whitePieces: MutableMap<Position, Piece
 
     companion object Factory {
 
-        fun empty() = ChessboardMap(hashMapOf(), hashMapOf())
+        fun empty() = ChessboardMap(linkedMapOf(), linkedMapOf())
 
-        fun copy(chessboard: ChessboardMap) = ChessboardMap(HashMap(chessboard.whitePieces), HashMap(chessboard.blackPieces))
+        fun copy(chessboard: ChessboardMap) = ChessboardMap(LinkedHashMap(chessboard.whitePieces), LinkedHashMap(chessboard.blackPieces))
 
     }
 
     private fun getPiecesMap(player: Player) = if (player == Player.WHITE) whitePieces else blackPieces
 
-    override fun getPieces(turn: Player): Set<Map.Entry<Position, Piece>> = getPiecesMap(turn).entries
+    override fun getPieces(turn: Player): Set<PieceEntry> = getPiecesMap(turn).entries
 
     override fun copy() = Factory.copy(this)
 

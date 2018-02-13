@@ -14,14 +14,11 @@ internal class ChessboardMatrix private constructor(private val board: Matrix<Pi
 
     }
 
-    override fun getPieces(turn: Player): Set<Map.Entry<Position, Piece>> {
+    override fun getPieces(turn: Player): Set<PieceEntry> {
         val pieces: MutableSet<Map.Entry<Position, Piece>> = mutableSetOf()
-        for (i in rows) {
-            for (j in columns) {
-                val p = board[i][j]
-                if (p != null && p.player == turn) {
-                    pieces.add(AbstractMap.SimpleImmutableEntry(Position(i, j), p))
-                }
+        forEach { pos, piece ->
+            if (piece != null && piece.player == turn) {
+                pieces.add(SimplePieceEntry(pos, piece))
             }
         }
         return pieces

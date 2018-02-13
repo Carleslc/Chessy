@@ -100,8 +100,9 @@ class Pawn(player: Player): Piece(PieceType.PAWN, player) {
         fun isFirstMove() = (player == Player.WHITE && from.row == 6) || (player == Player.BLACK && from.row == 1)
 
         val moves: MutableSet<Move> = mutableSetOf()
-        addIfValid(moves, Move(from, if (player == Player.WHITE) from.up else from.down, board)) { target.isEmpty() }
-        addIfValid(moves, Move(from, if (player == Player.WHITE) from.up.up else from.down.down, board)) { target.isEmpty() && isFirstMove() }
+        if (addIfValid(moves, Move(from, if (player == Player.WHITE) from.up else from.down, board)) { target.isEmpty() }) {
+            addIfValid(moves, Move(from, if (player == Player.WHITE) from.up.up else from.down.down, board)) { target.isEmpty() && isFirstMove() }
+        }
         addIfValid(moves, Move(from, if (player == Player.WHITE) from.up_left else from.down_left, board)) { isCapture(player) }
         addIfValid(moves, Move(from, if (player == Player.WHITE) from.up_right else from.down_right, board)) { isCapture(player) }
         // TODO: En passant
