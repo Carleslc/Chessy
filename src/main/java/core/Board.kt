@@ -2,6 +2,8 @@ package core
 
 import me.carleslc.kotlin.extensions.strings.splitLines
 import pieces.*
+import search.KingTable
+import search.KingTableEndGame
 import java.io.File
 import java.util.*
 
@@ -137,13 +139,13 @@ class Board private constructor(val board: Chessboard,
     fun printStatus() {
         val status = getStatus()
         val opponentStatus = getStatus(turn.opponent())
-        if (status.isTerminal()) {
-            println(status.getDescription(turn))
-        } else if (opponentStatus.isTerminal()) {
-            println(opponentStatus.getDescription(turn.opponent()))
-        } else {
-            println(turn.getName() + ": " + status.getDescription(turn))
-            println(turn.opponent().getName() + ": " + opponentStatus.getDescription(turn.opponent()))
+        when {
+            status.isTerminal() -> println(status.getDescription(turn))
+            opponentStatus.isTerminal() -> println(opponentStatus.getDescription(turn.opponent()))
+            else -> {
+                println(turn.getName() + ": " + status.getDescription(turn))
+                println(turn.opponent().getName() + ": " + opponentStatus.getDescription(turn.opponent()))
+            }
         }
     }
 
@@ -191,11 +193,21 @@ class Board private constructor(val board: Chessboard,
                         setStatus(Status.CHECKMATE, opponentPlayer)
                     } else {
                         val ownCheck = opponentMoves.any { it.target?.type == PieceType.KING }
-                        setStatus(if (ownCheck) Status.CHECK else Status.PLAYING, ownPlayer)
-                        setStatus(if (opponentCheck) Status.CHECK else Status.PLAYING, opponentPlayer)
+                        setCheck(ownCheck, ownPlayer)
+                        setCheck(opponentCheck, opponentPlayer)
                     }
                 }
             }
+        }
+    }
+
+    private fun setCheck(check: Boolean, player: Player) {
+        if (check) {
+            setStatus(Status.CHECK, player)
+            PieceType.KNIGHT.positionWeightTable = KingTableEndGame
+        } else {
+            setStatus(Status.PLAYING, player)
+            PieceType.KNIGHT.positionWeightTable = KingTable
         }
     }
 

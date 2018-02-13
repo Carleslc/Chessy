@@ -20,7 +20,7 @@ open class StatusEvaluator(depth: Depth) : Evaluator(depth) {
             }
 
             if (own == Status.CHECK) {
-                return if (opponent == Status.CHECK) 0 else -1000
+                return if (opponent == Status.CHECK) 0 else -100
             }
 
             if (own.isDraw() || opponent.isDraw()) {

@@ -7,14 +7,15 @@ import exceptions.InvalidMovementException
 import exceptions.NotationException
 import me.carleslc.kotlin.extensions.time.measureAndPrint
 import search.MixedCacheEvaluator
-import search.search
 import search.searchDebug
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 val EVALUATOR = MixedCacheEvaluator(WeightEvaluator(2), WeightEvaluator(3))
 val PARALLEL = false
 
-val TEST = "begin"
+val TEST = "last"
+val LAST = File("tests/last.board")
 
 fun main(args: Array<String>) {
     var board = if (TEST.isNotBlank()) Board.parseFile("tests/$TEST.board") else Board.new()
@@ -24,7 +25,7 @@ fun main(args: Array<String>) {
     println(board)
 
     while (!endGame) {
-        board.printStatus()
+        status(board)
         println()
         println("Legal Moves (${board.legalMoves.size}): ${board.legalMoves}")
         println()
@@ -36,7 +37,14 @@ fun main(args: Array<String>) {
         endGame = board.isEndGame()
     }
 
+    status(board)
+}
+
+fun status(board: Board) {
     board.printStatus()
+    if (board.turn == Player.WHITE) {
+        LAST.writeText(board.toString())
+    }
 }
 
 fun playPlayer(board: Board): Move {

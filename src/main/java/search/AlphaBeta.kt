@@ -23,7 +23,7 @@ internal var searchCount = 0
 internal fun addRecord(duration: Duration) {
     durationSum += duration.toMillis()
     val millisStep = durationSum / ++steps
-    if (EVALUATOR.depth > EVALUATOR.minDepth && (millisStep > maxMillisPerStep || getMemoryUsage().first > 80)) {
+    if (EVALUATOR.depth > EVALUATOR.minDepth && (millisStep > maxMillisPerStep || getMemoryUsage().first > 70)) {
         EVALUATOR.increaseDepth(-1)
     } else if (EVALUATOR.depth < EVALUATOR.maxDepth && millisStep < maxMillisPerStep / 2) {
         EVALUATOR.increaseDepth(1)
@@ -60,10 +60,11 @@ fun search(board: Board): ScoredMove {
         scored
     }.max(ScoredMove::compareTo).get()
 
-    cache(board, EVALUATOR.depth, bestMove)
-
-    if (++searchCount > 2) {
+    val memory = getMemoryUsage().first
+    if (++searchCount > 2 || memory > 70) {
         clearCache()
+    } else {
+        cache(board, EVALUATOR.depth, bestMove)
     }
     return bestMove
 }

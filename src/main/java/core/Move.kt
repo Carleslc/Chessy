@@ -1,9 +1,12 @@
 package core
 
+import evaluation.MVVLVA
 import pieces.Piece
 import pieces.isEmpty
 
-val moveComparator = compareBy<Move>({ it.isCapture() }, { EVALUATOR.getMaxScore(it.nextBoard) }, { it.origin?.type?.preference })
+val moveComparator = compareBy<Move>(
+        { EVALUATOR.getMaxScore(it.nextBoard) + MVVLVA.getScore(it) },
+        { it.origin?.type?.preference })
 
 data class Move(val from: Position, val to: Position, private val currentBoard: Board) : Comparable<Move> {
 

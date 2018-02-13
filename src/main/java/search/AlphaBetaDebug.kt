@@ -49,9 +49,11 @@ fun searchDebug(board: Board, debugDepth: Int = EVALUATOR.depth): ScoredMove {
     println(Durations.fromMillis(start).humanize())
     println("BEST: " + bestMove)
 
-    cache(board, EVALUATOR.depth, bestMove)
-    if (++searchCount > 2) {
+    val memory = getMemoryUsage().first
+    if (++searchCount > 2 || memory > 70) {
         clearCache()
+    } else {
+        cache(board, EVALUATOR.depth, bestMove)
     }
     return bestMove
 }
