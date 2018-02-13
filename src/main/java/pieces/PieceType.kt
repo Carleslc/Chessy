@@ -1,7 +1,7 @@
 package pieces
 
 import core.Position
-import search.*
+import evaluation.*
 
 enum class PieceType(val notation: String, val weight: Int, val preference: Int, var positionWeightTable: Array<IntArray>) {
     PAWN    ("P", 100, 4, PawnTable),

@@ -2,19 +2,18 @@ package core
 
 import core.Player.Declarations.CHESSY
 import core.Player.Declarations.PLAYER
+import evaluation.MixedCacheEvaluator
 import evaluation.WeightEvaluator
 import exceptions.InvalidMovementException
 import exceptions.NotationException
 import me.carleslc.kotlin.extensions.time.measureAndPrint
-import search.MixedCacheEvaluator
-import search.searchDebug
+import search.search
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 val EVALUATOR = MixedCacheEvaluator(WeightEvaluator(2), WeightEvaluator(3))
-val PARALLEL = false
 
-val TEST = "last"
+val TEST = ""
 val LAST = File("tests/last.board")
 
 fun main(args: Array<String>) {
@@ -78,6 +77,6 @@ fun playChessy(board: Board): Move {
     println("CHESSY TURN ($CHESSY), Score: ${EVALUATOR.getScore(board)}\n")
     println("Thinking...")
     return measureAndPrint(TimeUnit.MILLISECONDS) {
-        searchDebug(board, 1).move
+        search(board).move
     }
 }

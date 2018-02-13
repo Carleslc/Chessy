@@ -1,4 +1,4 @@
-package search
+package evaluation
 
 var PawnTable = arrayOf(
         intArrayOf(65, 65, 65, 65, 65, 65, 65, 65),

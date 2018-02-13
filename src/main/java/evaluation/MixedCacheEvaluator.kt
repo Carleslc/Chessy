@@ -1,11 +1,8 @@
-package search
+package evaluation
 
 import core.Board
 import core.Chessboard
 import core.Player
-import evaluation.Depth
-import evaluation.Evaluator
-import evaluation.Score
 import java.util.*
 
 class MixedCacheEvaluator(vararg evaluators: Evaluator) : Evaluator(0) {

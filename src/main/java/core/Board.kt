@@ -2,8 +2,8 @@ package core
 
 import me.carleslc.kotlin.extensions.strings.splitLines
 import pieces.*
-import search.KingTable
-import search.KingTableEndGame
+import evaluation.KingTable
+import evaluation.KingTableEndGame
 import java.io.File
 import java.util.*
 
