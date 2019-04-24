@@ -226,9 +226,7 @@ class Board private constructor(val board: Chessboard,
     }
 
     private fun isInCheck(m: Move, player: Player = turn): Boolean {
-        val status = m.nextBoard.getStatus(player)
-        val opponentStatus = m.nextBoard.getStatus(player.opponent())
-        return status.isCheck() && !opponentStatus.isCheck()
+        return m.nextBoard.getStatus(player).isCheck()
     }
 
     fun copy() = Factory.copy(this)

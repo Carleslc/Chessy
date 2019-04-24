@@ -16,7 +16,7 @@ import java.util.*
 
 private val scoreCache = WeakHashMap<Triple<Depth, Chessboard, Player>, Pair<Score, ScoredMove?>>()
 
-private val DEBUG_DEPTH = -1
+private val DEBUG_DEPTH = 3
 private val PARALLEL = false
 
 private val MAX_MILLIS = 1.minute.toMillis()
@@ -103,7 +103,7 @@ fun search(board: Board): ScoredMove {
     }.max(ScoredMove::compareTo).get()
 
     debug(Durations.fromMillis(start).humanize(), EVALUATOR.depth, DEBUG_DEPTH)
-    debug("BEST: " + bestMove, EVALUATOR.depth, DEBUG_DEPTH)
+    debug("BEST: $bestMove", EVALUATOR.depth, DEBUG_DEPTH)
 
     val memory = getMemoryUsage().first
     if (++searchCount > 2 || memory > 70) {

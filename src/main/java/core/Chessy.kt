@@ -13,10 +13,10 @@ import java.util.concurrent.TimeUnit
 
 val EVALUATOR = MixedCacheEvaluator(WeightEvaluator(2), WeightEvaluator(3))
 
-val TEST = ""
+val TEST = "test"
 val LAST = File("tests/last.board")
 
-fun main(args: Array<String>) {
+fun main() {
     var board = if (TEST.isNotBlank()) Board.parseFile("tests/$TEST.board") else Board.new()
     var endGame = board.isEndGame()
 
@@ -39,10 +39,18 @@ fun main(args: Array<String>) {
     status(board)
 }
 
+fun save(board: Board) {
+    if (!LAST.exists()) {
+        LAST.parentFile.mkdirs()
+        LAST.createNewFile()
+    }
+    LAST.writeText(board.toString())
+}
+
 fun status(board: Board) {
     board.printStatus()
     if (board.turn == Player.WHITE) {
-        LAST.writeText(board.toString())
+        save(board)
     }
 }
 
