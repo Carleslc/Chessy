@@ -4,4 +4,4 @@
 out
 *.wav
 target
-tests
+tests/last.board
