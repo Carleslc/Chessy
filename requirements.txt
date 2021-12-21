@@ -1,0 +1,3 @@
+chess
+PyQt5
+pytz

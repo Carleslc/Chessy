@@ -1,7 +1,2 @@
-**/.DS_Store
-**/.idea
-*.iml
-out
-*.wav
-target
-tests/last.board
+__pycache__/
+.DS_Store
