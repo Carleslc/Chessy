@@ -48,3 +48,38 @@ options:
   --black, -b           set the point of view to black
   --match MATCH, -m MATCH match number
 ```
+
+## Future work ideas
+
+Material values in Cp (Centipawns = 1/100 P)
+P = 100
+N = 320
+B = 330
+R = 500
+Q = 900
+K = 400 or 11000
+
+Alternative piece values may be their square control * 100 (P)
+Also the material value multiplied by their square control factor (current/maximum)
+Maximum square control:
+P = 2
+N = 8
+B = 13
+R = 14
+Q = 27
+K = 8
+
+- UCI Engine CLI
+- Evaluation:
+  - [Optional if K = 11000] Checkmate (Inf ∞)
+  - Attack Maps (∑ attacked pieces * attacked piece value)
+  - [Optional] Defense Maps (∑ defended pieces [except king] * defended piece value * 0.5)
+  - Square Control (attacking squares * 20)
+  - Mobility (legal moves * 10)
+- Minimax + Alpha-Beta prunning
+- Move ordering (MVV-LVA + Promotions)
+- Zobrist Hashing (Transposition Tables)
+- Iterative Deepening + Move ordering (scores from depth - 1)
+- Quiescence Search (avoid horizon effect in depth + 1)
+- MTD(f) with Null Window (prune non-improvement scores)
+- ABDADA Parallel Search
