@@ -71,11 +71,15 @@ K = 8
 
 - UCI Engine CLI
 - Evaluation:
-  - [Optional if K = 11000] Checkmate (Inf ∞)
-  - Attack Maps (∑ attacked pieces * attacked piece value)
-  - [Optional] Defense Maps (∑ defended pieces [except king] * defended piece value * 0.5)
-  - Square Control (attacking squares * 20)
   - Mobility (legal moves * 10)
+  - Square Control (attacking squares * 20) [Space]
+  - Attack Maps (∑ attacked pieces * attacked piece value)
+  - Passed Pawns proximity to promotion (∑ passed pawn rank relative to color side * P)
+  - [Optional if K = 11000] Checkmate (Inf ∞)
+  - [Optional] Defense Maps (∑ defended pieces [except king] * defended piece value * 0.5)
+  - [Optional] Material (∑ pieces * piece value)
+  - [Optional] Pins
+  - [Optional] IQP
 - Minimax + Alpha-Beta prunning
 - Move ordering (MVV-LVA + Promotions)
 - Zobrist Hashing (Transposition Tables)
