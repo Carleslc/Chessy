@@ -3,7 +3,7 @@ Artificial Intelligence playing Chess with Minimax Alpha-Beta prunning algorithm
 
 This project is not designed for professional usage, this is only for personal learning. For professional purposes use advanced chess engines like Stockfish.
 
-> This is the first implementation (2018-2019), kept as a reference in the `kotlin-old` branch.
+> This is the first implementation (2018-2019), kept as a reference in the `v0` branch.
 > The new engine lives in `master`.
 
 ## Play

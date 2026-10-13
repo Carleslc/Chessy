@@ -34,7 +34,7 @@ class Pgn(private val startingBoard: Board,
     override fun toString(): String {
         val headers = linkedMapOf(
             "Event" to event,
-            "Site" to "Chessy (kotlin-old)",
+            "Site" to "Chessy (v0)",
             "Date" to LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")),
             "Round" to "-",
             "White" to white,
