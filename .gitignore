@@ -1,2 +1,14 @@
-__pycache__/
+# OS / IDE
 .DS_Store
+.idea/
+*.iml
+.vscode/
+
+# Python
+__pycache__/
+.venv/
+
+# Kotlin / Gradle
+.gradle/
+.kotlin/
+build/

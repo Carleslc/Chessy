@@ -1,89 +1,26 @@
 # Chessy
-Artificial Intelligence playing Chess with Minimax Alpha-Beta prunning algorithm.
 
-This project is not designed for professional usage, this is only for personal learning. For professional purposes use advanced chess engines like Stockfish.
+A chess engine with a "constrictor" playing style: it gains space, controls squares and restricts the opponent's mobility.
 
-## Install
+This project is for personal learning. For professional purposes use advanced chess engines like Stockfish.
 
-```
-pip install --upgrade -r requirements.txt
-```
+See the [PRD](docs/PRD.md) for the design and roadmap.
 
-## Board
+## Structure
 
-Display a board given its FEN notation.
+- [`engine/`](engine): the engine, in Kotlin (bitboards, UCI).
+- [`tools/`](tools): Python tooling around the engine (board and game viewer, analysis scripts, lichess-bot).
+- [`docs/`](docs): documentation.
 
-```
-python board.py --fen "7r/3B4/8/p5pp/4Qbk1/1P4B1/P4PKP/8 b - - 1 39" -c
-```
+The first implementation (2018-2019) is kept in the `kotlin-old` branch.
 
-```
-usage: board.py [-h] [--fen FEN] [--coordinates] [--black]
+## Engine
 
-options:
-  -h, --help         show this help message and exit
-  --fen FEN, -f FEN  board representation with fen notation
-  --coordinates, -c  show coordinates
-  --black, -b        set the point of view to black
-```
-
-## Game
-
-Display a game given its PGN notation.
+Requires JDK 17+.
 
 ```
-python game.py examples/001.pgn
+cd engine
+./gradlew test
+./gradlew installDist
+build/install/chessy/bin/chessy perft 5
 ```
-
-```
-usage: game.py [-h] [--end] [--coordinates] [--black] [--match MATCH] pgn
-
-positional arguments:
-  pgn                   game file with PGN notation
-
-options:
-  -h, --help            show this help message and exit
-  --end, -e             skips to the last move
-  --coordinates, -c     show coordinates
-  --black, -b           set the point of view to black
-  --match MATCH, -m MATCH match number
-```
-
-## Future work ideas
-
-Material values in Cp (Centipawns = 1/100 P)
-P = 100
-N = 320
-B = 330
-R = 500
-Q = 900
-K = 400 or 11000
-
-Alternative piece values may be their square control * 100 (P)
-Also the material value multiplied by their square control factor (current/maximum)
-Maximum square control:
-P = 2
-N = 8
-B = 13
-R = 14
-Q = 27
-K = 8
-
-- UCI Engine CLI
-- Evaluation:
-  - Mobility (legal moves * 10)
-  - Square Control (attacking squares * 20) [Space]
-  - Attack Maps (∑ attacked pieces * attacked piece value)
-  - Passed Pawns proximity to promotion (∑ passed pawn rank relative to color side * P)
-  - [Optional if K = 11000] Checkmate (Inf ∞)
-  - [Optional] Defense Maps (∑ defended pieces [except king] * defended piece value * 0.5)
-  - [Optional] Material (∑ pieces * piece value)
-  - [Optional] Pins
-  - [Optional] IQP
-- Minimax + Alpha-Beta prunning
-- Move ordering (MVV-LVA + Promotions)
-- Zobrist Hashing (Transposition Tables)
-- Iterative Deepening + Move ordering (scores from depth - 1)
-- Quiescence Search (avoid horizon effect in depth + 1)
-- MTD(f) with Null Window (prune non-improvement scores)
-- ABDADA Parallel Search
