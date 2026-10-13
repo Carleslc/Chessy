@@ -15,3 +15,6 @@ build/
 
 # Games played (PGN)
 games/
+
+# fastchess state
+config.json

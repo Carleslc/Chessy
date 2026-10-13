@@ -74,6 +74,46 @@ options:
   --pgn               file to save the games (default: games/match.pgn)
 ```
 
+## Engine matches with fastchess
+
+[fastchess](https://github.com/Disservin/fastchess) plays engine matches and runs SPRT tests. It is built from source:
+
+```
+git clone https://github.com/Disservin/fastchess.git ~/.local/src/fastchess
+make -C ~/.local/src/fastchess -j8
+ln -s ~/.local/src/fastchess/fastchess ~/.local/bin/fastchess
+```
+
+Chessy (alpha-beta search) against Chessy with the greedy search, and against Stockfish with a limited strength:
+
+```
+CHESSY=../engine/build/install/chessy/bin/chessy
+fastchess -engine cmd=$CHESSY name=AlphaBeta -engine cmd=$CHESSY name=Greedy2 option.Search=Greedy "option.Greedy Depth=2" \
+  -each tc=10+0.1 -openings file=openings/balanced.epd format=epd order=random -rounds 50 -repeat -concurrency 8 -pgnout file=games/greedy.pgn
+fastchess -engine cmd=$CHESSY name=Chessy -engine cmd=stockfish name=SF1500 option.UCI_LimitStrength=true option.UCI_Elo=1500 \
+  -each tc=10+0.1 -openings file=openings/balanced.epd format=epd order=random -rounds 50 -repeat -concurrency 8 -pgnout file=games/sf1500.pgn
+```
+
+`-repeat` plays each opening twice with the colors swapped. For SPRT tests between two versions, add `-sprt elo0=0 elo1=5 alpha=0.05 beta=0.05` and a large `-rounds`.
+
+## Openings
+
+Generate an opening book of balanced positions (random plies evaluated by Stockfish) for engine matches:
+
+```
+python openings.py --count 500 --output openings/balanced.epd
+```
+
+## Test suites
+
+Create a suite of tactical positions from PGN games, with Stockfish as the oracle (positions with a single good move),
+and run an engine on any EPD suite with best moves (`bm`) or moves to avoid (`am`), such as Win At Chess (WAC) or the Strategic Test Suite (STS):
+
+```
+python tactics.py games/*.pgn --count 100 --output suites/tactics.epd
+python epd.py suites/tactics.epd --movetime 1
+```
+
 ## Lichess
 
 See [lichess/README.md](lichess/README.md) to run Chessy as a Lichess BOT with lichess-bot.

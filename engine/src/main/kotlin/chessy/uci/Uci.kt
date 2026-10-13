@@ -6,6 +6,9 @@ import chessy.core.MoveGenerator
 import chessy.core.Notation
 import chessy.core.Perft
 import chessy.core.Position
+import chessy.eval.Evaluator
+import chessy.search.AlphaBetaSearch
+import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Search
 import chessy.search.SearchLimits
@@ -22,14 +25,34 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Commands are read from the GUI and handled one by one. The search runs in another thread,
  * so `stop` and `isready` are answered while the engine is thinking.
  *
- * Extra commands for debugging (not UCI): `d` (display the position), `moves` (legal moves), `perft <depth>`.
+ * Extra commands for debugging (not UCI): `d` (display the position), `moves` (legal moves), `perft <depth>`,
+ * `eval` (evaluation terms) and `bench [depth]` (fixed search to measure speed).
  */
-class Uci(private val search: Search = GreedySearch(), private val output: (String) -> Unit = ::send) {
+class Uci(private val output: (String) -> Unit = ::send) {
 
     private var position = Position.startingPosition()
 
     private val moveOverhead = SpinOption("Move Overhead", default = 100, min = 0, max = 5000)
-    private val options = listOf(moveOverhead).associateBy { it.name.lowercase() }
+    private val searchOption = ComboOption("Search", default = "AlphaBeta", values = listOf("AlphaBeta", "Greedy"))
+    private val greedyDepth = SpinOption("Greedy Depth", default = 2, min = 1, max = GreedySearch.MAX_DEPTH)
+    private val evaluatorOption = ComboOption("Evaluator", default = "Material", values = Evaluator.all.keys.toList())
+    private val options = listOf<Option>(moveOverhead, searchOption, greedyDepth, evaluatorOption).associateBy { it.name.lowercase() }
+
+    private val alphaBeta = AlphaBetaSearch()
+    private val greedy = GreedySearch()
+
+    /** The search selected with the options. */
+    private val search: Search get() =
+        if (searchOption.value == "Greedy") greedy.apply { depth = greedyDepth.value }
+        else alphaBeta.apply { evaluator = evaluator() }
+
+    /** The evaluator selected with the options. */
+    private fun evaluator(): Evaluator {
+        if (alphaBeta.evaluator.name != evaluatorOption.value) {
+            alphaBeta.evaluator = Evaluator.named(evaluatorOption.value)
+        }
+        return alphaBeta.evaluator
+    }
 
     private val searchThread: ExecutorService = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "search").apply { isDaemon = true }
@@ -74,7 +97,8 @@ class Uci(private val search: Search = GreedySearch(), private val output: (Stri
                 }
                 "go" -> go(tokens)
                 "stop" -> stopSearch()
-                "ponderhit" -> bestMoveAllowed.countDown()
+                // Pondering is not supported yet (no Ponder option): the move found so far is played
+                "ponderhit" -> stopSearch()
                 "setoption" -> setOption(tokens)
                 "debug", "register" -> {}
                 "quit" -> {
@@ -84,6 +108,8 @@ class Uci(private val search: Search = GreedySearch(), private val output: (Stri
                 "d" -> output(position.toString())
                 "moves" -> output(MoveGenerator.legalMoves(position).toList().joinToString(" ") { Notation.toSan(position, it) })
                 "perft" -> perft(tokens.getOrNull(1))
+                "eval" -> output(evaluator().explain(position).toString())
+                "bench" -> bench(tokens.getOrNull(1))
                 else -> output("info string Unknown command: $line")
             }
         } catch (e: IllegalArgumentException) {
@@ -120,6 +146,7 @@ class Uci(private val search: Search = GreedySearch(), private val output: (Stri
 
         val limits = parseLimits(tokens)
         val searchPosition = position.copy()
+        val search = search
         stop.set(false)
         val allowed = CountDownLatch(if (limits.infinite || limits.ponder) 1 else 0)
         bestMoveAllowed = allowed
@@ -208,18 +235,46 @@ class Uci(private val search: Search = GreedySearch(), private val output: (Stri
         output("Nodes searched: ${divide.sumOf { it.second }} (${System.currentTimeMillis() - start} ms)")
     }
 
+    private fun bench(depth: String?) {
+        stopSearch()
+        val plies = depth?.toIntOrNull() ?: Bench.DEFAULT_DEPTH
+        val result = Bench.run(search, plies, output)
+        output("Nodes: ${result.nodes}")
+        output("Time: ${result.millis} ms")
+        output("NPS: ${result.nodesPerSecond}")
+    }
+
+    private interface Option {
+        val name: String
+        fun set(text: String)
+        fun toUci(): String
+    }
+
     /** Integer option in a range. */
-    private class SpinOption(val name: String, val default: Int, val min: Int, val max: Int) {
+    private class SpinOption(override val name: String, val default: Int, val min: Int, val max: Int) : Option {
         var value = default
             private set
 
-        fun set(text: String) {
+        override fun set(text: String) {
             val number = text.toIntOrNull() ?: throw IllegalArgumentException("$name must be a number")
             require(number in min..max) { "$name must be between $min and $max" }
             value = number
         }
 
-        fun toUci() = "option name $name type spin default $default min $min max $max"
+        override fun toUci() = "option name $name type spin default $default min $min max $max"
+    }
+
+    /** Option with a list of possible values (case insensitive). */
+    private class ComboOption(override val name: String, val default: String, val values: List<String>) : Option {
+        var value = default
+            private set
+
+        override fun set(text: String) {
+            value = values.firstOrNull { it.equals(text, ignoreCase = true) }
+                ?: throw IllegalArgumentException("$name must be one of ${values.joinToString()}")
+        }
+
+        override fun toUci() = "option name $name type combo default $default " + values.joinToString(" ") { "var $it" }
     }
 
     companion object {

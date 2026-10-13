@@ -11,26 +11,32 @@ object MoveGenerator {
 
     private val PROMOTION_TYPES = intArrayOf(QUEEN, KNIGHT, ROOK, BISHOP)
 
-    /** Adds the pseudo-legal moves of the side to move to [moves] (which is cleared first). */
-    fun generatePseudoLegal(position: Position, moves: MoveList) {
+    /**
+     * Adds the pseudo-legal moves of the side to move to [moves] (which is cleared first).
+     * With [tacticalOnly], only captures and promotions (for the quiescence search).
+     */
+    fun generatePseudoLegal(position: Position, moves: MoveList, tacticalOnly: Boolean = false) {
         moves.clear()
         val us = position.sideToMove
         val own = position.occupancy(us)
         val enemies = position.occupancy(opposite(us))
         val occupied = own or enemies
+        val allowedTargets = if (tacticalOnly) enemies else own.inv()
 
-        generatePawnMoves(position, moves, us, enemies, occupied)
+        generatePawnMoves(position, moves, us, enemies, occupied, tacticalOnly)
 
         for (type in KNIGHT..KING) {
             position.pieces(us, type).forEachSquare { from ->
-                val targets = Attacks.attacks(type, from, occupied) and own.inv()
+                val targets = Attacks.attacks(type, from, occupied) and allowedTargets
                 targets.forEachSquare { to ->
                     moves.add(Move(from, to, if (to in enemies) Move.CAPTURE else Move.QUIET))
                 }
             }
         }
 
-        generateCastling(position, moves, us, occupied)
+        if (!tacticalOnly) {
+            generateCastling(position, moves, us, occupied)
+        }
     }
 
     /** Adds the legal moves of the side to move to [moves] (which is cleared first). */
@@ -56,16 +62,17 @@ object MoveGenerator {
         return legal
     }
 
-    private fun generatePawnMoves(position: Position, moves: MoveList, us: Color, enemies: Bitboard, occupied: Bitboard) {
+    private fun generatePawnMoves(position: Position, moves: MoveList, us: Color, enemies: Bitboard, occupied: Bitboard, tacticalOnly: Boolean) {
         val forward = if (us == WHITE) 8 else -8
         val startRank = if (us == WHITE) 1 else 6
+        val promotionRank = if (us == WHITE) 7 else 0
 
         position.pieces(us, PAWN).forEachSquare { from ->
             val oneStep = from + forward
-            if (oneStep !in occupied) {
+            if (oneStep !in occupied && (!tacticalOnly || rankOf(oneStep) == promotionRank)) {
                 addPawnMove(moves, from, oneStep, capture = false)
                 val twoSteps = oneStep + forward
-                if (rankOf(from) == startRank && twoSteps !in occupied) {
+                if (!tacticalOnly && rankOf(from) == startRank && twoSteps !in occupied) {
                     moves.add(Move(from, twoSteps, Move.DOUBLE_PAWN_PUSH))
                 }
             }

@@ -69,6 +69,12 @@ class MoveList(capacity: Int = MAX_MOVES) {
         size = 0
     }
 
+    fun swap(i: Int, j: Int) {
+        val move = moves[i]
+        moves[i] = moves[j]
+        moves[j] = move
+    }
+
     fun isEmpty() = size == 0
 
     operator fun contains(move: Move): Boolean = (0 until size).any { moves[it] == move.bits }

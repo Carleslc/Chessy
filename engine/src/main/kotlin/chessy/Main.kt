@@ -9,7 +9,11 @@ import chessy.core.Perft
 import chessy.core.Pgn
 import chessy.core.Position
 import chessy.core.WHITE
+import chessy.eval.Evaluator
+import chessy.search.AlphaBetaSearch
+import chessy.search.Bench
 import chessy.search.GreedySearch
+import chessy.search.Score
 import chessy.search.Search
 import chessy.search.SearchLimits
 import chessy.uci.Uci
@@ -28,11 +32,17 @@ Commands:
   divide <depth> [fen]   Perft for each legal move of the position
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
+  eval [fen]             Evaluation of the position, term by term
+  bench [depth]          Search fixed positions to a fixed depth (default: 6), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors)
+  --evaluator <name>     Evaluator for eval, bench and play: Material (default: Material)
+  --search <name>        Search of play and bench: alphabeta (default) or greedy
+  --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
+  --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file"""
@@ -64,6 +74,23 @@ private class Arguments(args: Array<String>) {
         if (positional.size > index) Position.fromFen(positional.drop(index).joinToString(" ")) else Position.startingPosition()
 
     val threads: Int get() = options["threads"]?.toIntOrNull()?.takeIf { it > 0 } ?: Runtime.getRuntime().availableProcessors()
+
+    val evaluator: Evaluator get() = Evaluator.named(options["evaluator"] ?: "Material")
+
+    fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
+
+    /** Search selected with --search, --depth and --evaluator. */
+    val search: Search get() = when (options["search"]?.lowercase() ?: "alphabeta") {
+        "alphabeta" -> AlphaBetaSearch(evaluator)
+        "greedy" -> GreedySearch(intOption("depth") ?: 2)
+        else -> throw IllegalArgumentException("Unknown search: ${options["search"]} (alphabeta or greedy)")
+    }
+
+    /** Limits of each move in play: --time seconds and --depth. */
+    val limits: SearchLimits get() = SearchLimits(
+        moveTime = ((options["time"]?.toDoubleOrNull() ?: 3.0) * 1000).toLong(),
+        depth = if (options["search"]?.lowercase() == "greedy") null else intOption("depth"),
+    )
 }
 
 fun main(args: Array<String>) {
@@ -79,7 +106,12 @@ fun main(args: Array<String>) {
             "divide" -> divide(arguments.depth, arguments.position(2), arguments.threads)
             "d" -> println(arguments.position(1))
             "moves" -> moves(arguments.position(1))
-            "play" -> play(arguments.options["fen"] ?: Position.STARTING_FEN, chessyColors(arguments.options["chessy"]), arguments.options["pgn"]?.let(::File))
+            "eval" -> println(arguments.evaluator.explain(arguments.position(1)))
+            "bench" -> bench(arguments.search, arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
+            "play" -> play(
+                arguments.options["fen"] ?: Position.STARTING_FEN, chessyColors(arguments.options["chessy"]),
+                arguments.search, arguments.limits, arguments.options["pgn"]?.let(::File)
+            )
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
             else -> throw IllegalArgumentException("Unknown command: ${arguments.command}")
         }
@@ -132,10 +164,17 @@ private fun chessyColors(option: String?): Set<Color> = when (option ?: "black")
     else -> throw IllegalArgumentException("Invalid --chessy: $option (white, black, both or none)")
 }
 
+private fun bench(search: Search, depth: Int) {
+    val result = Bench.run(search, depth, ::println)
+    println()
+    println("Nodes: ${result.nodes}")
+    println("Time: ${result.millis} ms")
+    println("NPS: ${result.nodesPerSecond}")
+}
+
 /** Console game against Chessy (or between humans, or Chessy against itself). */
-private fun play(fen: String, chessy: Set<Color>, pgnFile: File?) {
+private fun play(fen: String, chessy: Set<Color>, search: Search, limits: SearchLimits, pgnFile: File?) {
     val game = Game(fen)
-    val search: Search = GreedySearch()
     game.headers["Event"] = "Chessy game"
     game.headers["Site"] = "Chessy (v${Version.number})"
     game.headers["Date"] = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
@@ -148,8 +187,8 @@ private fun play(fen: String, chessy: Set<Color>, pgnFile: File?) {
         println(game.position)
         val side = if (game.position.sideToMove == WHITE) "White" else "Black"
         if (game.position.sideToMove in chessy) {
-            val result = search.search(game.position, SearchLimits(), AtomicBoolean())
-            println("$side (Chessy) plays ${Notation.toSan(game.position, result.bestMove)}")
+            val result = search.search(game.position, limits, AtomicBoolean())
+            println("$side (Chessy) plays ${Notation.toSan(game.position, result.bestMove)} (${Score.toUci(result.score)})")
             game.play(result.bestMove)
             continue
         }

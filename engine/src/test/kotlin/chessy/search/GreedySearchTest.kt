@@ -9,9 +9,9 @@ import kotlin.test.assertNotEquals
 
 class GreedySearchTest {
 
-    private fun best(fen: String, limits: SearchLimits = SearchLimits()): String {
+    private fun best(fen: String, limits: SearchLimits = SearchLimits(), depth: Int = 2): String {
         val position = Position.fromFen(fen)
-        val result = GreedySearch().search(position, limits, AtomicBoolean())
+        val result = GreedySearch(depth).search(position, limits, AtomicBoolean())
         assertEquals(fen, position.toFen(), "The search must leave the position as it was")
         return Notation.toSan(position, result.bestMove)
     }
@@ -32,6 +32,14 @@ class GreedySearchTest {
         val move = best("7k/8/5K2/6Q1/8/8/8/8 w - - 0 1")
         assertNotEquals("Qg6", move)
         assertNotEquals("Qf7", move)
+    }
+
+    @Test
+    fun depthTwoDoesNotHangPieces() {
+        // Qxd5 wins a pawn, but exd5 wins the queen
+        val fen = "4k3/8/4p3/3p4/8/8/8/3QK3 w - - 0 1"
+        assertEquals("Qxd5", best(fen, depth = 1))
+        assertNotEquals("Qxd5", best(fen, depth = 2))
     }
 
     @Test

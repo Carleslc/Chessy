@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0, 1 y 2 completadas · siguiente: Fase 3 (búsqueda y evaluación base) |
+| Estado | Fases 0 a 3 completadas · siguiente: Fase 4 (búsqueda avanzada) |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -287,11 +287,11 @@ En CPU:
    - reglas (hecho): perft de las posiciones de referencia de chessprogramming.org (inicial, Kiwipete, posiciones 3–6, también en paralelo), consistencia de Zobrist (incremental = recalculada), ida y vuelta de FEN, enroques, captura al paso, promociones, jaque y mate, tablas (ahogado, material insuficiente, 50 movimientos, triple repetición), SAN (escritura y lectura) y PGN (exportación, importación y las partidas de `tools/examples`); validación cruzada con `python-chess` en posiciones aleatorias (`tools/perft_check.py --san`);
    - búsqueda (Fase 3, ver sus tests);
    - simetría de la evaluación (Fase 5).
-2. **Táctica**: suites EPD (Win At Chess, etc.) con tiempo fijo; mates en N.
+2. **Táctica**: suites EPD con tiempo fijo (`tools/epd.py`): la suite propia `tools/suites/tactics.epd`, extraída con `tools/tactics.py` de partidas reales usando Stockfish como oráculo (posiciones con una sola jugada buena, al menos 200 cp mejor que la segunda), y suites clásicas como Win At Chess (WAC) cuando se añadan al repositorio; mates en N.
 3. **Posicional**: Strategic Test Suite (STS), con especial atención a las categorías de control del centro, espacio y juego de peones.
 4. **Estilo**: métricas por partida: movilidad media del rival, diferencial de espacio, número de piezas rivales atrapadas, % de partidas ganadas con material inferior.
 5. **Fuerza**:
-   - SPRT (fastchess/cutechess-cli) para aceptar cada cambio: `elo0=0, elo1=5` (o similar) a control de tiempo corto.
+   - SPRT con fastchess para aceptar cada cambio: `elo0=0, elo1=5` (o similar) a control de tiempo corto, con el libro de aperturas equilibradas `tools/openings/balanced.epd` (generado con `tools/openings.py`) y cada apertura jugada con ambos colores (`-repeat`).
    - Calibración contra Stockfish con `UCI_LimitStrength`/`UCI_Elo` y contra motores de la lista CCRL de nivel conocido.
    - Rating del BOT en Lichess.
 
@@ -328,7 +328,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
   - `tools/match.py` en lugar de fastchess (no instalado): partidas entre motores UCI con `python-chess`, que valida cada jugada y el protocolo, controla el reloj y guarda los PGN. 1000 partidas Chessy contra Chessy a 10+0,1 sin errores (102.383 jugadas, 2,3 ms de media) y 10 partidas contra Stockfish (`UCI_Elo` 1320) sin errores.
   - `tools/lichess`: configuración y guía de lichess-bot. Pendiente de probar en Lichess con una cuenta BOT (requiere crear la cuenta y un token).
 
-### Fase 3 — Búsqueda base + evaluación base
+### Fase 3 — Búsqueda base + evaluación base ✅
 - Interfaz `Evaluator` + `MaterialEvaluator` (material + PST cónicas).
 - Negamax alfa-beta, iterative deepening, quiescence, MVV-LVA, mates con distancia, gestión de tiempo.
 - `bench`.
@@ -339,10 +339,27 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
   - no caer en el horizonte (captura con recaptura que pierde material, gracias a la quiescencia);
   - evitar el ahogado cuando se gana, y buscar tablas (ahogado o repetición) cuando se pierde;
   - repetición y regla de los 50 movimientos dentro de la búsqueda;
-  - la tabla de transposición no cambia el resultado (misma jugada y puntuación con y sin TT a profundidad fija);
+  - (Fase 4) la tabla de transposición no cambia el resultado (misma jugada y puntuación con y sin TT a profundidad fija);
   - la búsqueda deja la posición intacta (misma FEN y clave al terminar o al abortar por tiempo);
   - respeta el tiempo (`movetime`) y el límite de nodos.
 - **Aceptación**: los tests anteriores pasan; resuelve un subconjunto de WAC; gana claramente al jugador de la Fase 2. Estimación ~1500–1800.
+- **Resultado**:
+  - `Evaluator` (con `explain` y el comando `eval`) y `MaterialEvaluator`: material, tablas de casillas de la *Simplified Evaluation Function* (con tablas de final para rey y peones) y pareja de alfiles, cónica por fase. Sin asignaciones en `evaluate`, simétrica (test con posiciones espejo).
+  - `AlphaBetaSearch`: negamax alfa-beta, profundización iterativa por tiempo, quiescencia (capturas y promociones, todas las jugadas en jaque, *delta pruning*), ordenación (variante principal anterior, MVV-LVA, promociones), mates por distancia y *mate distance pruning*, tablas dentro de la búsqueda (repetición, 50 movimientos, material insuficiente), variante principal completa (tabla triangular), límites `depth`, `nodes`, `movetime`, reloj, `mate`, `infinite` y `searchmoves`.
+  - `TimeManager`: límite suave (no empezar otra iteración tras el 60 %) y duro (abortar), con `Move Overhead`; una sola jugada legal se responde tras la primera iteración, y un mate demostrado detiene la profundización.
+  - `GreedySearch` se mantiene como jugador de referencia, con profundidad configurable (por defecto 2: no deja piezas colgadas a una captura directa). Opciones UCI `Search`, `Greedy Depth` y `Evaluator`.
+  - `bench`: 12 posiciones a profundidad 6, 11.132.361 nodos, ~5,3 M nodos/s en un hilo (objetivo: ≥ 500 k).
+  - Tests de búsqueda con posiciones verificadas con Stockfish 19 (mate en 1 a profundidades 1–6, mates en 2 y 3, el mate más corto, horizonte, piezas colgadas, ahogado, repetición y 50 movimientos, límites de tiempo, nodos y `stop`, determinismo, variante principal legal, `go mate`).
+  - Partidas con fastchess (10+0,1, 500 aperturas equilibradas, cada apertura con ambos colores), sin pérdidas por tiempo ni jugadas ilegales:
+
+    | Rival | Resultado (+ / − / =) | Puntos | Diferencia de Elo |
+    |---|---|---|---|
+    | `GreedySearch` profundidad 2 | 100 / 0 / 0 | 100 % | — |
+    | Stockfish 19, `UCI_Elo` 1500 | 92 / 6 / 2 | 93 % | +449 ± 186 |
+    | Stockfish 19, `UCI_Elo` 1800 | 63 / 36 / 1 | 63,5 % | +96 ± 74 |
+
+    Estimación: **~1900** en la escala `UCI_Elo` de Stockfish (calibrada con controles de tiempo más largos, así que es orientativa), por encima de lo previsto para esta fase.
+  - Suite táctica propia (`tools/suites/tactics.epd`, 100 posiciones con una sola jugada buena según Stockfish, ver §9): **97/100** con 1 s por posición (Stockfish 19: 100/100 con 0,1 s). Son posiciones extraídas de partidas de motores todavía débiles, así que es una suite fácil; WAC o STS servirán para medir con más precisión.
 
 ### Fase 4 — Búsqueda avanzada
 - TT, PVS, aspiration windows, killers/history/countermove, null move, LMR, futility, extensión por jaque, SEE.
