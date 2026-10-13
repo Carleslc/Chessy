@@ -12,7 +12,7 @@ See the [PRD](docs/PRD.md) for the design and roadmap.
 - [`tools/`](tools): Python tooling around the engine (board and game viewer, analysis scripts, lichess-bot).
 - [`docs/`](docs): documentation.
 
-The first implementation (2018-2019) is kept in the `kotlin-old` branch.
+The first implementation (2018-2019) is kept in the `v0` branch, and the 2022 viewer in the `python-old` branch.
 
 ## Engine
 

@@ -1,0 +1,17 @@
+package chessy
+
+import java.util.Properties
+
+/** Version of the engine, defined in gradle.properties: v1.0-dev, v1.0, v1.01, v1.07.6... */
+object Version {
+
+    val number: String = Properties().run {
+        Version::class.java.getResourceAsStream("/chessy/version.properties")?.use { load(it) }
+        getProperty("version") ?: "unknown"
+    }
+
+    /** Engine name with its version, such as `Chessy v1.0-dev`. */
+    val name: String = "Chessy v$number"
+
+    const val AUTHOR = "Carlos Lázaro Costa"
+}

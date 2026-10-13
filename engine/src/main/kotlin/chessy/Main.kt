@@ -113,7 +113,7 @@ private fun moves(position: Position) {
 private fun play(fen: String, pgnFile: File?) {
     val game = Game(fen)
     game.headers["Event"] = "Chessy game"
-    game.headers["Site"] = "Chessy"
+    game.headers["Site"] = "Chessy (v${Version.number})"
     game.headers["Date"] = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
     game.headers["White"] = "Player"
     game.headers["Black"] = "Player"

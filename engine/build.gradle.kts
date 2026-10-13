@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "me.carleslc"
-version = "0.1.0"
+// version: see gradle.properties
 
 repositories {
     mavenCentral()
@@ -21,6 +21,14 @@ kotlin {
 application {
     mainClass.set("chessy.MainKt")
     applicationDefaultJvmArgs = listOf("-Xss16m")
+}
+
+tasks.processResources {
+    // The engine reads its version from this resource
+    inputs.property("version", project.version)
+    filesMatching("chessy/version.properties") {
+        expand("version" to project.version)
+    }
 }
 
 tasks.test {

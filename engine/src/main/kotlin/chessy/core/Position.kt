@@ -149,7 +149,7 @@ class Position private constructor() {
         if (popCount(knights or bishops) <= 1) {
             return true
         }
-        return knights == EMPTY && (bishops and LIGHT_SQUARES == EMPTY || bishops and LIGHT_SQUARES.inv() == EMPTY)
+        return knights == EMPTY && (bishops and LIGHT_SQUARES == EMPTY || bishops and DARK_SQUARES == EMPTY)
     }
 
     private fun bishopsAndQueens(color: Color) = pieces(color, BISHOP) or pieces(color, QUEEN)

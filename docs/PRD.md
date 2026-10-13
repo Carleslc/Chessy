@@ -4,7 +4,8 @@
 
 | | |
 |---|---|
-| Estado | Fases 0 y 1 completadas (reglas, notaciones y PGN incluidos) · siguiente: Fase 2 |
+| Versión | v1.0-dev (ver §8, Versiones) |
+| Estado | Fases 0 y 1 completadas (reglas, notaciones y PGN incluidos) · Fase 2 en curso |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -71,7 +72,7 @@ Chessy/
     └── lichess/     (futuro) configuración de lichess-bot
 ```
 
-La rama `kotlin-old` conserva la primera implementación (2018–2019), arreglada para ser jugable en consola (ver §12).
+La rama `v0` conserva la primera implementación (2018–2019), arreglada y con las reglas completas para ser jugable en consola (ver §12). La rama `python-old` conserva el visor de 2022 tal como estaba.
 
 ### 4.2 Módulos del motor
 
@@ -206,7 +207,7 @@ Ideas de [chessprogramming.org/Space](https://www.chessprogramming.org/Space), [
 11. **Espacio en el final**: ventaja de espacio = mejores rutas para el rey y más opciones de peón pasado; el término de espacio se transforma en actividad del rey y control de casillas de avance.
 12. **Paciencia**: no premiar los avances de peón por sí mismos; el bonus está en las casillas que controlan y en las piezas que las usan. Esto evita que el motor fuerce rupturas prematuras.
 
-#### Ideas del README de la rama `python` (2022)
+#### Ideas del README de la rama `python-old` (2022)
 
 | Idea del README | Cómo se incorpora |
 |---|---|
@@ -235,7 +236,7 @@ Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perf
 
 En CPU:
 - **Perft paralelo** (hecho): el árbol se reparte a dos plies de la raíz en tareas independientes, cada hilo con su copia de la posición. Medido en la máquina de desarrollo: 38 M nodos/s con 1 hilo, ~207 M con 8 (×5,4).
-- **Lazy SMP** para la búsqueda (Fase 4): varios hilos buscan la misma posición en paralelo compartiendo solo la tabla de transposición (sin bloqueos, con la técnica XOR de Hyatt para detectar entradas corruptas). Los hilos se desincronizan con profundidades u ordenaciones ligeramente distintas y se aprovechan de lo que los otros guardan en la tabla. Es el método de Stockfish y la mayoría de motores modernos porque es simple y escala razonablemente (con 4–8 hilos, típicamente +50–100 Elo respecto a 1 hilo). Alternativas más complejas como YBWC o ABDADA (citado en el README de la rama `python`) dan resultados similares con mucho más código.
+- **Lazy SMP** para la búsqueda (Fase 4): varios hilos buscan la misma posición en paralelo compartiendo solo la tabla de transposición (sin bloqueos, con la técnica XOR de Hyatt para detectar entradas corruptas). Los hilos se desincronizan con profundidades u ordenaciones ligeramente distintas y se aprovechan de lo que los otros guardan en la tabla. Es el método de Stockfish y la mayoría de motores modernos porque es simple y escala razonablemente (con 4–8 hilos, típicamente +50–100 Elo respecto a 1 hilo). Alternativas más complejas como YBWC o ABDADA (citado en el README de la rama `python-old`) dan resultados similares con mucho más código.
 - **Herramientas**: partidas de test (SPRT) en paralelo con fastchess/cutechess (varias partidas a la vez) y *tuning* paralelo (evaluar muchas posiciones a la vez es trivialmente paralelizable).
 - Opción UCI `Threads`.
 
@@ -266,6 +267,20 @@ En CPU:
 - **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`. Los bots solo juegan retos (no torneos ni emparejamiento por pools).
 - Opcional: libro de aperturas (Polyglot) y tablas de finales Syzygy en fases avanzadas.
 
+### Versiones
+
+| Versión | Qué es | Dónde |
+|---|---|---|
+| **v0** | Primera implementación (2018–2019), objetos y tablero como mapa | Rama `v0` (PGN: `Site "Chessy (v0)"`) |
+| **v1.0-dev** | Motor nuevo mientras se implementan las fases del PRD | `master` |
+| **v1.0** | Motor nuevo al completar el PRD con la primera evaluación Constrictor completa | Tag `v1.0` |
+| **v1.01, v1.02, …, v1.15, v1.26…** | Mejoras del motor y de las evaluaciones, una versión por cambio aceptado (SPRT) | Tags `v1.01`, `v1.02`… |
+| **v1.07.6** | Correcciones (*hotfix*) sobre una versión publicada | Tag `v1.07.6` |
+
+- La versión se define en un solo sitio, `engine/gradle.properties`, y el motor la usa en `id name` de UCI, en la CLI y en el `Site` de los PGN que exporta (`Chessy (v1.0-dev)`).
+- Cada versión publicada lleva un **tag anotado** de git (`git tag -a v1.01 -m "..."`) con un resumen de los cambios y, cuando aplique, el resultado del SPRT frente a la versión anterior.
+- `v0` es una rama y no un tag (un tag con el mismo nombre que una rama sería ambiguo para git).
+
 ## 9. Testing y medición
 
 1. **Corrección**:
@@ -285,9 +300,9 @@ En CPU:
 Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `master`.
 
 ### Fase 0 — Reorganización ✅
-- Rama `kotlin` → `kotlin-old`; contenido de `python` → `master` en `tools/`.
+- Rama `kotlin` → `v0` (antes `kotlin-old`); rama `python` → `python-old`, y su contenido → `master` en `tools/`.
 - PRD.
-- Arreglos en `kotlin-old` para que sea jugable en consola (§12).
+- Arreglos en `v0` para que sea jugable en consola (§12).
 
 ### Fase 1 — Núcleo de reglas (core) ✅
 - Bitboards, casillas, piezas, tablas de ataques (incluidas deslizantes con rayos).
@@ -352,7 +367,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 | JVM: calentamiento y GC | Sin asignaciones en búsqueda; `bench` al iniciar opcional; GraalVM native-image |
 | La cuenta BOT de Lichess es irreversible | Usar una cuenta nueva dedicada |
 
-## 12. Legado: rama `kotlin-old`
+## 12. Legado: rama `v0`
 
 Primera implementación (2018–2019): piezas como objetos, tablero como mapa/matriz, minimax alfa-beta. Se corrigieron los errores graves para dejarla jugable en consola:
 
