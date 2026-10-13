@@ -17,4 +17,21 @@ enum class PieceType(val notation: String, val weight: Int, val positionWeightTa
         val row = if (player == Player.WHITE) position.row else 7 - position.row
         return table[row][position.column]
     }
+
+    fun create(player: Player): Piece = when (this) {
+        PAWN -> Pawn(player)
+        KNIGHT -> Knight(player)
+        BISHOP -> Bishop(player)
+        ROOK -> Rook(player)
+        QUEEN -> Queen(player)
+        KING -> King(player)
+    }
+
+    companion object {
+        /** Pieces a pawn can be promoted to, the most valuable first. */
+        val PROMOTIONS = listOf(QUEEN, KNIGHT, ROOK, BISHOP)
+
+        fun fromNotation(notation: Char): PieceType = values().firstOrNull { it.notation[0] == notation.toUpperCase() }
+            ?: throw IllegalArgumentException("Invalid piece: $notation")
+    }
 }

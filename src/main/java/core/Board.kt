@@ -10,9 +10,11 @@ private val KING_OFFSETS = listOf(-1 to -1, -1 to 0, -1 to 1, 0 to -1, 0 to 1, 1
 private val LINEAR_DIRECTIONS = listOf(-1 to 0, 1 to 0, 0 to -1, 0 to 1)
 private val DIAGONAL_DIRECTIONS = listOf(-1 to -1, -1 to 1, 1 to -1, 1 to 1)
 
-/** Random keys to hash a board into a Long (Zobrist hashing), indexed by [piece][square]. */
+/** Random keys to hash a board into a Long (Zobrist hashing). */
 private val ZOBRIST_PIECES = Random(2019).let { random -> Array(12) { LongArray(64) { random.nextLong() } } }
 private val ZOBRIST_BLACK_TURN = Random(2018).nextLong()
+private val ZOBRIST_CASTLING = Random(2020).let { random -> LongArray(Castling.values().size) { random.nextLong() } }
+private val ZOBRIST_EN_PASSANT = Random(2021).let { random -> LongArray(8) { random.nextLong() } }
 
 /**
  * Immutable chess position: playing a move returns a new board.
@@ -20,42 +22,23 @@ private val ZOBRIST_BLACK_TURN = Random(2018).nextLong()
  */
 class Board private constructor(internal val board: Chessboard,
                                 val turn: Player,
-                                private val captureOrPawnCounter: Int = 0) {
+                                /** Castling rights not lost yet. */
+                                val castling: Set<Castling>,
+                                /** Position where a pawn can capture en passant (only set when an opponent pawn can capture). */
+                                val enPassant: Position?,
+                                private val captureOrPawnCounter: Int = 0,
+                                val fullMoveNumber: Int = 1) {
 
     companion object Factory {
 
         /** Half moves without captures nor pawn movements to claim a draw (fifty moves for each player). */
         const val FIFTY_MOVES_RULE = 100
 
-        fun new(): Board {
-            val chessboard = ChessboardMap.empty()
+        const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-            fun fillRow(row: Int, player: Player) {
-                chessboard[row, 0] = Rook(player)
-                chessboard[row, 1] = Knight(player)
-                chessboard[row, 2] = Bishop(player)
-                chessboard[row, 3] = Queen(player)
-                chessboard[row, 4] = King(player)
-                chessboard[row, 5] = Bishop(player)
-                chessboard[row, 6] = Knight(player)
-                chessboard[row, 7] = Rook(player)
-            }
+        fun new(): Board = fromFen(STARTING_FEN)
 
-            fun fillPawns(row: Int, player: Player) {
-                for (column in 0..7) {
-                    chessboard[row, column] = Pawn(player)
-                }
-            }
-
-            fillRow(0, Player.BLACK)
-            fillPawns(1, Player.BLACK)
-            // board[2][*] to board[5][*] are empty positions
-            fillPawns(6, Player.WHITE)
-            fillRow(7, Player.WHITE)
-
-            return Board(chessboard, Player.Declarations.START)
-        }
-
+        /** Parses a board drawn like [toString]. Castling rights are given if kings and rooks are in their initial positions. */
         fun parse(board: String, turn: Player = Player.Declarations.START): Board {
             fun syntaxError(message: String) = IllegalArgumentException("Invalid board syntax: $message")
             fun syntaxError(e: Exception) = IllegalArgumentException("Invalid board syntax", e)
@@ -71,15 +54,7 @@ class Board private constructor(internal val board: Chessboard,
                     return null
                 }
                 val player = if (rawPiece[0] == Player.WHITE.notation) Player.WHITE else Player.BLACK
-                return when (rawPiece[2]) {
-                    'R' -> Rook(player)
-                    'N' -> Knight(player)
-                    'B' -> Bishop(player)
-                    'Q' -> Queen(player)
-                    'K' -> King(player)
-                    'P' -> Pawn(player)
-                    else -> throw syntaxError("Not a piece")
-                }
+                return PieceType.fromNotation(rawPiece[2]).create(player)
             }
 
             fun parseRow(i: Int, row: String) {
@@ -102,10 +77,73 @@ class Board private constructor(internal val board: Chessboard,
                 throw syntaxError(e)
             }
 
-            return Board(chessboard, turn)
+            return Board(chessboard, turn, validCastling(chessboard, Castling.values().toSet()), null)
         }
 
         fun parseFile(boardPath: String, turn: Player = Player.Declarations.START) = parse(File(boardPath).readText(), turn)
+
+        /** Parses a position in Forsyth-Edwards Notation. */
+        fun fromFen(fen: String): Board {
+            fun fenError(message: String) = IllegalArgumentException("Invalid FEN ($message): $fen")
+
+            val fields = fen.trim().split(Regex("\\s+"))
+            if (fields.size !in 4..6) throw fenError("expected 4 to 6 fields")
+
+            val chessboard = ChessboardMap.empty()
+            val rows = fields[0].split('/')
+            if (rows.size != 8) throw fenError("expected 8 rows")
+            for ((row, text) in rows.withIndex()) {
+                var column = 0
+                for (char in text) {
+                    if (char.isDigit()) {
+                        column += char - '0'
+                    } else {
+                        if (column > 7) throw fenError("row ${8 - row} is too long")
+                        val player = if (char.isUpperCase()) Player.WHITE else Player.BLACK
+                        chessboard[row, column++] = PieceType.fromNotation(char).create(player)
+                    }
+                }
+                if (column != 8) throw fenError("row ${8 - row} does not have 8 squares")
+            }
+
+            val turn = when (fields[1]) {
+                "w" -> Player.WHITE
+                "b" -> Player.BLACK
+                else -> throw fenError("turn must be w or b")
+            }
+
+            val castling = if (fields[2] == "-") emptySet() else fields[2].map { char ->
+                Castling.values().firstOrNull { it.notation == char } ?: throw fenError("castling rights")
+            }.toSet()
+
+            val enPassant = if (fields[3] == "-") null else Position.fromAlgebraicChessNotation(fields[3])
+
+            val board = Board(chessboard, turn, validCastling(chessboard, castling),
+                    enPassant?.takeIf { canCaptureEnPassant(chessboard, it, turn) },
+                    fields.getOrNull(4)?.toIntOrNull() ?: 0,
+                    fields.getOrNull(5)?.toIntOrNull() ?: 1)
+
+            for (player in Player.values()) {
+                if (board.getPieces(player).count { it.value.type == PieceType.KING } != 1) throw fenError("each player must have one king")
+            }
+            if (board.isInCheck(turn.opponent())) throw fenError("the player not in turn is in check")
+
+            return board
+        }
+
+        /** Castling rights are lost when the king or the rook are not in their initial positions. */
+        private fun validCastling(chessboard: Chessboard, castling: Set<Castling>): Set<Castling> = castling.filter {
+            chessboard[it.kingFrom] == King(it.player) && chessboard[it.rookFrom] == Rook(it.player)
+        }.toSet()
+
+        /** Whether a pawn of [turn] could capture en passant to [position]. */
+        private fun canCaptureEnPassant(chessboard: Chessboard, position: Position, turn: Player): Boolean {
+            // The opponent pawn that moved two rows is in the same row as the capturing pawns
+            val row = if (turn == Player.WHITE) position.row + 1 else position.row - 1
+            return listOf(position.column - 1, position.column + 1).any { column ->
+                column in 0..7 && chessboard[row, column] == Pawn(turn)
+            }
+        }
 
     }
 
@@ -128,7 +166,7 @@ class Board private constructor(internal val board: Chessboard,
         }
     }
 
-    /** Hash of the position (pieces and turn), suitable as a transposition table key. */
+    /** Hash of the position (pieces, turn, castling rights and en passant), suitable as a transposition table key. */
     val key: Long by lazy {
         var hash = if (turn == Player.BLACK) ZOBRIST_BLACK_TURN else 0L
         board.forEach { pos, piece ->
@@ -136,6 +174,8 @@ class Board private constructor(internal val board: Chessboard,
                 hash = hash xor ZOBRIST_PIECES[piece.player.ordinal * 6 + piece.type.ordinal][pos.row * 8 + pos.column]
             }
         }
+        castling.forEach { hash = hash xor ZOBRIST_CASTLING[it.ordinal] }
+        enPassant?.let { hash = hash xor ZOBRIST_EN_PASSANT[it.column] }
         hash
     }
 
@@ -146,10 +186,29 @@ class Board private constructor(internal val board: Chessboard,
     /** Returns the board after playing [move], which must be a legal move of this board. */
     fun play(move: Move): Board {
         val chessboard = board.copy()
+        val player = move.piece.player
         chessboard[move.from] = null
-        chessboard[move.to] = if (move.isPromotion()) Queen(move.piece.player) else move.piece
-        val counter = if (move.piece.type == PieceType.PAWN || move.isCapture()) 0 else captureOrPawnCounter + 1
-        return Board(chessboard, turn.opponent(), counter)
+        chessboard[move.capturedPosition] = null
+        chessboard[move.to] = move.promotion?.create(player) ?: move.piece
+        move.castling?.let {
+            chessboard[it.rookFrom] = null
+            chessboard[it.rookTo] = Rook(player)
+        }
+
+        // Moving the king or a rook, or capturing a rook, loses the castling rights
+        val remainingCastling = castling.filter {
+            move.from != it.kingFrom && move.from != it.rookFrom && move.to != it.rookFrom
+        }.toSet()
+
+        val pawn = move.piece.type == PieceType.PAWN
+        val doublePush = pawn && Math.abs(move.to.row - move.from.row) == 2
+        val skipped = Position((move.from.row + move.to.row) / 2, move.from.column)
+        val enPassant = if (doublePush && canCaptureEnPassant(chessboard, skipped, turn.opponent())) skipped else null
+
+        val counter = if (pawn || move.isCapture()) 0 else captureOrPawnCounter + 1
+        val fullMove = if (turn == Player.BLACK) fullMoveNumber + 1 else fullMoveNumber
+
+        return Board(chessboard, turn.opponent(), remainingCastling, enPassant, counter, fullMove)
     }
 
     private fun pseudoLegalMoves(): List<Move> = getPieces().flatMap { it.value.availableMovesOn(it.key, this) }
@@ -157,9 +216,11 @@ class Board private constructor(internal val board: Chessboard,
     /** A move is legal if it does not leave the own king in check. It is tested on this board and then undone. */
     private fun isLegal(move: Move): Boolean {
         board[move.from] = null
+        board[move.capturedPosition] = null
         board[move.to] = move.piece
         val legal = !isInCheck(turn)
-        board[move.to] = move.captured
+        board[move.to] = null
+        board[move.capturedPosition] = move.captured
         board[move.from] = move.piece
         return legal
     }
@@ -203,11 +264,81 @@ class Board private constructor(internal val board: Chessboard,
                 || isSliderAttacking(DIAGONAL_DIRECTIONS, PieceType.BISHOP, PieceType.QUEEN)
     }
 
-    /** Only kings, or kings and a single minor piece. */
+    /** Only kings, kings and a single minor piece, or kings and bishops on squares of the same color. */
     private fun hasInsufficientMaterial(): Boolean {
-        val pieces = getPieces(Player.WHITE) + getPieces(Player.BLACK)
-        val nonKings = pieces.filter { it.value.type != PieceType.KING }
-        return nonKings.isEmpty() || (nonKings.size == 1 && nonKings[0].value.type in setOf(PieceType.KNIGHT, PieceType.BISHOP))
+        val pieces = (getPieces(Player.WHITE) + getPieces(Player.BLACK)).filter { it.value.type != PieceType.KING }
+        return when {
+            pieces.isEmpty() -> true
+            pieces.size == 1 -> pieces[0].value.type == PieceType.KNIGHT || pieces[0].value.type == PieceType.BISHOP
+            else -> pieces.all { it.value.type == PieceType.BISHOP }
+                    && pieces.map { (it.key.row + it.key.column) % 2 }.distinct().size == 1
+        }
+    }
+
+    /**
+     * Standard algebraic notation of a legal move: e4, Nf3, Ngf6, R1e2, exd6, Qxh7#, a8=Q+, O-O.
+     */
+    fun toSan(move: Move): String {
+        val san = StringBuilder()
+        val castling = move.castling
+        if (castling != null) {
+            san.append(castling.san)
+        } else {
+            val type = move.piece.type
+            if (type == PieceType.PAWN) {
+                if (move.isCapture()) san.append(move.from.toString()[0])
+            } else {
+                san.append(type.notation)
+                // Disambiguation when another piece of the same type can move to the same position
+                val others = legalMoves.filter { it.piece == move.piece && it.to == move.to && it.from != move.from }.map { it.from }
+                if (others.isNotEmpty()) {
+                    when {
+                        others.none { it.column == move.from.column } -> san.append(move.from.toString()[0])
+                        others.none { it.row == move.from.row } -> san.append(move.from.toString()[1])
+                        else -> san.append(move.from)
+                    }
+                }
+            }
+            if (move.isCapture()) san.append('x')
+            san.append(move.to)
+            move.promotion?.let { san.append('=').append(it.notation) }
+        }
+        val next = play(move)
+        when {
+            next.status == Status.CHECKMATE -> san.append('#')
+            next.inCheck -> san.append('+')
+        }
+        return san.toString()
+    }
+
+    /** Parses a move in standard algebraic notation (Nf3, exd6 e.p., O-O, a8=Q+) or long algebraic notation (e2e4, e7e8q). */
+    fun parseMove(text: String): Move? {
+        val notation = text.trim().replace(" ", "").removeSuffix("e.p.").replace('0', 'O').trimEnd('+', '#', '!', '?')
+        return legalMoves.firstOrNull { it.notation == notation.toLowerCase() }
+                ?: legalMoves.firstOrNull { toSan(it).trimEnd('+', '#') == notation }
+    }
+
+    /** Forsyth-Edwards Notation of the position. */
+    fun toFen(): String {
+        val rows = board.rows.joinToString("/") { i ->
+            var row = ""
+            var empty = 0
+            for (piece in board[i]) {
+                if (piece == null) {
+                    empty++
+                } else {
+                    if (empty > 0) row += empty
+                    empty = 0
+                    val notation = piece.type.notation
+                    row += if (piece.player == Player.WHITE) notation else notation.toLowerCase()
+                }
+            }
+            if (empty > 0) row += empty
+            row
+        }
+        val turn = if (turn == Player.WHITE) "w" else "b"
+        val castling = if (castling.isEmpty()) "-" else castling.sortedBy { it.ordinal }.map { it.notation }.joinToString("")
+        return "$rows $turn $castling ${enPassant ?: "-"} $captureOrPawnCounter $fullMoveNumber"
     }
 
     fun printStatus() = println(status.getDescription(turn))
@@ -222,10 +353,7 @@ class Board private constructor(internal val board: Chessboard,
 
         other as Board
 
-        if (board != other.board) return false
-        if (turn != other.turn) return false
-
-        return true
+        return board == other.board && turn == other.turn && castling == other.castling && enPassant == other.enPassant
     }
 
     override fun hashCode() = key.hashCode()

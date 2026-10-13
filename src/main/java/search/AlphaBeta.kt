@@ -29,8 +29,8 @@ private class SearchTimeout : RuntimeException(null, null, false, false)
  * Scores are always from the point of view of the player in turn.
  */
 class AlphaBeta(private val evaluator: Evaluator = WeightEvaluator(),
-                var maxDepth: Depth = 4,
-                var maxMillis: Long = 10_000,
+                var maxDepth: Depth = 64,
+                var maxMillis: Long = 5_000,
                 var verbose: Boolean = true) {
 
     private val table = HashMap<Long, TableEntry>()

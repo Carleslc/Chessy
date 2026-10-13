@@ -85,8 +85,19 @@ class King(player: Player): Piece(PieceType.KING, player) {
         moves.addIfValid(from, from.up_left, board)
         moves.addIfValid(from, from.up, board)
         moves.addIfValid(from, from.up_right, board)
-        // TODO: Castling
+        addCastling(moves, from, board)
         return moves
+    }
+
+    /** The king cannot castle out of, through or into check, and the squares between king and rook must be empty. */
+    private fun addCastling(moves: MutableList<Move>, from: Position, board: Board) {
+        for (castling in board.castling) {
+            if (castling.player == player && from == castling.kingFrom
+                    && castling.emptySquares.all { board[it] == null }
+                    && castling.kingSquares.none { board.isAttacked(it, player.opponent()) }) {
+                moves.add(Move(from, castling.kingTo, this, castling = castling))
+            }
+        }
     }
 
 }
@@ -113,11 +124,22 @@ class Pawn(player: Player): Piece(PieceType.PAWN, player) {
         if (moves.addIfValid(from, if (white) from.up else from.down, board) { it.isEmpty() } && isFirstMove()) {
             moves.addIfValid(from, if (white) from.up.up else from.down.down, board) { it.isEmpty() }
         }
-        moves.addIfValid(from, if (white) from.up_left else from.down_left, board) { it.isOpponent(player) }
-        moves.addIfValid(from, if (white) from.up_right else from.down_right, board) { it.isOpponent(player) }
-        // TODO: En passant
+        for (to in listOf(if (white) from.up_left else from.down_left, if (white) from.up_right else from.down_right)) {
+            moves.addIfValid(from, to, board) { it.isOpponent(player) }
+            if (to == board.enPassant) {
+                moves.add(Move(from, to, this, Pawn(player.opponent()), enPassant = true))
+            }
+        }
 
-        return moves
+        return moves.flatMap { promote(it) }
+    }
+
+    /** A pawn reaching the last row must be promoted to a queen, knight, rook or bishop. */
+    private fun promote(move: Move): List<Move> {
+        if (!move.to.opponentRow(player)) {
+            return listOf(move)
+        }
+        return PieceType.PROMOTIONS.map { move.copy(promotion = it) }
     }
 
 }
