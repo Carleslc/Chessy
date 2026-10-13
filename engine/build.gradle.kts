@@ -3,7 +3,7 @@ plugins {
     application
 }
 
-group = "com.github.carleslc"
+group = "me.carleslc"
 version = "0.1.0"
 
 repositories {

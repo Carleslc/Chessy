@@ -43,5 +43,41 @@ class Perft(private val position: Position) {
 
     companion object {
         const val MAX_DEPTH = 64
+
+        /**
+         * [divide] using several threads. Each thread works on its own copy of the position.
+         * The tree is split two plies below the root, so there are many small tasks to keep all threads busy.
+         */
+        fun parallelDivide(position: Position, depth: Int, threads: Int): List<Pair<Move, Long>> {
+            require(depth >= 1) { "Depth must be at least 1" }
+            val root = position.copy()
+            val pool = java.util.concurrent.Executors.newFixedThreadPool(threads)
+            try {
+                val tasks = MoveGenerator.legalMoves(root).toList().map { move ->
+                    root.makeMove(move)
+                    val replies = if (depth >= 2) MoveGenerator.legalMoves(root).toList() else emptyList()
+                    val fen = root.toFen()
+                    root.unmakeMove(move)
+                    val subtasks = if (depth == 1) {
+                        listOf(pool.submit<Long> { 1L })
+                    } else {
+                        replies.map { reply ->
+                            pool.submit<Long> {
+                                val copy = Position.fromFen(fen)
+                                copy.makeMove(reply)
+                                Perft(copy).perft(depth - 2)
+                            }
+                        }
+                    }
+                    move to subtasks
+                }
+                return tasks.map { (move, subtasks) -> move to subtasks.sumOf { it.get() } }
+            } finally {
+                pool.shutdown()
+            }
+        }
+
+        fun parallelPerft(position: Position, depth: Int, threads: Int): Long =
+            if (depth == 0) 1 else parallelDivide(position, depth, threads).sumOf { it.second }
     }
 }

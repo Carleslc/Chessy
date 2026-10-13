@@ -50,4 +50,16 @@ class PerftTest {
         assertEquals(48, divide.size)
         assertEquals(97_862, divide.sumOf { it.second })
     }
+
+    @Test
+    fun parallelPerftEqualsSequential() {
+        for (case in cases) {
+            val position = Position.fromFen(case.fen)
+            for (depth in 1..3) {
+                assertEquals(case.nodes[depth - 1], Perft.parallelPerft(position, depth, threads = 4), "${case.name} perft($depth)")
+            }
+            val sequential = Perft(position).divide(3).toMap()
+            assertEquals(sequential, Perft.parallelDivide(position, 3, threads = 4).toMap(), case.name)
+        }
+    }
 }

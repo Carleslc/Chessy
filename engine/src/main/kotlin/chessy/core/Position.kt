@@ -117,6 +117,41 @@ class Position private constructor() {
     /** After [makeMove]: whether the player who moved left its own king in check (so the move was illegal). */
     fun leftKingInCheck(): Boolean = isAttacked(kingSquare(opposite(sideToMove)), sideToMove)
 
+    // ---- Draw rules ----
+
+    /**
+     * Number of times the current position occurred before in the moves played on this position
+     * (same pieces, side to move, castling rights and en passant square, compared by [key]).
+     * Only positions since the last capture or pawn move can repeat.
+     */
+    fun repetitions(): Int {
+        var count = 0
+        val earliest = maxOf(0, historySize - halfmoveClock)
+        var index = historySize - 2 // Previous positions with the same side to move
+        while (index >= earliest) {
+            if (history[index].key == key) count++
+            index -= 2
+        }
+        return count
+    }
+
+    /**
+     * Whether no sequence of legal moves can lead to checkmate:
+     * only kings, a single minor piece, or only bishops all on squares of the same color.
+     */
+    fun isInsufficientMaterial(): Boolean {
+        val heavyOrPawns = pieces(WHITE, PAWN) or pieces(BLACK, PAWN) or rooksAndQueens(WHITE) or rooksAndQueens(BLACK)
+        if (heavyOrPawns != EMPTY) {
+            return false
+        }
+        val knights = pieces(WHITE, KNIGHT) or pieces(BLACK, KNIGHT)
+        val bishops = pieces(WHITE, BISHOP) or pieces(BLACK, BISHOP)
+        if (popCount(knights or bishops) <= 1) {
+            return true
+        }
+        return knights == EMPTY && (bishops and LIGHT_SQUARES == EMPTY || bishops and LIGHT_SQUARES.inv() == EMPTY)
+    }
+
     private fun bishopsAndQueens(color: Color) = pieces(color, BISHOP) or pieces(color, QUEEN)
 
     private fun rooksAndQueens(color: Color) = pieces(color, ROOK) or pieces(color, QUEEN)

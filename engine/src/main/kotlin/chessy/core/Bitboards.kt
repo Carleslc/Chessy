@@ -13,6 +13,9 @@ const val FILE_H: Bitboard = FILE_A shl 7
 const val RANK_1: Bitboard = 0xFFL
 const val RANK_8: Bitboard = RANK_1 shl 56
 
+/** b1, a2, d1... (a1 is a dark square). */
+const val LIGHT_SQUARES: Bitboard = 0x55AA55AA55AA55AAL
+
 fun fileMask(file: Int): Bitboard = FILE_A shl file
 
 fun rankMask(rank: Int): Bitboard = RANK_1 shl (8 * rank)

@@ -3,9 +3,10 @@
 
 '''
 Compare the perft divide of the engine with python-chess, to find move generation bugs.
+With --san, also compare the standard algebraic notation of the legal moves.
 
 python perft_check.py 3 --fen "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
-python perft_check.py 3 --random 100
+python perft_check.py 3 --random 100 --san
 '''
 
 import argparse
@@ -23,6 +24,7 @@ def set_args():
   parser.add_argument("depth", help="perft depth", type=int)
   parser.add_argument("--fen", "-f", help="position to check", default=STARTING_FEN)
   parser.add_argument("--random", "-r", help="check this number of random positions instead", type=int, default=0)
+  parser.add_argument("--san", "-s", help="also compare the SAN of the legal moves", action='store_true')
   parser.add_argument("--engine", "-e", help="engine executable (build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   args = parser.parse_args()
 
@@ -50,7 +52,7 @@ def engine_divide(engine: str, fen: str, depth: int) -> dict[str, int]:
   divide = {}
   for line in output.splitlines():
     move, _, nodes = line.partition(': ')
-    if nodes and move not in ('Nodes', 'Time', 'NPS'):
+    if nodes and move not in ('Nodes', 'Time', 'NPS', 'Threads'):
       divide[move] = int(nodes)
   return divide
 
@@ -63,6 +65,22 @@ def check(engine: str, fen: str, depth: int) -> bool:
   for move in sorted(set(expected) | set(actual)):
     if expected.get(move) != actual.get(move):
       print(f'  {move}: expected {expected.get(move, "illegal")}, engine {actual.get(move, "missing")}')
+  return False
+
+def check_san(engine: str, fen: str) -> bool:
+  board = Board(fen)
+  expected = {move.uci(): board.san(move) for move in board.legal_moves}
+  output = subprocess.run([engine, 'moves', fen], capture_output=True, text=True, check=True).stdout
+  actual = {}
+  for line in output.splitlines()[1:]:
+    san, _, uci = line.partition(' (')
+    actual[uci.rstrip(')')] = san
+  if expected == actual:
+    return True
+  print(f'SAN MISMATCH: {fen}')
+  for move in sorted(set(expected) | set(actual)):
+    if expected.get(move) != actual.get(move):
+      print(f'  {move}: expected {expected.get(move)}, engine {actual.get(move)}')
   return False
 
 def random_position(plies: int) -> str:
@@ -84,7 +102,7 @@ if __name__ == "__main__":
   else:
     fens = [args.fen]
 
-  failures = sum(not check(args.engine, fen, args.depth) for fen in fens)
+  failures = sum(not (check(args.engine, fen, args.depth) & (not args.san or check_san(args.engine, fen))) for fen in fens)
 
   print(f'{len(fens) - failures}/{len(fens)} positions OK')
   exit(1 if failures else 0)
