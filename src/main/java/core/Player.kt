@@ -1,26 +1,23 @@
 package core
 
-import core.Player.Declarations.CHESSY
-import core.Player.Declarations.PLAYER
-
 enum class Player(val notation: Char) {
-    WHITE ('\u25A1'),
-    BLACK ('\u25A0');
+    WHITE ('□'),
+    BLACK ('■');
 
     object Declarations {
         val START = Player.WHITE
 
-        val CHESSY = Player.WHITE
-        val PLAYER = CHESSY.opponent()
+        /** Players controlled by Chessy (the other ones are human players). */
+        val CHESSY = mutableSetOf(Player.WHITE)
     }
 
     fun opponent(): Player = if (this == WHITE) BLACK else WHITE
 
-    fun isChessy(): Boolean = this == CHESSY
+    fun isChessy(): Boolean = this in Declarations.CHESSY
 
-    fun isPlayer(): Boolean = this == PLAYER
+    fun isPlayer(): Boolean = !isChessy()
 
-    fun getName() = if (isChessy()) "CHESSY" else "PLAYER"
+    fun getName() = (if (isChessy()) "CHESSY" else "PLAYER") + " ($notation)"
 
     override fun toString() = notation.toString()
 }

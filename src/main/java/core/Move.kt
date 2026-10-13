@@ -2,44 +2,24 @@ package core
 
 import evaluation.MVVLVA
 import pieces.Piece
-import pieces.isEmpty
+import pieces.PieceType
 
-val moveComparator = compareBy<Move>(
-        { EVALUATOR.getMaxScore(it.nextBoard) + MVVLVA.getScore(it) },
-        { it.origin?.type?.preference })
+/** Ordering bonus for promotions, searched right after the best captures. */
+private const val PROMOTION_ORDER_SCORE = 20000
 
-data class Move(val from: Position, val to: Position, private val currentBoard: Board) : Comparable<Move> {
+data class Move(val from: Position, val to: Position, val piece: Piece, val captured: Piece? = null) {
 
-    val nextBoard: Board by lazy {
-        currentBoard.applied(this)
-    }
+    fun isCapture() = captured != null
 
-    val origin by lazy {
-        currentBoard[from]
-    }
+    /** Pawns are always promoted to queens. */
+    fun isPromotion() = piece.type == PieceType.PAWN && to.opponentRow(piece.player)
 
-    val target by lazy {
-        currentBoard[to]
-    }
-
-    fun isCapture() = !target.isEmpty()
-
-    fun isCapture(player: Player): Boolean {
-        return if (target.isEmpty()) false else target!!.player != player
-    }
-
-    override fun compareTo(other: Move) = moveComparator.compare(this, other)
+    /** Cheap heuristic score to search the most promising moves first. */
+    val orderScore: Int get() = MVVLVA.getScore(this) + if (isPromotion()) PROMOTION_ORDER_SCORE else 0
 
     override fun toString(): String {
-
-        fun toString(piece: Piece?, position: Position): String {
-            return if (piece != null) "$piece [$position]" else position.toString()
-        }
-
-        val pieceFrom = currentBoard[from]
-        val pieceTo = currentBoard[to]
-
-        return "${toString(pieceFrom, from)} -> ${toString(pieceTo, to)}"
+        val target = if (captured != null) "$captured [$to]" else to.toString()
+        return "$piece [$from] -> $target"
     }
 
 }

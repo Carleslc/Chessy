@@ -15,7 +15,7 @@ object MVVLVA {
             intArrayOf(3100,  3325,  3350,  3500,  3900, 26000)  // K
     )
 
-    fun getScore(move: Move) = with (move) { if (isCapture()) get(target!!.type, origin!!.type) else 0 }
+    fun getScore(move: Move) = with (move) { if (captured != null) get(captured.type, piece.type) else 0 }
 
     operator fun get(victim: PieceType, aggressor: PieceType) = victimAggressorTable[aggressor.ordinal][victim.ordinal]
 

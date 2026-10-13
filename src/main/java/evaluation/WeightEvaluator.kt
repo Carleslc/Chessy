@@ -2,30 +2,28 @@ package evaluation
 
 import core.Board
 import core.Player
-import core.Position
-import pieces.Piece
 import pieces.PieceType
 
-class WeightEvaluator(depth: Depth) : StatusEvaluator(depth) {
+/** Non-pawn material (both players) below which the king should be active (endgame king table). */
+private const val ENDGAME_MATERIAL = 2600
 
-    private val positionWeightWhite: (PieceType, Position) -> Score = { type, pos -> type.positionWeightWhite(pos) }
-    private val positionWeightBlack: (PieceType, Position) -> Score = { type, pos -> type.positionWeightBlack(pos) }
-    private var positionWeight = positionWeightWhite
+/** Material and position weight of each piece. */
+class WeightEvaluator : Evaluator {
 
-    private val weight: (Map.Entry<Position, Piece>) -> Score = { it.value.type.weight + positionWeight(it.value.type, it.key) }
-
-    override fun getScore(board: Board): Score = with (board) {
-        var score = super.getScore(board)
-        setPositionWeight(turn)
-        score += getPieces().sumBy(weight)
-        val opponent = turn.opponent()
-        setPositionWeight(opponent)
-        score -= getPieces(opponent).sumBy(weight)
-        return score
+    override fun getScore(board: Board): Score {
+        val endGame = isEndGame(board)
+        return weight(board, board.turn, endGame) - weight(board, board.turn.opponent(), endGame)
     }
 
-    private fun setPositionWeight(player: Player) {
-        positionWeight = if (player == Player.WHITE) positionWeightWhite else positionWeightBlack
+    private fun weight(board: Board, player: Player, endGame: Boolean): Score = board.getPieces(player).sumBy {
+        val type = it.value.type
+        val table = if (type == PieceType.KING && endGame) KingTableEndGame else type.positionWeightTable
+        type.weight + type.positionWeight(it.key, player, table)
+    }
+
+    private fun isEndGame(board: Board): Boolean {
+        fun nonPawnMaterial(player: Player) = board.getPieces(player).sumBy { if (it.value.type == PieceType.PAWN) 0 else it.value.type.weight }
+        return nonPawnMaterial(Player.WHITE) + nonPawnMaterial(Player.BLACK) <= ENDGAME_MATERIAL
     }
 
 }
