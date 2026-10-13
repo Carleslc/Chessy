@@ -76,6 +76,15 @@ class Position private constructor() {
         var enPassantSquare = NO_SQUARE
         var halfmoveClock = 0
         var key = 0L
+
+        fun copyFrom(other: State) {
+            move = other.move
+            captured = other.captured
+            castlingRights = other.castlingRights
+            enPassantSquare = other.enPassantSquare
+            halfmoveClock = other.halfmoveClock
+            key = other.key
+        }
     }
 
     // ---- Queries ----
@@ -348,8 +357,24 @@ class Position private constructor() {
         append("Key: ").append(java.lang.Long.toHexString(key))
     }
 
-    /** Independent copy of the position (without the history of moves, so it cannot unmake previous moves). */
-    fun copy(): Position = fromFen(toFen())
+    /** Independent copy of the position, including the moves played (to unmake them and detect repetitions). */
+    fun copy(): Position {
+        val copy = Position()
+        pieceBitboards.copyInto(copy.pieceBitboards)
+        colorBitboards.copyInto(copy.colorBitboards)
+        board.copyInto(copy.board)
+        copy.sideToMove = sideToMove
+        copy.castlingRights = castlingRights
+        copy.enPassantSquare = enPassantSquare
+        copy.halfmoveClock = halfmoveClock
+        copy.fullmoveNumber = fullmoveNumber
+        copy.key = key
+        for (i in 0 until historySize) {
+            copy.history[i].copyFrom(history[i])
+        }
+        copy.historySize = historySize
+        return copy
+    }
 
     companion object {
         const val STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"

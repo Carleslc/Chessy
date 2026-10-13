@@ -1,29 +1,40 @@
 package chessy
 
+import chessy.core.BLACK
+import chessy.core.Color
 import chessy.core.Game
 import chessy.core.MoveGenerator
 import chessy.core.Notation
 import chessy.core.Perft
 import chessy.core.Pgn
 import chessy.core.Position
+import chessy.core.WHITE
+import chessy.search.GreedySearch
+import chessy.search.Search
+import chessy.search.SearchLimits
+import chessy.uci.Uci
 import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
-private const val USAGE = """Usage: chessy <command> [arguments] [options]
+private const val USAGE = """Usage: chessy [command] [arguments] [options]
+
+Without a command, Chessy speaks the UCI protocol (to be used from a chess GUI or lichess-bot).
 
 Commands:
   perft <depth> [fen]    Count the leaf nodes of the legal move tree (default: starting position)
   divide <depth> [fen]   Perft for each legal move of the position
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
-  play                   Play a game in the console (moves in SAN or UCI notation)
+  play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors)
   --fen <fen>            Starting position of play (between quotes)
+  --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file"""
 
 /** Command line arguments: positional arguments and `--name value` options. */
@@ -59,12 +70,16 @@ fun main(args: Array<String>) {
     try {
         val arguments = Arguments(args)
         when (arguments.command) {
-            null -> println(USAGE)
+            null -> {
+                println("${Version.name} by ${Version.AUTHOR}")
+                Uci().run(System.`in`.bufferedReader())
+            }
+            "help", "-h", "--help" -> println(USAGE)
             "perft" -> perft(arguments.depth, arguments.position(2), arguments.threads)
             "divide" -> divide(arguments.depth, arguments.position(2), arguments.threads)
             "d" -> println(arguments.position(1))
             "moves" -> moves(arguments.position(1))
-            "play" -> play(arguments.options["fen"] ?: Position.STARTING_FEN, arguments.options["pgn"]?.let(::File))
+            "play" -> play(arguments.options["fen"] ?: Position.STARTING_FEN, chessyColors(arguments.options["chessy"]), arguments.options["pgn"]?.let(::File))
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
             else -> throw IllegalArgumentException("Unknown command: ${arguments.command}")
         }
@@ -109,29 +124,49 @@ private fun moves(position: Position) {
     }
 }
 
-/** Console game between two humans (Chessy will play when the search is implemented). */
-private fun play(fen: String, pgnFile: File?) {
+private fun chessyColors(option: String?): Set<Color> = when (option ?: "black") {
+    "white" -> setOf(WHITE)
+    "black" -> setOf(BLACK)
+    "both" -> setOf(WHITE, BLACK)
+    "none" -> emptySet()
+    else -> throw IllegalArgumentException("Invalid --chessy: $option (white, black, both or none)")
+}
+
+/** Console game against Chessy (or between humans, or Chessy against itself). */
+private fun play(fen: String, chessy: Set<Color>, pgnFile: File?) {
     val game = Game(fen)
+    val search: Search = GreedySearch()
     game.headers["Event"] = "Chessy game"
     game.headers["Site"] = "Chessy (v${Version.number})"
     game.headers["Date"] = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
-    game.headers["White"] = "Player"
-    game.headers["Black"] = "Player"
+    game.headers["White"] = if (WHITE in chessy) Version.name else "Player"
+    game.headers["Black"] = if (BLACK in chessy) Version.name else "Player"
 
     println("Moves in SAN (e4, Nf3, O-O, exd6, a8=Q) or UCI (e2e4). Commands: moves, undo, pgn, resign, draw, quit.")
     while (!game.status.isOver) {
         println()
         println(game.position)
-        print("${if (game.position.sideToMove == chessy.core.WHITE) "White" else "Black"} to move: ")
+        val side = if (game.position.sideToMove == WHITE) "White" else "Black"
+        if (game.position.sideToMove in chessy) {
+            val result = search.search(game.position, SearchLimits(), AtomicBoolean())
+            println("$side (Chessy) plays ${Notation.toSan(game.position, result.bestMove)}")
+            game.play(result.bestMove)
+            continue
+        }
+        print("$side to move: ")
         val input = readLine()?.trim() ?: break
         when (input) {
             "" -> continue
             "quit", "exit" -> break
             "moves" -> moves(game.position)
-            "undo" -> game.undo()
+            "undo" -> {
+                // Take back the last move of the player, and the reply of Chessy
+                game.undo()
+                while (game.moves().isNotEmpty() && game.position.sideToMove in chessy) game.undo()
+            }
             "pgn" -> println(game.toPgn())
             "resign" -> {
-                game.declaredResult = if (game.position.sideToMove == chessy.core.WHITE) Game.BLACK_WINS else Game.WHITE_WINS
+                game.declaredResult = if (game.position.sideToMove == WHITE) Game.BLACK_WINS else Game.WHITE_WINS
                 break
             }
             "draw" -> {

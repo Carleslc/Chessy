@@ -1,0 +1,40 @@
+# lichess-bot configuration for Chessy (only the main keys).
+# Copy the full config.yml.default of lichess-bot and change these keys, or use this file as is.
+# See README.md in this folder.
+
+token: "xxxxxxxxxxxxxxxxxxxxxx"     # Lichess OAuth2 token of the BOT account (bot:play scope). Do not commit it!
+url: "https://lichess.org/"
+
+engine:
+  dir: "../Chessy/engine/build/install/chessy/bin/"  # Path to the engine, relative to the lichess-bot folder
+  name: "chessy"                    # chessy.bat on Windows
+  working_dir: ""
+  protocol: "uci"
+  ponder: false                     # Chessy does not ponder yet
+
+  uci_options:
+    Move Overhead: 100              # Milliseconds kept for network delays, increase it if the bot loses on time
+
+  silence_stderr: false
+
+challenge:
+  concurrency: 1
+  sort_by: "best"
+  accept_bot: true
+  only_bot: false
+  max_increment: 20
+  min_increment: 0
+  max_base: 1800
+  min_base: 60
+  variants:
+    - standard
+  time_controls:
+    - blitz
+    - rapid
+    - classical
+  modes:
+    - casual                        # Add rated when Chessy is ready
+
+greeting:
+  hello: "Hi! I'm {me}, a chess engine that likes space. Good luck!"
+  goodbye: "Good game!"

@@ -26,19 +26,26 @@ build/install/chessy/bin/chessy perft 6 --threads 8
 build/install/chessy/bin/chessy play --pgn games/last.pgn
 ```
 
+Without a command, `chessy` speaks the [UCI](https://www.chessprogramming.org/UCI) protocol, so it can be used from any chess GUI, from `tools/match.py` or on Lichess with [lichess-bot](tools/lichess).
+
 ```
+Usage: chessy [command] [arguments] [options]
+
 Commands:
   perft <depth> [fen]    Count the leaf nodes of the legal move tree (default: starting position)
   divide <depth> [fen]   Perft for each legal move of the position
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
-  play                   Play a game in the console (moves in SAN or UCI notation)
+  play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors)
   --fen <fen>            Starting position of play (between quotes)
+  --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file
 ```
+
+Until the search of phase 3, Chessy plays with a provisional one-ply search (greedy material).
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.

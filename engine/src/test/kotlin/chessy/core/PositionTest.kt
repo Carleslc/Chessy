@@ -90,6 +90,20 @@ class PositionTest {
     }
 
     @Test
+    fun copyKeepsHistory() {
+        val position = Position.startingPosition()
+        play(position, "g1f3", "g8f6", "f3g1", "f6g8")
+        val copy = position.copy()
+        assertEquals(position.toFen(), copy.toFen())
+        assertEquals(position.key, copy.key)
+        assertEquals(1, copy.repetitions())
+        // Independent: moves on the copy do not change the original, and the copy can unmake previous moves
+        copy.unmakeMove(copy.lastMove())
+        assertEquals("rnbqkb1r/pppppppp/5n2/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 3 2", copy.toFen())
+        assertEquals(Position.STARTING_FEN.replace(" 0 1", " 4 3"), position.toFen())
+    }
+
+    @Test
     fun castlingMovesRook() {
         val position = Position.fromFen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
         play(position, "e1g1")

@@ -12,3 +12,6 @@ __pycache__/
 .gradle/
 .kotlin/
 build/
+
+# Games played (PGN)
+games/

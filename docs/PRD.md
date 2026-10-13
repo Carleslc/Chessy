@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0 y 1 completadas (reglas, notaciones y PGN incluidos) · Fase 2 en curso |
+| Estado | Fases 0, 1 y 2 completadas · siguiente: Fase 3 (búsqueda y evaluación base) |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -315,12 +315,18 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - **Resultado**: perft correcto en las 6 posiciones hasta profundidad 5–6 (`./gradlew test -Pslow`) y en 300 posiciones aleatorias contra python-chess (`tools/perft_check.py --san`). Unos 22–38 M nodos/s en un hilo (objetivo: ≥ 5 M) y ~207 M con 8 hilos (perft paralelo).
 - Añadido en esta fase (adelantado de la Fase 2): SAN y UCI, `Game` con todas las tablas (ahogado, material insuficiente, 50 movimientos, triple repetición), PGN (exportar e importar, probado con las partidas de `tools/examples`), comando `play` (partida entre humanos en consola, exportable a PGN) y `moves`.
 
-### Fase 2 — Protocolo y juego básico
+### Fase 2 — Protocolo y juego básico ✅
 - Bucle UCI completo (§5.4) con búsqueda en hilo aparte y `stop`.
 - ~~Detección de tablas~~ (hecho en la Fase 1).
 - Jugador provisional (aleatorio o material a 1 ply) para validar el protocolo.
 - Tools: script para jugar contra el motor y enganche con el visor; prueba local de `lichess-bot`.
 - **Aceptación**: 1000 partidas en fastchess sin jugadas ilegales, *timeouts* ni errores de protocolo.
+- **Resultado**:
+  - UCI completo (`uci`, `isready`, `ucinewgame`, `position`, `go` con todos sus parámetros incluidos `searchmoves`, `infinite` y `ponder`, `stop`, `ponderhit`, `setoption`, `quit`) con la búsqueda en otro hilo; opción `Move Overhead`; comandos de depuración `d`, `moves`, `perft` y `go perft`. Es el modo por defecto del ejecutable.
+  - Interfaz `Search` (límites, `info`, puntuaciones de mate) y jugador provisional `GreedySearch` (1 ply, material, mate en 1, evita el ahogado si gana).
+  - `play --chessy <color>`: partida contra Chessy en consola, exportable a PGN.
+  - `tools/match.py` en lugar de fastchess (no instalado): partidas entre motores UCI con `python-chess`, que valida cada jugada y el protocolo, controla el reloj y guarda los PGN. 1000 partidas Chessy contra Chessy a 10+0,1 sin errores (102.383 jugadas, 2,3 ms de media) y 10 partidas contra Stockfish (`UCI_Elo` 1320) sin errores.
+  - `tools/lichess`: configuración y guía de lichess-bot. Pendiente de probar en Lichess con una cuenta BOT (requiere crear la cuenta y un token).
 
 ### Fase 3 — Búsqueda base + evaluación base
 - Interfaz `Evaluator` + `MaterialEvaluator` (material + PST cónicas).

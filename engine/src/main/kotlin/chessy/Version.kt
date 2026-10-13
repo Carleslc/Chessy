@@ -13,5 +13,6 @@ object Version {
     /** Engine name with its version, such as `Chessy v1.0-dev`. */
     val name: String = "Chessy v$number"
 
-    const val AUTHOR = "Carlos Lázaro Costa"
+    /** Without accents, so every GUI can read it whatever its text encoding. */
+    const val AUTHOR = "Carlos Lazaro Costa"
 }
