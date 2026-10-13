@@ -47,3 +47,13 @@ options:
   --black, -b           set the point of view to black
   --match MATCH, -m MATCH match number
 ```
+
+## Perft check
+
+Compare the perft divide of the engine with python-chess, to find move generation bugs.
+Build the engine first with `./gradlew installDist` in `engine/`.
+
+```
+python perft_check.py 3 --fen "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+python perft_check.py 3 --random 100
+```

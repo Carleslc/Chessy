@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Estado | Fase 0 completada · Fase 1 en curso |
+| Estado | Fases 0 y 1 completadas · siguiente: Fase 2 |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -233,7 +233,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - PRD.
 - Arreglos en `kotlin-old` para que sea jugable en consola (§12).
 
-### Fase 1 — Núcleo de reglas (core)
+### Fase 1 — Núcleo de reglas (core) ✅
 - Bitboards, casillas, piezas, tablas de ataques (incluidas deslizantes con rayos).
 - Codificación de movimientos, listas preasignadas.
 - Posición con make/unmake, enroque, al paso, promociones, contador de 50 movimientos.
@@ -241,6 +241,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - FEN (lectura/escritura), notación UCI de movimientos (`e2e4`, `e7e8q`).
 - Perft/divide + CLI (`perft`, `divide`, `d`).
 - **Aceptación**: perft correcto en las 6 posiciones de referencia (tests), Zobrist consistente, FEN ida y vuelta, rendimiento de perft medido.
+- **Resultado**: perft correcto en las 6 posiciones hasta profundidad 5–6 (`./gradlew test -Pslow`) y en 200 posiciones aleatorias contra python-chess (`tools/perft_check.py`). Unos 22–38 M nodos/s en un hilo (objetivo: ≥ 5 M).
 
 ### Fase 2 — Protocolo y juego básico
 - Bucle UCI completo (§5.4) con búsqueda en hilo aparte y `stop`.

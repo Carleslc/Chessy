@@ -1,0 +1,90 @@
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+
+'''
+Compare the perft divide of the engine with python-chess, to find move generation bugs.
+
+python perft_check.py 3 --fen "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+python perft_check.py 3 --random 100
+'''
+
+import argparse
+import random
+import subprocess
+from pathlib import Path
+
+from chess import Board, STARTING_FEN
+
+DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+
+def set_args():
+  global args
+  parser = argparse.ArgumentParser()
+  parser.add_argument("depth", help="perft depth", type=int)
+  parser.add_argument("--fen", "-f", help="position to check", default=STARTING_FEN)
+  parser.add_argument("--random", "-r", help="check this number of random positions instead", type=int, default=0)
+  parser.add_argument("--engine", "-e", help="engine executable (build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
+  args = parser.parse_args()
+
+def perft(board: Board, depth: int) -> int:
+  if depth == 0:
+    return 1
+  nodes = 0
+  for move in board.legal_moves:
+    board.push(move)
+    nodes += perft(board, depth - 1)
+    board.pop()
+  return nodes
+
+def expected_divide(fen: str, depth: int) -> dict[str, int]:
+  board = Board(fen)
+  divide = {}
+  for move in board.legal_moves:
+    board.push(move)
+    divide[move.uci()] = perft(board, depth - 1)
+    board.pop()
+  return divide
+
+def engine_divide(engine: str, fen: str, depth: int) -> dict[str, int]:
+  output = subprocess.run([engine, 'divide', str(depth), fen], capture_output=True, text=True, check=True).stdout
+  divide = {}
+  for line in output.splitlines():
+    move, _, nodes = line.partition(': ')
+    if nodes and move not in ('Nodes', 'Time', 'NPS'):
+      divide[move] = int(nodes)
+  return divide
+
+def check(engine: str, fen: str, depth: int) -> bool:
+  expected = expected_divide(fen, depth)
+  actual = engine_divide(engine, fen, depth)
+  if expected == actual:
+    return True
+  print(f'MISMATCH at depth {depth}: {fen}')
+  for move in sorted(set(expected) | set(actual)):
+    if expected.get(move) != actual.get(move):
+      print(f'  {move}: expected {expected.get(move, "illegal")}, engine {actual.get(move, "missing")}')
+  return False
+
+def random_position(plies: int) -> str:
+  board = Board()
+  for _ in range(plies):
+    moves = list(board.legal_moves)
+    if not moves:
+      break
+    board.push(random.choice(moves))
+  if board.is_game_over():
+    return random_position(plies)
+  return board.fen()
+
+if __name__ == "__main__":
+  set_args()
+
+  if args.random:
+    fens = [random_position(random.randint(1, 80)) for _ in range(args.random)]
+  else:
+    fens = [args.fen]
+
+  failures = sum(not check(args.engine, fen, args.depth) for fen in fens)
+
+  print(f'{len(fens) - failures}/{len(fens)} positions OK')
+  exit(1 if failures else 0)
