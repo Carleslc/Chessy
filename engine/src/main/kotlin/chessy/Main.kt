@@ -39,8 +39,7 @@ Commands:
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
-  --evaluator <name>     Evaluator for eval, bench and play: Material (default: Material)
-  --search <name>        Search of play and bench: alphabeta (default) or greedy
+  --style <name>         Playing style of eval, bench and play: space (default, the constrictor), material or greedy
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
@@ -75,21 +74,24 @@ private class Arguments(args: Array<String>) {
 
     val threads: Int get() = options["threads"]?.toIntOrNull()?.takeIf { it > 0 } ?: Runtime.getRuntime().availableProcessors()
 
-    val evaluator: Evaluator get() = Evaluator.named(options["evaluator"] ?: "Material")
+    val style: String get() = options["style"]?.lowercase() ?: Evaluator.DEFAULT.lowercase()
+
+    private val isGreedy: Boolean get() = style == "greedy"
+
+    /** Evaluator of the --style (the greedy search only counts material). */
+    val evaluator: Evaluator get() = Evaluator.named(if (isGreedy) "Material" else style)
 
     fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
 
-    /** Search selected with --search, --depth and --evaluator. */
-    val search: Search get() = when (options["search"]?.lowercase() ?: "alphabeta") {
-        "alphabeta" -> ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator })
-        "greedy" -> GreedySearch(intOption("depth") ?: 2)
-        else -> throw IllegalArgumentException("Unknown search: ${options["search"]} (alphabeta or greedy)")
-    }
+    /** Search of the --style, with --threads and --depth. */
+    val search: Search get() =
+        if (isGreedy) GreedySearch(intOption("depth") ?: 2)
+        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator })
 
     /** Limits of each move in play: --time seconds and --depth. */
     val limits: SearchLimits get() = SearchLimits(
         moveTime = ((options["time"]?.toDoubleOrNull() ?: 3.0) * 1000).toLong(),
-        depth = if (options["search"]?.lowercase() == "greedy") null else intOption("depth"),
+        depth = if (isGreedy) null else intOption("depth"),
     )
 }
 

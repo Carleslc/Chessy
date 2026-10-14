@@ -44,8 +44,7 @@ Commands:
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
-  --evaluator <name>     Evaluator for eval, bench and play: Material (default: Material)
-  --search <name>        Search of play and bench: alphabeta (default) or greedy
+  --style <name>         Playing style of eval, bench and play: space (default, the constrictor), material or greedy
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
@@ -54,8 +53,13 @@ Options:
 ```
 
 Chessy searches with alpha-beta (iterative deepening, transposition table, principal variation search, null move pruning, late move reductions, futility pruning, static exchange evaluation and Lazy SMP for several threads),
-and evaluates with the baseline material evaluator until the "constrictor" evaluation of phase 5.
-UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Evaluator`, `Search` and `Greedy Depth`.
-The greedy search (fixed depth, only material) is kept as a reference player (UCI options `Search` and `Greedy Depth`).
+and has three playing styles (UCI option `Style`, `--style` in the command line):
+
+- **Space** (default): the "constrictor" evaluation. Space, square control, safe mobility and restriction of the opponent,
+  with the value of each piece depending on its activity (see `chessy eval`).
+- **Material**: material and piece-square tables, the baseline evaluation.
+- **Greedy**: a fixed-depth search counting only material (`Greedy Depth`), the weakest.
+
+Other UCI options: `Hash` (MB), `Threads`, `Move Overhead` and `Greedy Depth`.
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.

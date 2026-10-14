@@ -34,31 +34,33 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private var position = Position.startingPosition()
 
     private val moveOverhead = SpinOption("Move Overhead", default = 100, min = 0, max = 5000)
-    private val searchOption = ComboOption("Search", default = "AlphaBeta", values = listOf("AlphaBeta", "Greedy"))
+    /**
+     * Playing style (and difficulty): the alpha-beta search with an evaluator ("Space", the constrictor, by default,
+     * or "Material"), or the greedy search ("Greedy", fixed depth and only material, the weakest).
+     */
+    private val style = ComboOption("Style", default = Evaluator.DEFAULT, values = Evaluator.all.keys.toList() + GREEDY)
     private val greedyDepth = SpinOption("Greedy Depth", default = 2, min = 1, max = GreedySearch.MAX_DEPTH)
-    private val evaluatorOption = ComboOption("Evaluator", default = "Material", values = Evaluator.all.keys.toList())
     private val hash = SpinOption("Hash", default = TranspositionTable.DEFAULT_SIZE_MB, min = 1, max = TranspositionTable.MAX_SIZE_MB) {
         alphaBeta.transpositionTable.resize(it)
     }
     private val threads = SpinOption("Threads", default = 1, min = 1, max = ParallelSearch.MAX_THREADS) {
         alphaBeta.threads = it
     }
-    private val options = listOf<Option>(hash, threads, moveOverhead, searchOption, greedyDepth, evaluatorOption)
+    private val options = listOf<Option>(style, hash, threads, moveOverhead, greedyDepth)
         .associateBy { it.name.lowercase() }
 
     private val alphaBeta = ParallelSearch()
     private val greedy = GreedySearch()
 
-    /** The search selected with the options. */
+    /** The search selected with the Style option. */
     private val search: Search get() =
-        if (searchOption.value == "Greedy") greedy.apply { depth = greedyDepth.value }
+        if (style.value == GREEDY) greedy.apply { depth = greedyDepth.value }
         else alphaBeta.apply { evaluator() }
 
-    /** The evaluator selected with the options. */
+    /** The evaluator of the Style option (the greedy search only counts material). */
     private fun evaluator(): Evaluator {
-        if (alphaBeta.evaluator.name != evaluatorOption.value) {
-            val name = evaluatorOption.value
-            Evaluator.named(name) // Validate the name
+        val name = if (style.value == GREEDY) "Material" else style.value
+        if (alphaBeta.evaluator.name != name) {
             alphaBeta.evaluatorFactory = { Evaluator.named(name) }
         }
         return alphaBeta.evaluator
@@ -292,6 +294,8 @@ class Uci(private val output: (String) -> Unit = ::send) {
     }
 
     companion object {
+        private const val GREEDY = "Greedy"
+
         private val GO_KEYWORDS = setOf(
             "wtime", "btime", "winc", "binc", "movestogo", "depth", "nodes", "mate", "movetime", "infinite", "ponder", "searchmoves"
         )

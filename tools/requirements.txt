@@ -1,3 +1,4 @@
 chess
 PyQt5
 pytz
+matplotlib

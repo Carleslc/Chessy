@@ -26,11 +26,17 @@ interface Evaluator {
     /** Score of each term of the evaluation, to debug, analyze and tune it. */
     fun explain(position: Position): EvalTrace
 
+    /** Penalty of a draw for the engine in centipawns (positive: avoid draws, negative: seek them). */
+    val contempt: Int get() = 0
+
     companion object {
-        /** Available evaluators by name. */
+        /** Available evaluators by name, the default one first. */
         val all: Map<String, () -> Evaluator> = linkedMapOf(
+            "Space" to { SpaceEvaluator() },
             "Material" to ::MaterialEvaluator,
         )
+
+        const val DEFAULT = "Space"
 
         fun named(name: String): Evaluator =
             all.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.invoke()
@@ -75,14 +81,20 @@ class EvalTrace(val evaluator: String, val phase: Int, val sideToMove: Int) {
 
     class Term(val name: String, val white: TaperedScore, val black: TaperedScore)
 
+    /** Dynamic value of a piece: material, placement, mobility, outposts, open files, trapped... */
+    class PieceValue(val piece: Char, val square: String, val value: TaperedScore, val mobility: Int)
+
     val terms = mutableListOf<Term>()
+
+    /** Dynamic value of each piece (except pawns and kings), if the evaluator computes it. */
+    val pieces = mutableListOf<PieceValue>()
 
     fun add(name: String, white: TaperedScore, black: TaperedScore) {
         terms.add(Term(name, white, black))
     }
 
-    /** Total from the point of view of white. */
-    val total: Int get() = terms.sumOf { (it.white - it.black).taper(phase) }
+    /** Total from the point of view of white (tapered once, like the evaluation, to avoid rounding errors). */
+    val total: Int get() = terms.fold(TaperedScore.ZERO) { sum, term -> sum + term.white - term.black }.taper(phase)
 
     /** Total from the point of view of the side to move, as [Evaluator.evaluate]. */
     val score: Int get() = if (sideToMove == WHITE) total else -total
@@ -97,5 +109,14 @@ class EvalTrace(val evaluator: String, val phase: Int, val sideToMove: Int) {
         }
         appendLine()
         appendLine("Total: $total (white), $score (side to move)")
+        if (pieces.isNotEmpty()) {
+            appendLine()
+            appendLine("Dynamic value of the pieces (material + placement + activity):")
+            appendLine()
+            appendLine("%-8s %8s %16s %8s".format("Piece", "Mobility", "(mg, eg)", "Value"))
+            for (piece in pieces) {
+                appendLine("%-8s %8d %16s %8d".format("${piece.piece} ${piece.square}", piece.mobility, piece.value, piece.value.taper(phase)))
+            }
+        }
     }
 }

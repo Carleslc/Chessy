@@ -63,6 +63,22 @@ class AlphaBetaSearchTest {
         assertEquals(1, result.infos.last().depth)
     }
 
+    /**
+     * Zugzwang positions (Chess Programming Wiki, "Null Move Test-Positions", verified with Stockfish 19),
+     * where null move pruning can fail: passing would be the best move, but it is not allowed.
+     */
+    @Test
+    fun zugzwang() {
+        // Only Kh6 wins (the others draw)
+        val result = search("1q1k4/2Rr4/8/2Q3K1/8/8/8/8 w - - 0 1", 14)
+        assertEquals("Kh6", result.san)
+        assertTrue(result.score > 200)
+        // Black has many pieces but cannot move them: only Kxe1 does not lose for white
+        val blocked = search("8/8/8/2p5/1pp5/brpp4/qpprpK1P/1nkbn3 w - - 0 1", 16) // The draw (repetition) is seen from depth 15
+        assertEquals("Kxe1", blocked.san)
+        assertEquals(Score.DRAW, blocked.score)
+    }
+
     @Test
     fun capturesHangingPiece() {
         assertEquals("Nxd5", search("r1b1kbnr/ppp1pppp/2n5/3q4/8/2N5/PPPP1PPP/R1BQKBNR w KQkq - 0 1", 3).san)

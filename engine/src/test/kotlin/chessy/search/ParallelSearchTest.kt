@@ -29,9 +29,10 @@ class ParallelSearchTest {
     fun reportsTheNodesOfAllThreads() {
         var nodes = 0L
         val search = ParallelSearch(threads = 4)
-        search.search(Position.startingPosition(), SearchLimits(moveTime = 500), AtomicBoolean()) { nodes = it.nodes }
+        // Same depth (not time, so it does not depend on the load of the machine): the helpers add their nodes
+        search.search(Position.startingPosition(), SearchLimits(depth = 10), AtomicBoolean()) { nodes = it.nodes }
         var singleNodes = 0L
-        ParallelSearch(threads = 1).search(Position.startingPosition(), SearchLimits(moveTime = 500), AtomicBoolean()) { singleNodes = it.nodes }
+        ParallelSearch(threads = 1).search(Position.startingPosition(), SearchLimits(depth = 10), AtomicBoolean()) { singleNodes = it.nodes }
         assertTrue(nodes > singleNodes, "$nodes <= $singleNodes")
     }
 

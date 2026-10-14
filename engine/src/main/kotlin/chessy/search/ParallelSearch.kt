@@ -2,7 +2,6 @@ package chessy.search
 
 import chessy.core.Position
 import chessy.eval.Evaluator
-import chessy.eval.MaterialEvaluator
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -18,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class ParallelSearch(
     threads: Int = 1,
-    evaluatorFactory: () -> Evaluator = ::MaterialEvaluator,
+    evaluatorFactory: () -> Evaluator = { Evaluator.named(Evaluator.DEFAULT) },
     val transpositionTable: TranspositionTable = TranspositionTable(),
 ) : Search {
 

@@ -1,6 +1,8 @@
 package chessy.search
 
+import chessy.core.BISHOP
 import chessy.core.KING
+import chessy.core.KNIGHT
 import chessy.core.Move
 import chessy.core.MoveGenerator
 import chessy.core.MoveList
@@ -8,6 +10,8 @@ import chessy.core.NO_PIECE
 import chessy.core.PAWN
 import chessy.core.Position
 import chessy.core.QUEEN
+import chessy.core.ROOK
+import chessy.core.popCount
 import chessy.core.StaticExchange
 import chessy.core.typeOf
 import chessy.eval.Evaluator
@@ -24,7 +28,9 @@ import java.util.concurrent.atomic.AtomicBoolean
  * - Aspiration windows: from depth 5, the root is searched with a narrow window around the previous score,
  *   widened when the score falls outside.
  * - Null move pruning: if passing the turn still leaves the position above beta, a real move will be even better,
- *   so the node is cut after a reduced search. Not used without pieces (zugzwang, where passing would be the best move).
+ *   so the node is cut after a reduced search. It fails in zugzwang (every move makes the position worse, so passing
+ *   would be the best move), which is what a constrictor seeks: it is not used without pieces, and with few pieces
+ *   or in deep searches the cutoff is verified by searching the position again without null move.
  * - Late move reductions (LMR): quiet moves ordered late are probably bad, so they are searched with less depth,
  *   and searched again with the full depth only if they turn out to be good.
  * - Pruning near the leaves (not in the principal variation nor in check): reverse futility pruning (the static
@@ -40,7 +46,8 @@ import java.util.concurrent.atomic.AtomicBoolean
  *   and finally the captures that lose material according to the static exchange evaluation (SEE).
  *   Good moves first produce more cutoffs.
  * - Checkmates are scored by distance (shorter mates are preferred) and draws by repetition, fifty-move rule
- *   and insufficient material are detected inside the search.
+ *   and insufficient material are detected inside the search. Draws are scored with the contempt of the evaluator:
+ *   negative for the engine (it avoids draws unless it is worse), positive for the opponent.
  *
  * Scores are always from the point of view of the side to move (negamax: the score of a move is the negated score
  * of the position after it for the opponent).
@@ -85,6 +92,8 @@ class AlphaBetaSearch(
     private lateinit var limits: SearchLimits
     private lateinit var stop: AtomicBoolean
     private lateinit var timeManager: TimeManager
+    /** Color of the engine in this search, for the contempt. */
+    private var rootColor = 0
     private var startTime = 0L
     private var nodes = 0L
     private var selectiveDepth = 0
@@ -97,6 +106,7 @@ class AlphaBetaSearch(
         this.limits = limits
         this.stop = stop
         timeManager = TimeManager(limits, position.sideToMove)
+        rootColor = position.sideToMove
         startTime = System.currentTimeMillis()
         nodes = 0
         selectiveDepth = 0
@@ -158,7 +168,7 @@ class AlphaBetaSearch(
         }
     }
 
-    private fun negamax(depth: Int, ply: Int, alphaStart: Int, betaStart: Int, onPv: Boolean): Int {
+    private fun negamax(depth: Int, ply: Int, alphaStart: Int, betaStart: Int, onPv: Boolean, allowNullMove: Boolean = true): Int {
         pvLength[ply] = ply
         var alpha = alphaStart
         var beta = betaStart
@@ -166,7 +176,7 @@ class AlphaBetaSearch(
 
         if (ply > 0) {
             if (isDraw()) {
-                return Score.DRAW
+                return drawScore()
             }
             // Mate distance pruning: no line from here can be better than mating in the next move
             alpha = maxOf(alpha, Score.matedIn(ply))
@@ -207,15 +217,22 @@ class AlphaBetaSearch(
             return staticEval
         }
 
-        if (canPrune && depth >= NULL_MOVE_MIN_DEPTH && position.lastMove() != Move.NONE &&
+        if (canPrune && allowNullMove && depth >= NULL_MOVE_MIN_DEPTH && position.lastMove() != Move.NONE &&
             position.hasNonPawnMaterial(position.sideToMove) && staticEval >= beta) {
             val reduction = NULL_MOVE_REDUCTION + depth / 4
             position.makeNullMove()
-            val score = -negamax(depth - 1 - reduction, ply + 1, -beta, -beta + 1, onPv = false)
+            var score = -negamax(depth - 1 - reduction, ply + 1, -beta, -beta + 1, onPv = false)
             position.unmakeNullMove()
             if (aborted) return 0
             if (score >= beta) {
-                return if (Score.isMate(score)) beta else score // Do not trust mates found after passing
+                if (Score.isMate(score)) score = beta // Do not trust mates found after passing
+                if (depth < NULL_MOVE_VERIFICATION_DEPTH && pieceCount(position.sideToMove) > NULL_MOVE_VERIFICATION_PIECES) {
+                    return score
+                }
+                // Verification against zugzwang: the same position without null move must also fail high
+                val verified = negamax(depth - 1 - reduction, ply, beta - 1, beta, onPv = false, allowNullMove = false)
+                if (aborted) return 0
+                if (verified >= beta) return score
             }
         }
 
@@ -298,7 +315,7 @@ class AlphaBetaSearch(
         }
 
         if (legalMoves == 0) {
-            return if (inCheck) Score.matedIn(ply) else Score.DRAW
+            return if (inCheck) Score.matedIn(ply) else drawScore()
         }
 
         val bound = when {
@@ -381,6 +398,13 @@ class AlphaBetaSearch(
         }
         return best
     }
+
+    /** Knights, bishops, rooks and queens of [color]. */
+    private fun pieceCount(color: Int): Int =
+        popCount(position.pieces(color, KNIGHT) or position.pieces(color, BISHOP) or position.pieces(color, ROOK) or position.pieces(color, QUEEN))
+
+    /** Score of a draw for the side to move: the engine (root color) dislikes draws by its contempt. */
+    private fun drawScore(): Int = if (position.sideToMove == rootColor) -evaluator.contempt else evaluator.contempt
 
     /** Repetition (once is enough inside the search), fifty-move rule or insufficient material. */
     private fun isDraw(): Boolean =
@@ -506,6 +530,10 @@ class AlphaBetaSearch(
 
         private const val NULL_MOVE_MIN_DEPTH = 3
         private const val NULL_MOVE_REDUCTION = 3
+        /** Null move cutoffs are verified in searches at least this deep... */
+        private const val NULL_MOVE_VERIFICATION_DEPTH = 10
+        /** ...and when the side to move has at most this number of pieces (zugzwang is more likely). */
+        private const val NULL_MOVE_VERIFICATION_PIECES = 2
 
         private const val REVERSE_FUTILITY_MAX_DEPTH = 6
         private const val REVERSE_FUTILITY_MARGIN = 80

@@ -109,6 +109,8 @@ which plays games until it can decide with the given confidence. Save a copy of 
 ./sprt.sh new base        # elo0=0 elo1=10, tc=8+0.08, 10 games at a time
 ./sprt.sh new base 0 5 10+0.1 8
 ROUNDS=750 ./sprt.sh new base   # at most 1500 games
+# Two styles of the same version
+NEW_NAME=space NEW_ARGS=option.Style=Space BASE_NAME=material BASE_ARGS=option.Style=Material ./sprt.sh new new
 ```
 
 ## Openings
@@ -133,6 +135,24 @@ python epd.py suites/wac.epd --movetime 1
 Suites:
 - `suites/tactics.epd`: 100 tactical positions from games of Chessy, created with `tactics.py`.
 - `suites/wac.epd`: Win At Chess, 300 tactical positions by Fred Reinfeld (1958), from [viridithas](https://github.com/cosmobobak/viridithas/blob/master/assets/epds/wac.epd).
+
+## Style
+
+Style metrics of the players of PGN games, to check that the "constrictor" style restricts the opponent:
+opponent mobility, space, territory, opponent trapped pieces, pieces left at move 30 and wins behind in material.
+
+```
+python style.py games/space-vs-sf.pgn games/material-vs-sf.pgn
+```
+
+## Analysis
+
+Plot the terms of the evaluation of Chessy (space, territory, restriction, mobility, material...) along a game:
+
+```
+python analysis.py games/match.pgn --match 3 --output games/analysis.png
+python analysis.py games/match.pgn --terms Space Territory Restriction Mobility --style Space
+```
 
 ## Lichess
 

@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0 a 4 completadas · siguiente: Fase 5 (evaluación Constrictor) |
+| Estado | Fases 0 a 5 completadas · siguiente: Fase 6 (ajuste y medición) |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -131,7 +131,7 @@ Avanzado (cada técnica entra solo si gana en SPRT):
 - **Extensión por jaque**.
 - **SEE** (Static Exchange Evaluation): atacantes y defensores sobre una casilla, para ordenar y podar capturas.
 - **Lazy SMP** (multihilo, §5.5) y *pondering* (pensar durante el turno del rival).
-- Precaución con el **zugzwang**: el estilo constrictor busca precisamente posiciones en las que el rival se queda sin jugadas útiles, que es donde el *null move pruning* falla. Se usará *verification search* o se desactivará con poco material no-peón.
+- Precaución con el **zugzwang**: el estilo constrictor busca precisamente posiciones en las que el rival se queda sin jugadas útiles, que es donde el *null move pruning* falla. Se usará *verification search* o se desactivará con poco material no-peón. Implementado en la Fase 5: sin piezas no hay jugada nula, y con 2 piezas o menos (o a profundidad ≥ 10) el corte se verifica buscando la misma posición sin jugada nula; tests con posiciones de zugzwang.
 
 #### Profundidad variable y gestión del tiempo
 
@@ -160,7 +160,7 @@ interface Evaluator {
 }
 ```
 
-- La búsqueda solo conoce `Evaluator`. La implementación se elige con la opción UCI `setoption name Evaluator value <Constrictor|Material|…>`.
+- La búsqueda solo conoce `Evaluator` (patrón *strategy*). La implementación se elige con la opción UCI `Style`, que define tres estilos (y niveles de dificultad): **Space** (por defecto, el evaluador "Constrictor"), **Material** (material y tablas de casillas) y **Greedy** (búsqueda de profundidad fija que solo cuenta material, opción `Greedy Depth`). Cada evaluador tiene su propio *contempt*.
 - Los **pesos** viven en una estructura de datos (cargable desde fichero) para poder ajustarlos sin recompilar y hacer *Texel tuning*.
 - **Evaluación cónica** (*tapered*): cada término tiene valor de medio juego (mg) y de final (eg), interpolados según la fase (material no-peón restante).
 - La evaluación es simétrica por defecto (evaluar una posición y su espejo da lo mismo con signo opuesto) — se comprueba con un test. La "personalidad" se expresa con los pesos.
@@ -397,10 +397,40 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 
       Estimación: **~2450–2500** en la escala `UCI_Elo` de Stockfish con 1 hilo (orientativa: esa escala está calibrada con controles de tiempo más largos). El objetivo de ≥ 2000 se supera ya con la evaluación de material; la Fase 5 debe mantener esta fuerza mientras cambia el estilo de juego.
 
-### Fase 5 — Evaluación Constrictor
+### Fase 5 — Evaluación Constrictor ✅
 - Términos de §5.3 (prioridad alta primero), `explain`/`eval`, pesos en fichero, opción UCI `Evaluator`.
 - Tools: análisis de partidas con gráficas de espacio/movilidad.
 - **Aceptación**: SPRT positivo frente al `MaterialEvaluator` con la misma búsqueda; mejora en las categorías de STS relacionadas; métricas de estilo (§9.4) claramente distintas de la evaluación base.
+- **Resultado**:
+  - `SpaceEvaluator` ("Constrictor"), el estilo por defecto. Términos: material, tablas de casillas (al 50 % para las piezas: la movilidad hace el trabajo), movilidad segura (tablas con raíz cuadrada por tipo de pieza), piezas atrapadas, peor pieza, espacio (fórmula de Stockfish clásico, con peso que crece con las piezas y los peones bloqueados), territorio (casillas controladas en el campo rival y en la zona del rey), restricción (casillas que el rival no sujeta firmemente), puestos avanzados, torres en columnas abiertas y en 7ª, estructura de peones, peones pasados (con la distancia de los reyes en el final), sobreextensión y agujeros, amenazas (piezas atacadas por peones o piezas menores, piezas colgadas), seguridad del rey (unidades de ataque, jaques seguros, escudo de peones, columnas abiertas), pareja de alfiles y tempo. *Contempt* de 15 cp.
+  - Mapas de ataques calculados una vez por evaluación y reutilizados; sin asignaciones en la búsqueda; ~930 k nodos/s (`bench`), por encima del objetivo de 150 k.
+  - `eval` muestra cada término y el **valor dinámico de cada pieza** (material + casilla + movilidad + puesto avanzado + columna − atrapada).
+  - Estilos con la opción UCI `Style` (y `--style`): **Space**, **Material** y **Greedy** (con `Greedy Depth`). Sustituye a las opciones `Search` y `Evaluator`.
+  - *Null move pruning* con verificación contra el zugzwang (§5.2), tests de zugzwang y SPRT de no regresión: +3 ± 14 Elo (1400 partidas).
+  - SPRT **Space frente a Material** (misma búsqueda, 8+0,08): ✅ **+183 ± 47 Elo** (230 partidas).
+  - Calibración con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel):
+
+    | Rival | + / − / = | Puntos | Diferencia de Elo |
+    |---|---|---|---|
+    | `UCI_Elo` 2400 | 69 / 19 / 12 | 75 % | +191 ± 70 (5 victorias por tiempo de Stockfish) |
+    | `UCI_Elo` 2600 | 52 / 35 / 13 | 58,5 % | +60 ± 63 |
+    | `UCI_Elo` 2800 | 23 / 65 / 12 | 29 % | −156 ± 80 |
+
+    Estimación: **~2650–2700** en la escala `UCI_Elo` de Stockfish (Material: ~2450–2500).
+  - Táctica sin pérdidas: WAC 285/300 con 1 s (igual que Material), suite propia 100/100.
+  - Métricas de estilo (`tools/style.py`) contra el mismo rival (Stockfish `UCI_Elo` 2400, 100 partidas cada estilo):
+
+    | Métrica | Material | Space |
+    |---|---|---|
+    | Movilidad media del rival | 27,6 | **25,2** |
+    | Espacio (diferencia) | 0,67 | **1,57** |
+    | Territorio (diferencia) | −0,96 | **+2,44** |
+    | Piezas rivales atrapadas (≤ 1 casilla segura) | 0,20 | **0,32** |
+    | Piezas en la jugada 30 | 6,59 | **6,90** |
+
+    Entre ellos (Space contra Material), la movilidad del rival de Space es 21,4 frente a 29,7, y el 22 % de sus victorias llegan tras ir por detrás en material (Material: 0 %).
+  - `tools/analysis.py`: gráfica de los términos de la evaluación a lo largo de una partida.
+  - Pendiente: STS (la suite no está en el repositorio), y los pesos en fichero, que se trasladan a la Fase 6 junto con el *Texel tuning*. Observación para la Fase 6: con el *contempt*, en posiciones cerradas a veces maniobra sin progresar durante muchas jugadas; conviene un incentivo de progreso (por ejemplo, reducir la evaluación cuando avanza el contador de 50 movimientos).
 
 ### Fase 6 — Ajuste y medición
 - Texel tuning de pesos, ajuste de parámetros de búsqueda, calibración contra Stockfish limitado / CCRL.

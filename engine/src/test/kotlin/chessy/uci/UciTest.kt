@@ -109,6 +109,7 @@ class UciTest {
     fun repetitionHistoryIsKept() {
         // Black is a queen down: Ng8 repeats the initial position for the third time, a draw,
         // which is better than any other move. It is only found if the moves of the position command are kept.
+        send("setoption name Style value Material") // Without contempt: the draw scores 0
         val lines = send("position fen rnb1kbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 moves g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1", "go depth 1")
         assertEquals("f6g8", bestMove(lines))
         assertTrue(lines.any { it.contains("score cp 0") })
@@ -117,20 +118,23 @@ class UciTest {
     @Test
     fun options() {
         val lines = send("uci")
-        assertTrue("option name Search type combo default AlphaBeta var AlphaBeta var Greedy" in lines)
+        assertTrue("option name Style type combo default Space var Space var Material var Greedy" in lines, lines.toString())
         assertTrue("option name Greedy Depth type spin default 2 min 1 max 4" in lines)
-        assertTrue("option name Evaluator type combo default Material var Material" in lines)
         assertTrue("option name Hash type spin default 64 min 1 max 1024" in lines)
         assertTrue("option name Threads type spin default 1 min 1 max 256" in lines)
         assertEquals(emptyList(), send("setoption name Threads value 2", "setoption name Hash value 16"))
         assertTrue(bestMove(send("position startpos", "go depth 5")).length == 4)
         send("setoption name Threads value 1")
-        assertEquals(emptyList(), send("setoption name Search value greedy", "setoption name Greedy Depth value 1"))
+        assertEquals(emptyList(), send("setoption name Style value greedy", "setoption name Greedy Depth value 1"))
         // Greedy depth 1 grabs the pawn defended by another pawn
         assertEquals("d1d5", bestMove(send("position fen 4k3/8/4p3/3p4/8/8/8/3QK3 w - - 0 1", "go")))
-        send("setoption name Search value AlphaBeta")
+        send("setoption name Style value Material")
         assertTrue(bestMove(send("go depth 4")) != "d1d5")
-        assertTrue(send("setoption name Evaluator value Foo").single().startsWith("info string Error"))
+        assertTrue(send("eval").single().startsWith("Material evaluation"))
+        send("setoption name Style value Space")
+        assertTrue(bestMove(send("go depth 4")) != "d1d5")
+        assertTrue(send("eval").single().startsWith("Space evaluation"))
+        assertTrue(send("setoption name Style value Foo").single().startsWith("info string Error"))
     }
 
     @Test
@@ -142,7 +146,8 @@ class UciTest {
 
     @Test
     fun evalAndBench() {
-        assertTrue(send("position startpos", "eval").single().contains("Total: 0 (white)"))
+        assertTrue(send("setoption name Style value Material", "position startpos", "eval").single().contains("Total: 0 (white)"))
+        assertTrue(send("setoption name Style value Space", "eval").single().contains("Dynamic value of the pieces"))
         val bench = send("bench 2")
         assertTrue(bench.any { it.startsWith("Nodes: ") })
         assertTrue(bench.any { it.startsWith("NPS: ") })

@@ -9,6 +9,8 @@
 # Extra fastchess arguments can be given in the FASTCHESS_ARGS environment variable,
 # for example FASTCHESS_ARGS="option.Threads=4" applies to both engines.
 # The maximum number of rounds (2 games each) is given by the ROUNDS environment variable (default: 10000).
+# Options of each engine: NEW_ARGS and BASE_ARGS, with names NEW_NAME and BASE_NAME (to compare styles of the same version):
+# NEW_NAME=space NEW_ARGS=option.Style=Space BASE_NAME=material BASE_ARGS=option.Style=Material ./sprt.sh phase5 phase5
 set -e
 DIR=$(cd "$(dirname "$0")" && pwd)
 engine() { if [ -d "$DIR/engines/$1" ]; then echo "$DIR/engines/$1/bin/chessy"; else echo "$1"; fi; }
@@ -20,11 +22,11 @@ TC=${5:-8+0.08}
 CONCURRENCY=${6:-10}
 mkdir -p "$DIR/games"
 fastchess \
-  -engine cmd="$(engine "$NEW")" name="$NEW" \
-  -engine cmd="$(engine "$BASE")" name="$BASE" \
+  -engine cmd="$(engine "$NEW")" name="${NEW_NAME:-$NEW}" $NEW_ARGS \
+  -engine cmd="$(engine "$BASE")" name="${BASE_NAME:-$BASE}" $BASE_ARGS \
   -each tc="$TC" $FASTCHESS_ARGS \
   -openings file="$DIR/openings/balanced.epd" format=epd order=random \
   -repeat -rounds "${ROUNDS:-10000}" -concurrency "$CONCURRENCY" \
   -sprt elo0="$ELO0" elo1="$ELO1" alpha=0.05 beta=0.1 \
-  -pgnout file="$DIR/games/sprt-$NEW-vs-$BASE.pgn" \
-  -config outname="$DIR/games/fastchess-$NEW-vs-$BASE.json"
+  -pgnout file="$DIR/games/sprt-${NEW_NAME:-$NEW}-vs-${BASE_NAME:-$BASE}.pgn" \
+  -config outname="$DIR/games/fastchess-${NEW_NAME:-$NEW}-vs-${BASE_NAME:-$BASE}.json"
