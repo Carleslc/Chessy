@@ -26,6 +26,18 @@ class PositionTest {
     }
 
     @Test
+    fun setFenReplacesThePosition() {
+        val position = Position.startingPosition()
+        position.makeMove(Notation.parseSan(position, "e4"))
+        for (fen in fens) {
+            position.setFen(fen)
+            assertEquals(fen, position.toFen())
+            assertEquals(Position.fromFen(fen).key, position.key)
+            assertEquals(0, position.historySize)
+        }
+    }
+
+    @Test
     fun optionalFenCounters() {
         assertEquals(Position.STARTING_FEN, Position.fromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -").toFen())
     }

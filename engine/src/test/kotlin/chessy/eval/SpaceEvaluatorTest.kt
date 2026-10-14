@@ -61,7 +61,7 @@ class SpaceEvaluatorTest {
     @Test
     fun startingPositionOnlyTempo() {
         val trace = evaluator.explain(Position.startingPosition())
-        assertEquals(SpaceWeights().tempo.taper(GamePhase.MIDDLEGAME), trace.score)
+        assertEquals(SpaceWeights.DEFAULT.tempo.taper(GamePhase.MIDDLEGAME), trace.score)
     }
 
     @Test
@@ -72,8 +72,8 @@ class SpaceEvaluatorTest {
 
     @Test
     fun trappedPiece() {
-        // The bishop on h8 can only take on g7
-        assertTrue(term("7B/6p1/5p2/8/8/8/8/k3K3 w - - 0 1", "Trapped pieces") < 0)
+        // The bishop on h8 is blocked by its own pawn on g7
+        assertTrue(term("7B/6P1/5p2/8/8/8/8/k3K3 w - - 0 1", "Trapped pieces") < 0)
     }
 
     @Test
@@ -114,7 +114,7 @@ class SpaceEvaluatorTest {
 
     @Test
     fun contempt() {
-        assertEquals(SpaceWeights().contempt, evaluator.contempt)
+        assertEquals(SpaceWeights.DEFAULT.contempt, evaluator.contempt)
         assertEquals(0, MaterialEvaluator().contempt)
     }
 }

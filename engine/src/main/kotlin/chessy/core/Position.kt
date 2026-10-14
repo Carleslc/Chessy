@@ -419,68 +419,80 @@ class Position private constructor() {
         fun startingPosition(): Position = fromFen(STARTING_FEN)
 
         /** Parses a FEN. Halfmove clock and fullmove number are optional. */
-        fun fromFen(fen: String): Position {
-            val fields = fen.trim().split(Regex("\\s+"))
-            require(fields.size in 4..6) { "Invalid FEN (expected 4 to 6 fields): $fen" }
+        fun fromFen(fen: String): Position = Position().apply { setFen(fen) }
 
-            val position = Position()
+        private val SPACES = Regex("\\s+")
+    }
 
-            val ranks = fields[0].split('/')
-            require(ranks.size == 8) { "Invalid FEN (expected 8 ranks): $fen" }
-            for ((index, rankText) in ranks.withIndex()) {
-                val rank = 7 - index
-                var file = 0
-                for (char in rankText) {
-                    if (char.isDigit()) {
-                        file += char - '0'
-                    } else {
-                        require(file < 8) { "Invalid FEN (rank ${rank + 1} is too long): $fen" }
-                        position.putPiece(square(file, rank), parsePiece(char))
-                        file++
-                    }
-                }
-                require(file == 8) { "Invalid FEN (rank ${rank + 1} does not have 8 squares): $fen" }
-            }
-            for (color in listOf(WHITE, BLACK)) {
-                require(popCount(position.pieces(color, KING)) == 1) { "Invalid FEN (each player must have one king): $fen" }
-            }
+    /**
+     * Replaces this position with the one of a FEN, forgetting the moves played.
+     * Cheaper than [fromFen] when many positions are read one after the other (for example to tune the evaluation).
+     */
+    fun setFen(fen: String) {
+        val fields = fen.trim().split(SPACES)
+        require(fields.size in 4..6) { "Invalid FEN (expected 4 to 6 fields): $fen" }
 
-            position.sideToMove = when (fields[1]) {
-                "w" -> WHITE
-                "b" -> BLACK
-                else -> throw IllegalArgumentException("Invalid FEN (side to move must be w or b): $fen")
-            }
+        pieceBitboards.fill(EMPTY)
+        colorBitboards.fill(EMPTY)
+        board.fill(NO_PIECE)
+        castlingRights = Castling.NONE
+        enPassantSquare = NO_SQUARE
+        historySize = 0
 
-            if (fields[2] != "-") {
-                for (char in fields[2]) {
-                    position.castlingRights = position.castlingRights or when (char) {
-                        'K' -> Castling.WHITE_KINGSIDE
-                        'Q' -> Castling.WHITE_QUEENSIDE
-                        'k' -> Castling.BLACK_KINGSIDE
-                        'q' -> Castling.BLACK_QUEENSIDE
-                        else -> throw IllegalArgumentException("Invalid FEN (castling rights): $fen")
-                    }
+        val ranks = fields[0].split('/')
+        require(ranks.size == 8) { "Invalid FEN (expected 8 ranks): $fen" }
+        for ((index, rankText) in ranks.withIndex()) {
+            val rank = 7 - index
+            var file = 0
+            for (char in rankText) {
+                if (char.isDigit()) {
+                    file += char - '0'
+                } else {
+                    require(file < 8) { "Invalid FEN (rank ${rank + 1} is too long): $fen" }
+                    putPiece(square(file, rank), parsePiece(char))
+                    file++
                 }
             }
-            position.castlingRights = position.castlingRights and position.validCastlingRights()
-
-            if (fields[3] != "-") {
-                val square = parseSquare(fields[3])
-                val us = position.sideToMove
-                // Like after a double push, only kept when an enemy pawn can capture
-                if (Attacks.pawnAttacks(opposite(us), square) and position.pieces(us, PAWN) != EMPTY) {
-                    position.enPassantSquare = square
-                }
-            }
-
-            position.halfmoveClock = fields.getOrNull(4)?.toIntOrNull() ?: 0
-            position.fullmoveNumber = fields.getOrNull(5)?.toIntOrNull() ?: 1
-
-            require(!position.leftKingInCheck()) { "Invalid FEN (the side not to move is in check): $fen" }
-
-            position.key = position.computeKey()
-            return position
+            require(file == 8) { "Invalid FEN (rank ${rank + 1} does not have 8 squares): $fen" }
         }
+        for (color in listOf(WHITE, BLACK)) {
+            require(popCount(pieces(color, KING)) == 1) { "Invalid FEN (each player must have one king): $fen" }
+        }
+
+        sideToMove = when (fields[1]) {
+            "w" -> WHITE
+            "b" -> BLACK
+            else -> throw IllegalArgumentException("Invalid FEN (side to move must be w or b): $fen")
+        }
+
+        if (fields[2] != "-") {
+            for (char in fields[2]) {
+                castlingRights = castlingRights or when (char) {
+                    'K' -> Castling.WHITE_KINGSIDE
+                    'Q' -> Castling.WHITE_QUEENSIDE
+                    'k' -> Castling.BLACK_KINGSIDE
+                    'q' -> Castling.BLACK_QUEENSIDE
+                    else -> throw IllegalArgumentException("Invalid FEN (castling rights): $fen")
+                }
+            }
+        }
+        castlingRights = castlingRights and validCastlingRights()
+
+        if (fields[3] != "-") {
+            val square = parseSquare(fields[3])
+            val us = sideToMove
+            // Like after a double push, only kept when an enemy pawn can capture
+            if (Attacks.pawnAttacks(opposite(us), square) and pieces(us, PAWN) != EMPTY) {
+                enPassantSquare = square
+            }
+        }
+
+        halfmoveClock = fields.getOrNull(4)?.toIntOrNull() ?: 0
+        fullmoveNumber = fields.getOrNull(5)?.toIntOrNull() ?: 1
+
+        require(!leftKingInCheck()) { "Invalid FEN (the side not to move is in check): $fen" }
+
+        key = computeKey()
     }
 
     /** Castling rights that are possible with the current placement of kings and rooks. */

@@ -33,6 +33,28 @@ class UciTest {
         assertEquals(listOf("readyok"), send("isready"))
     }
 
+    /** Total of the output of the eval command. */
+    private fun total(lines: List<String>): String = lines.joinToString("\n").lines().first { it.startsWith("Total:") }
+
+    @Test
+    fun weightsOption() {
+        val file = kotlin.io.path.createTempFile(suffix = ".weights").toFile()
+        try {
+            assertTrue("option name Weights type string default <empty>" in send("uci"))
+            send("position fen 4k3/8/8/8/8/2N5/8/4K3 w - - 0 1")
+            val default = total(send("eval"))
+            file.writeText("pieceValues.knight.mg = 1000\npieceValues.knight.eg = 1000\n")
+            send("setoption name Weights value ${file.path}")
+            val heavy = total(send("eval"))
+            assertTrue(heavy != default, heavy)
+            send("setoption name Weights value <empty>")
+            assertEquals(default, total(send("eval")))
+            assertTrue(send("setoption name Weights value /missing.weights").single().startsWith("info string Error"))
+        } finally {
+            file.delete()
+        }
+    }
+
     @Test
     fun positionWithMoves() {
         send("position startpos moves e2e4 e7e5 g1f3")

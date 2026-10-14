@@ -27,7 +27,6 @@ import chessy.core.rankMask
 import chessy.core.rankOf
 import chessy.core.relativeRank
 import chessy.core.squareName
-import kotlin.math.sqrt
 
 /**
  * "Constrictor" evaluation: space, square control and mobility first.
@@ -40,7 +39,7 @@ import kotlin.math.sqrt
  *
  * Not thread-safe: it reuses internal arrays, so each search thread needs its own instance.
  */
-class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights()) : Evaluator {
+class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT) : Evaluator {
 
     override val name = "Space"
 
@@ -166,7 +165,7 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights()) : Evaluator {
         for (type in PAWN..KING) {
             position.pieces(color, type).forEachSquare { square ->
                 val index = if (color == WHITE) flipRank(square) else square
-                val material = MaterialEvaluator.PIECE_VALUES[type]
+                val material = weights.pieceValues[type]
                 val pstScale = if (type == PAWN || type == KING) 100 else weights.piecePstPercent
                 var mg = material.middlegame + MaterialEvaluator.MIDDLEGAME_TABLES[type][index] * pstScale / 100
                 var eg = material.endgame + MaterialEvaluator.ENDGAME_TABLES[type][index] * pstScale / 100
@@ -275,7 +274,7 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights()) : Evaluator {
                 }
                 if (stop in 0..63 && rank >= 3) {
                     // In the endgame the kings matter: the enemy king should be far and the own king close
-                    val kings = (EvalMasks.distance(enemyKing, stop) * 5 - EvalMasks.distance(ownKing, stop) * 2) * (rank - 2)
+                    val kings = (EvalMasks.distance(enemyKing, stop) * weights.passedEnemyKingDistance - EvalMasks.distance(ownKing, stop) * weights.passedOwnKingDistance) * (rank - 2)
                     bonus += TaperedScore(0, kings)
                 }
                 add(Term.PASSED_PAWNS, color, bonus)
@@ -385,75 +384,5 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights()) : Evaluator {
             for (type in KNIGHT..QUEEN) material += popCount(position.pieces(color, type)) * MaterialEvaluator.PIECE_VALUES[type].middlegame
         }
         return material
-    }
-}
-
-/**
- * Weights of the "Constrictor" evaluation, in centipawns (middlegame, endgame).
- * They will be tuned in phase 6; the style is given by the weights of space, territory, restriction and mobility.
- */
-data class SpaceWeights(
-    /** Percentage of the piece-square tables for knights, bishops, rooks and queens (mobility does most of the work). */
-    val piecePstPercent: Int = 50,
-    /** Percentage of the mobility tables (100 = baseline). */
-    val mobilityPercent: Int = 120,
-    val trappedMobility: Int = 1,
-    /** Penalty of knights, bishops and queens outside their first rank with at most [trappedMobility] safe moves. */
-    val trapped: Array<TaperedScore> = arrayOf(
-        TaperedScore.ZERO, TaperedScore(-25, -20), TaperedScore(-30, -25), TaperedScore.ZERO, TaperedScore(-30, -30), TaperedScore.ZERO,
-    ),
-    val worstPiecePercent: Int = 50,
-    /** Percentage of the space term (100 = baseline). */
-    val spacePercent: Int = 120,
-    val spaceMaterialThreshold: Int = 3500,
-    val territory: TaperedScore = TaperedScore(4, 2),
-    val kingZoneControl: TaperedScore = TaperedScore(6, 2),
-    val restriction: TaperedScore = TaperedScore(5, 5),
-    val knightOutpost: TaperedScore = TaperedScore(30, 15),
-    val bishopOutpost: TaperedScore = TaperedScore(15, 5),
-    val rookOpenFile: TaperedScore = TaperedScore(35, 15),
-    val rookSemiOpenFile: TaperedScore = TaperedScore(15, 8),
-    val rookOnSeventh: TaperedScore = TaperedScore(20, 30),
-    val doubledPawn: TaperedScore = TaperedScore(-10, -25),
-    val isolatedPawn: TaperedScore = TaperedScore(-10, -15),
-    /** By relative rank (0 = first rank). */
-    val connectedPawn: Array<TaperedScore> = arrayOf(0, 3, 5, 8, 15, 30, 50, 0).map { TaperedScore(it, it) }.toTypedArray(),
-    val passedPawn: Array<TaperedScore> = arrayOf(
-        TaperedScore(0, 0), TaperedScore(5, 10), TaperedScore(8, 15), TaperedScore(15, 30),
-        TaperedScore(30, 55), TaperedScore(55, 95), TaperedScore(90, 150), TaperedScore(0, 0),
-    ),
-    val overextendedPawn: TaperedScore = TaperedScore(-10, -5),
-    val hole: TaperedScore = TaperedScore(-5, 0),
-    val threatByPawn: TaperedScore = TaperedScore(60, 40),
-    val threatByMinor: TaperedScore = TaperedScore(40, 30),
-    val threatByRook: TaperedScore = TaperedScore(40, 30),
-    val hangingPiece: TaperedScore = TaperedScore(40, 25),
-    val hangingPawn: TaperedScore = TaperedScore(5, 10),
-    val kingDanger: Int = 6,
-    val kingDangerMinUnits: Int = 6,
-    val maxKingDanger: Int = 500,
-    val pawnShield: TaperedScore = TaperedScore(12, 0),
-    val openFileNearKing: TaperedScore = TaperedScore(-15, 0),
-    val bishopPair: TaperedScore = TaperedScore(30, 50),
-    val tempo: TaperedScore = TaperedScore(12, 6),
-    /** Penalty of a draw for the engine, in centipawns: a constrictor does not let the opponent off the hook. */
-    val contempt: Int = 15,
-) {
-    /**
-     * Safe mobility bonus by piece type and number of safe squares: grows with the square root,
-     * zero around the usual mobility of the piece, negative for passive pieces.
-     */
-    val mobility: Array<Array<TaperedScore>> = arrayOf(
-        arrayOf(TaperedScore.ZERO),
-        mobilityTable(maxMoves = 8, usual = 4, middlegame = 30, endgame = 30),
-        mobilityTable(maxMoves = 13, usual = 6, middlegame = 30, endgame = 35),
-        mobilityTable(maxMoves = 14, usual = 6, middlegame = 20, endgame = 40),
-        mobilityTable(maxMoves = 27, usual = 10, middlegame = 12, endgame = 25),
-        arrayOf(TaperedScore.ZERO),
-    )
-
-    private fun mobilityTable(maxMoves: Int, usual: Int, middlegame: Int, endgame: Int) = Array(maxMoves + 1) { moves ->
-        val factor = (sqrt(moves.toDouble()) - sqrt(usual.toDouble())) * mobilityPercent / 100
-        TaperedScore((middlegame * factor).toInt(), (endgame * factor).toInt())
     }
 }

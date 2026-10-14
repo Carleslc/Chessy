@@ -10,12 +10,15 @@ import chessy.core.Pgn
 import chessy.core.Position
 import chessy.core.WHITE
 import chessy.eval.Evaluator
+import chessy.eval.SpaceEvaluator
+import chessy.eval.SpaceWeights
 import chessy.search.ParallelSearch
 import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Score
 import chessy.search.Search
 import chessy.search.SearchLimits
+import chessy.tune.TexelTuner
 import chessy.uci.Uci
 import java.io.File
 import java.time.LocalDate
@@ -36,6 +39,8 @@ Commands:
   bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
+  weights                Weights of the Space style, in the format of a weights file
+  tune <file>            Tune the weights of the Space style with the positions of a training file (Texel's method)
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
@@ -44,7 +49,14 @@ Options:
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
-  --pgn <file>           Save the game played to this PGN file"""
+  --pgn <file>           Save the game played to this PGN file
+  --weights <file>       Weights file of the Space style (default: the tuned weights), also the starting point of tune
+  --output <file>        Weights file written by tune (default: space.weights)
+  --positions <n>        Maximum number of positions of the training file to tune
+  --passes <n>           Maximum number of passes over the weights to tune (default: 100)
+  --all <true|false>     Tune also the weights of the style (space, territory, restriction, mobility), not tuned by default
+  --freeze <names>       Weights not tuned, separated by commas (a name without dot freezes the whole group, e.g. pieceValues)
+  --max-change <cp>      Each tuned weight stays within its start value ± max(cp, |start value|)"""
 
 /** Command line arguments: positional arguments and `--name value` options. */
 private class Arguments(args: Array<String>) {
@@ -78,8 +90,15 @@ private class Arguments(args: Array<String>) {
 
     private val isGreedy: Boolean get() = style == "greedy"
 
+    /** Weights of the Space style: --weights file or the default ones. */
+    val weights: SpaceWeights get() = options["weights"]?.let { SpaceWeights.load(File(it)) } ?: SpaceWeights.DEFAULT
+
     /** Evaluator of the --style (the greedy search only counts material). */
-    val evaluator: Evaluator get() = Evaluator.named(if (isGreedy) "Material" else style)
+    val evaluator: Evaluator get() = when {
+        isGreedy -> Evaluator.named("Material")
+        style == "space" -> SpaceEvaluator(weights)
+        else -> Evaluator.named(style)
+    }
 
     fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
 
@@ -115,6 +134,8 @@ fun main(args: Array<String>) {
                 arguments.search, arguments.limits, arguments.options["pgn"]?.let(::File)
             )
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
+            "weights" -> print(arguments.weights.format())
+            "tune" -> tune(arguments)
             else -> throw IllegalArgumentException("Unknown command: ${arguments.command}")
         }
     } catch (e: IllegalArgumentException) {
@@ -241,5 +262,27 @@ private fun pgn(file: File) {
         println(game.toPgn())
         println("{ Final position: ${game.position.toFen()} (${game.status}) }")
         println()
+    }
+}
+
+/** Texel tuning of the weights of the Space style, saved to --output after every pass. */
+private fun tune(arguments: Arguments) {
+    val file = File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing training file"))
+    val output = File(arguments.options["output"] ?: "space.weights")
+    val positions = TexelTuner.read(file, arguments.intOption("positions") ?: Int.MAX_VALUE)
+    val tuneStyle = arguments.options["all"]?.toBoolean() ?: false
+    val frozen = arguments.options["freeze"]?.split(',')?.map { it.trim() }.orEmpty()
+    val names = SpaceWeights.PARAMETERS.map { it.name }
+        .filter { tuneStyle || it !in SpaceWeights.STYLE }
+        .filter { name -> frozen.none { name == it || name.startsWith("$it.") } }
+    val tuner = TexelTuner(positions, arguments.threads)
+    try {
+        val start = arguments.weights
+        val k = tuner.fitK(start)
+        val tuned = tuner.tune(start, names, k, arguments.intOption("passes") ?: 100, arguments.intOption("max-change")) { it.save(output) }
+        tuned.save(output)
+        println("Saved $output")
+    } finally {
+        tuner.close()
     }
 }

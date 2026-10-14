@@ -1,0 +1,136 @@
+# Weights of the Chessy "Constrictor" evaluation (Style Space), in centipawns.
+# Tapered weights have a middlegame (mg) and an endgame (eg) value.
+
+pieceValues.pawn.mg = 100
+pieceValues.pawn.eg = 92
+pieceValues.knight.mg = 562
+pieceValues.knight.eg = 287
+pieceValues.bishop.mg = 605
+pieceValues.bishop.eg = 316
+pieceValues.rook.mg = 792
+pieceValues.rook.eg = 554
+pieceValues.queen.mg = 2148
+pieceValues.queen.eg = 697
+
+piecePstPercent = 48
+mobilityPercent = 120
+
+mobilityScale.knight.mg = 26
+mobilityScale.knight.eg = 15
+mobilityScale.bishop.mg = 19
+mobilityScale.bishop.eg = 15
+mobilityScale.rook.mg = 24
+mobilityScale.rook.eg = 12
+mobilityScale.queen.mg = 18
+mobilityScale.queen.eg = -19
+
+trappedMobility = 0
+
+trapped.knight.mg = 66
+trapped.knight.eg = -338
+trapped.bishop.mg = 7
+trapped.bishop.eg = -24
+trapped.queen.mg = -30
+trapped.queen.eg = -30
+
+worstPiecePercent = 98
+spacePercent = 120
+spaceMaterialThreshold = 3868
+
+territory.mg = 4
+territory.eg = 2
+
+kingZoneControl.mg = 6
+kingZoneControl.eg = 2
+
+restriction.mg = 5
+restriction.eg = 5
+
+knightOutpost.mg = 44
+knightOutpost.eg = 45
+
+bishopOutpost.mg = 44
+bishopOutpost.eg = -2
+
+rookOpenFile.mg = 78
+rookOpenFile.eg = -24
+
+rookSemiOpenFile.mg = 31
+rookSemiOpenFile.eg = 14
+
+rookOnSeventh.mg = 25
+rookOnSeventh.eg = 21
+
+doubledPawn.mg = -9
+doubledPawn.eg = -14
+
+isolatedPawn.mg = -15
+isolatedPawn.eg = -10
+
+connectedPawn.rank2.mg = 9
+connectedPawn.rank2.eg = 10
+connectedPawn.rank3.mg = 17
+connectedPawn.rank3.eg = 8
+connectedPawn.rank4.mg = 6
+connectedPawn.rank4.eg = -2
+connectedPawn.rank5.mg = -8
+connectedPawn.rank5.eg = -5
+connectedPawn.rank6.mg = 41
+connectedPawn.rank6.eg = 7
+connectedPawn.rank7.mg = 556
+connectedPawn.rank7.eg = -82
+
+passedPawn.rank2.mg = -24
+passedPawn.rank2.eg = 62
+passedPawn.rank3.mg = -61
+passedPawn.rank3.eg = 54
+passedPawn.rank4.mg = -36
+passedPawn.rank4.eg = 62
+passedPawn.rank5.mg = 20
+passedPawn.rank5.eg = 78
+passedPawn.rank6.mg = 74
+passedPawn.rank6.eg = 126
+passedPawn.rank7.mg = 223
+passedPawn.rank7.eg = 144
+
+passedEnemyKingDistance = 11
+passedOwnKingDistance = 7
+
+overextendedPawn.mg = -7
+overextendedPawn.eg = -16
+
+hole.mg = -5
+hole.eg = 5
+
+threatByPawn.mg = 74
+threatByPawn.eg = 24
+
+threatByMinor.mg = 86
+threatByMinor.eg = 18
+
+threatByRook.mg = 99
+threatByRook.eg = 5
+
+hangingPiece.mg = 20
+hangingPiece.eg = 21
+
+hangingPawn.mg = 19
+hangingPawn.eg = 44
+
+kingDanger = 11
+kingDangerMinUnits = 2
+maxKingDanger = 111
+
+pawnShield.mg = 25
+pawnShield.eg = -8
+
+openFileNearKing.mg = -20
+openFileNearKing.eg = 11
+
+bishopPair.mg = 38
+bishopPair.eg = 101
+
+tempo.mg = 23
+tempo.eg = 4
+
+contempt = 15

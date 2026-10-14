@@ -136,6 +136,20 @@ Suites:
 - `suites/tactics.epd`: 100 tactical positions from games of Chessy, created with `tactics.py`.
 - `suites/wac.epd`: Win At Chess, 300 tactical positions by Fred Reinfeld (1958), from [viridithas](https://github.com/cosmobobak/viridithas/blob/master/assets/epds/wac.epd).
 
+### Strategic Test Suite (STS)
+
+`suites/sts.epd`: 1500 positional positions in 15 themes (undermining, open files, outposts, center control, king activity...),
+by Dann Corbit and Swaminathan Natarajan, with the points of each move recalculated with Stockfish 15
+(`STS1-STS15_LAN_v4.epd` from [STS-Rating](https://github.com/fsmosca/STS-Rating), MIT license).
+Every position gives up to 10 points (the best move) and partial points to the other good moves.
+`sts.py` shows the points of each theme:
+
+```
+python sts.py --movetime 0.2
+python sts.py --movetime 0.2 --option Style=Material
+python sts.py --engine stockfish --movetime 0.1
+```
+
 ## Style
 
 Style metrics of the players of PGN games, to check that the "constrictor" style restricts the opponent:
@@ -153,6 +167,25 @@ Plot the terms of the evaluation of Chessy (space, territory, restriction, mobil
 python analysis.py games/match.pgn --match 3 --output games/analysis.png
 python analysis.py games/match.pgn --terms Space Territory Restriction Mobility --style Space
 ```
+
+## Texel tuning
+
+Tune the weights of the Space evaluation with the results of games ([Texel's tuning method](https://www.chessprogramming.org/Texel%27s_Tuning_Method)).
+`texel.py` extracts the quiet positions of PGN games (not in check, the move played is not a capture, a promotion or a check)
+with the result of their game, and `chessy tune` minimizes the error between the evaluation and the results,
+saving the weights after every pass:
+
+```
+python openings.py --count 5000 --max-score 150 --depth 10 --seed 2 --output games/texel-openings.epd
+fastchess -engine cmd=engines/phase5/bin/chessy name=a -engine cmd=engines/phase5/bin/chessy name=b -each tc=2+0.02 \
+  -openings file=games/texel-openings.epd format=epd -repeat -rounds 5000 -concurrency 10 -pgnout file=games/texel-selfplay.pgn
+python texel.py games/texel-selfplay.pgn --output games/texel.txt
+../engine/build/install/chessy/bin/chessy tune games/texel.txt --output games/space.weights
+```
+
+The weights of the style (space, territory, restriction and mobility) are not tuned unless `--all true` is given.
+Test a weights file with the UCI option `Weights` (for example `option.Weights=/path/space.weights` in fastchess)
+before copying it to `engine/src/main/resources/chessy/eval/space.weights`, the default weights of the engine.
 
 ## Lichess
 

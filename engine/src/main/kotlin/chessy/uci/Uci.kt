@@ -7,6 +7,8 @@ import chessy.core.Notation
 import chessy.core.Perft
 import chessy.core.Position
 import chessy.eval.Evaluator
+import chessy.eval.SpaceEvaluator
+import chessy.eval.SpaceWeights
 import chessy.search.ParallelSearch
 import chessy.search.Bench
 import chessy.search.GreedySearch
@@ -14,6 +16,8 @@ import chessy.search.Search
 import chessy.search.SearchLimits
 import chessy.search.TranspositionTable
 import java.io.BufferedReader
+import java.io.File
+import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -46,7 +50,12 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val threads = SpinOption("Threads", default = 1, min = 1, max = ParallelSearch.MAX_THREADS) {
         alphaBeta.threads = it
     }
-    private val options = listOf<Option>(style, hash, threads, moveOverhead, greedyDepth)
+    /** Weights file of the Space style (empty: the tuned weights of the engine). */
+    private val weightsFile = StringOption("Weights") { file ->
+        spaceWeights = if (file.isBlank()) SpaceWeights.DEFAULT else SpaceWeights.load(File(file))
+    }
+    private var spaceWeights = SpaceWeights.DEFAULT
+    private val options = listOf<Option>(style, hash, threads, moveOverhead, greedyDepth, weightsFile)
         .associateBy { it.name.lowercase() }
 
     private val alphaBeta = ParallelSearch()
@@ -60,8 +69,10 @@ class Uci(private val output: (String) -> Unit = ::send) {
     /** The evaluator of the Style option (the greedy search only counts material). */
     private fun evaluator(): Evaluator {
         val name = if (style.value == GREEDY) "Material" else style.value
-        if (alphaBeta.evaluator.name != name) {
-            alphaBeta.evaluatorFactory = { Evaluator.named(name) }
+        val current = alphaBeta.evaluator
+        if (current.name != name || (current is SpaceEvaluator && current.weights !== spaceWeights)) {
+            val weights = spaceWeights
+            alphaBeta.evaluatorFactory = { if (name == "Space") SpaceEvaluator(weights) else Evaluator.named(name) }
         }
         return alphaBeta.evaluator
     }
@@ -293,8 +304,25 @@ class Uci(private val output: (String) -> Unit = ::send) {
         override fun toUci() = "option name $name type combo default $default " + values.joinToString(" ") { "var $it" }
     }
 
+    /** Text option, such as a file name (empty by default). */
+    private class StringOption(override val name: String, val onChange: (String) -> Unit) : Option {
+        override fun set(text: String) {
+            val value = if (text == EMPTY) "" else text
+            try {
+                onChange(value)
+            } catch (e: IOException) {
+                throw IllegalArgumentException("$name: ${e.message}")
+            }
+        }
+
+        override fun toUci() = "option name $name type string default $EMPTY"
+    }
+
     companion object {
         private const val GREEDY = "Greedy"
+
+        /** Value of an empty string option in UCI. */
+        private const val EMPTY = "<empty>"
 
         private val GO_KEYWORDS = setOf(
             "wtime", "btime", "winc", "binc", "movestogo", "depth", "nodes", "mate", "movetime", "infinite", "ponder", "searchmoves"
