@@ -9,6 +9,7 @@ import chessy.core.Position
 import chessy.eval.Evaluator
 import chessy.eval.SpaceWeights
 import chessy.search.ParallelSearch
+import chessy.search.Ponderhit
 import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Search
@@ -56,7 +57,9 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private var customWeights: SpaceWeights? = null
     /** Evaluator name and weights file of the evaluators of the search, to create them again when they change. */
     private var evaluatorSettings: Pair<String, SpaceWeights?> = Evaluator.DEFAULT to null
-    private val options = listOf<Option>(style, hash, threads, moveOverhead, greedyDepth, weightsFile)
+    /** Whether the GUI lets the engine think on the opponent's time (`go ponder`): the engine only declares it. */
+    private val ponder = CheckOption("Ponder", default = false)
+    private val options = listOf<Option>(style, hash, threads, moveOverhead, ponder, greedyDepth, weightsFile)
         .associateBy { it.name.lowercase() }
 
     private val alphaBeta = ParallelSearch()
@@ -86,6 +89,9 @@ class Uci(private val output: (String) -> Unit = ::send) {
 
     /** Released when the GUI allows to send the best move after `go infinite` or `go ponder`. */
     private var bestMoveAllowed = CountDownLatch(0)
+
+    /** Signal of `ponderhit` for the current search. */
+    private var ponderhit = Ponderhit()
 
     /** Reads and handles commands until `quit` or the end of the input. */
     fun run(input: BufferedReader) {
@@ -122,8 +128,11 @@ class Uci(private val output: (String) -> Unit = ::send) {
                 }
                 "go" -> go(tokens)
                 "stop" -> stopSearch()
-                // Pondering is not supported yet (no Ponder option): the move found so far is played
-                "ponderhit" -> stopSearch()
+                // The opponent played the expected move: the search goes on with the time of the engine
+                "ponderhit" -> {
+                    ponderhit.signal()
+                    bestMoveAllowed.countDown()
+                }
                 "setoption" -> setOption(tokens)
                 "debug", "register" -> {}
                 "quit" -> {
@@ -170,6 +179,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
         }
 
         val limits = parseLimits(tokens)
+        ponderhit = limits.ponderhit
         val searchPosition = position.copy()
         val search = search
         stop.set(false)
@@ -303,6 +313,22 @@ class Uci(private val output: (String) -> Unit = ::send) {
         }
 
         override fun toUci() = "option name $name type combo default $default " + values.joinToString(" ") { "var $it" }
+    }
+
+    /** Boolean option. */
+    private class CheckOption(override val name: String, val default: Boolean) : Option {
+        var value = default
+            private set
+
+        override fun set(text: String) {
+            value = when (text.lowercase()) {
+                "true" -> true
+                "false" -> false
+                else -> throw IllegalArgumentException("$name must be true or false")
+            }
+        }
+
+        override fun toUci() = "option name $name type check default $default"
     }
 
     /** Text option, such as a file name (empty by default). */

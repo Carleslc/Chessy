@@ -9,9 +9,14 @@ import chessy.core.WHITE
  * - [softLimit]: target time. A new iteration is not started when it would probably not finish before it.
  * - [hardLimit]: the search is aborted when it is reached.
  *
- * Both are null when there is no time limit (infinite, ponder, or only depth or nodes limits).
+ * Both are null when there is no time limit (infinite, or only depth or nodes limits).
+ *
+ * When pondering, the limits count from the `ponderhit` (the clock of the engine starts when the opponent plays
+ * the expected move), and until then there is no limit. The time already spent pondering is a gift.
  */
-class TimeManager(limits: SearchLimits, sideToMove: Color) {
+class TimeManager(limits: SearchLimits, sideToMove: Color, private val searchStart: Long = System.currentTimeMillis()) {
+
+    private val ponderhit: Ponderhit? = if (limits.ponder) limits.ponderhit else null
 
     val softLimit: Long?
     val hardLimit: Long?
@@ -21,7 +26,7 @@ class TimeManager(limits: SearchLimits, sideToMove: Color) {
         val increment = if (sideToMove == WHITE) limits.whiteIncrement else limits.blackIncrement
 
         when {
-            limits.infinite || limits.ponder -> {
+            limits.infinite -> {
                 softLimit = null
                 hardLimit = null
             }
@@ -46,10 +51,26 @@ class TimeManager(limits: SearchLimits, sideToMove: Color) {
 
     val hasLimit: Boolean get() = hardLimit != null
 
-    /** Whether to start another iteration: each iteration takes longer than all the previous ones together. */
-    fun canStartIteration(elapsed: Long): Boolean = softLimit == null || elapsed < softLimit * NEW_ITERATION_FRACTION
+    /**
+     * Whether to start another iteration: each iteration takes longer than all the previous ones together.
+     * [elapsed] is the time since the start of the search.
+     */
+    fun canStartIteration(elapsed: Long): Boolean {
+        val used = timeUsed(elapsed) ?: return true
+        return softLimit == null || used < softLimit * NEW_ITERATION_FRACTION
+    }
 
-    fun mustAbort(elapsed: Long): Boolean = hardLimit != null && elapsed >= hardLimit
+    fun mustAbort(elapsed: Long): Boolean {
+        val used = timeUsed(elapsed) ?: return false
+        return hardLimit != null && used >= hardLimit
+    }
+
+    /** Time used from the clock of the engine, or null while pondering (the clock has not started). */
+    private fun timeUsed(elapsed: Long): Long? = when {
+        ponderhit == null -> elapsed
+        ponderhit.time == Ponderhit.NOT_YET -> null
+        else -> elapsed - (ponderhit.time - searchStart)
+    }
 
     companion object {
         /** Expected number of remaining moves when the time control does not tell it. */

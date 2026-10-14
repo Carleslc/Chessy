@@ -117,9 +117,9 @@ class AlphaBetaSearch(
         this.position = position
         this.limits = limits
         this.stop = stop
-        timeManager = TimeManager(limits, position.sideToMove)
-        rootColor = position.sideToMove
         startTime = System.currentTimeMillis()
+        timeManager = TimeManager(limits, position.sideToMove, startTime)
+        rootColor = position.sideToMove
         nodes = 0
         selectiveDepth = 0
         aborted = false

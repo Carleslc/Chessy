@@ -43,6 +43,21 @@ class TimeManagerTest {
     }
 
     @Test
+    fun ponderStartsTheClockAtPonderhit() {
+        val limits = SearchLimits(whiteTime = 10_000, moveOverhead = 0, ponder = true)
+        val time = TimeManager(limits, WHITE, searchStart = 0)
+        val hard = time.hardLimit!!
+        // While pondering there is no limit
+        assertTrue(time.canStartIteration(1_000_000))
+        assertFalse(time.mustAbort(1_000_000))
+        // After the ponderhit the time counts from it
+        limits.ponderhit.signal()
+        val ponderhitElapsed = limits.ponderhit.time
+        assertFalse(time.mustAbort(ponderhitElapsed + hard - 1))
+        assertTrue(time.mustAbort(ponderhitElapsed + hard))
+    }
+
+    @Test
     fun noLimit() {
         assertNull(TimeManager(SearchLimits(infinite = true, whiteTime = 1000), WHITE).hardLimit)
         assertNull(TimeManager(SearchLimits(depth = 5), WHITE).hardLimit)

@@ -93,14 +93,30 @@ class UciTest {
 
     @Test
     fun ponderWaitsForPonderhit() {
+        assertTrue("option name Ponder type check default false" in send("uci"))
+        assertEquals(emptyList(), send("setoption name Ponder value true"))
         output.clear()
         uci.handle("position startpos")
+        // With 1 second on the clock, the move takes a fraction of it: but while pondering the time does not count
         uci.handle("go ponder wtime 1000 btime 1000")
-        Thread.sleep(100)
+        Thread.sleep(500)
         assertTrue(output.none { it.startsWith("bestmove") })
+        val start = System.currentTimeMillis()
         uci.handle("ponderhit")
         uci.waitForSearch()
+        // After the ponderhit the search goes on with its own time, a fraction of the clock
+        assertTrue(System.currentTimeMillis() - start < 900)
         assertTrue(output.last().startsWith("bestmove"))
+    }
+
+    @Test
+    fun stopWhilePondering() {
+        output.clear()
+        uci.handle("position startpos")
+        uci.handle("go ponder wtime 60000 btime 60000")
+        Thread.sleep(100)
+        uci.handle("stop") // The opponent played another move
+        assertTrue(output.last().startsWith("bestmove"), output.toString())
     }
 
     @Test

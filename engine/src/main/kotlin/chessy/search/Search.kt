@@ -37,13 +37,33 @@ data class SearchLimits(
     val mate: Int? = null,
     /** Search until `stop`. */
     val infinite: Boolean = false,
-    /** Search on the opponent's time, until `ponderhit` or `stop`. */
+    /**
+     * Search on the opponent's time, expecting the ponder move: the time limits only start to count at [ponderhit]
+     * (the opponent played the expected move), and until then the search goes on until `stop`.
+     */
     val ponder: Boolean = false,
+    val ponderhit: Ponderhit = Ponderhit(),
     /** Only consider these root moves (all the legal moves if empty). */
     val searchMoves: List<Move> = emptyList(),
     /** Time to keep in reserve for each move, for the communication delays between the GUI and the engine. */
     val moveOverhead: Long = 0,
 )
+
+/** Signal of the UCI `ponderhit` command: the opponent played the expected move, so the clock of the engine starts. */
+class Ponderhit {
+    /** Time of the signal (System.currentTimeMillis), or [NOT_YET]. */
+    @Volatile
+    var time: Long = NOT_YET
+        private set
+
+    fun signal() {
+        time = System.currentTimeMillis()
+    }
+
+    companion object {
+        const val NOT_YET = -1L
+    }
+}
 
 data class SearchResult(val bestMove: Move, val score: Int, val ponderMove: Move = Move.NONE)
 
