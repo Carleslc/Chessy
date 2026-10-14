@@ -40,6 +40,8 @@ if __name__ == "__main__":
       tries += 1
       board = chess.Board()
       for _ in range(rng.randint(args.min_plies, args.max_plies)):
+        if board.is_game_over():
+          break
         board.push(rng.choice(list(board.legal_moves)))
       if board.is_game_over() or board.epd() in positions:
         continue
