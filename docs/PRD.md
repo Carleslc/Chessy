@@ -163,7 +163,7 @@ interface Evaluator {
 }
 ```
 
-- La búsqueda solo conoce `Evaluator` (patrón *strategy*). La implementación se elige con la opción UCI `Style`, que define tres estilos (y niveles de dificultad): **Space** (por defecto, el evaluador "Constrictor"), **Material** (material y tablas de casillas) y **Greedy** (búsqueda de profundidad fija que solo cuenta material, opción `Greedy Depth`). Cada evaluador tiene su propio *contempt*.
+- La búsqueda solo conoce `Evaluator` (patrón *strategy*). La implementación se elige con la opción UCI `Style`, que define cuatro estilos (y niveles de dificultad): **Space** (por defecto, el evaluador "Constrictor" con pesos que conservan el estilo), **Full** (la misma evaluación con todos los pesos ajustados para la máxima fuerza), **Material** (material y tablas de casillas) y **Greedy** (búsqueda de profundidad fija que solo cuenta material, opción `Greedy Depth`). Cada evaluador tiene su propio *contempt*.
 - Los **pesos** viven en una estructura de datos (`SpaceWeights`) que se lee y se escribe en ficheros de texto (`nombre = valor`). Los pesos por defecto son el recurso `chessy/eval/space.weights`, ajustado con *Texel tuning*. La opción UCI `Weights` (y `--weights`) permite probar otros ficheros sin recompilar. Las bonificaciones no pueden volverse penalizaciones al ajustarlas, ni al revés.
 - **Evaluación cónica** (*tapered*): cada término tiene valor de medio juego (mg) y de final (eg), interpolados según la fase (material no-peón restante).
 - La evaluación es simétrica por defecto (evaluar una posición y su espejo da lo mismo con signo opuesto) — se comprueba con un test. La "personalidad" se expresa con los pesos.
@@ -228,7 +228,7 @@ Ideas de [chessprogramming.org/Space](https://www.chessprogramming.org/Space), [
 
 Comandos: `uci`, `isready`, `ucinewgame`, `position [startpos|fen …] [moves …]`, `go [wtime btime winc binc movestogo depth nodes movetime infinite]`, `stop`, `quit`, `setoption`.
 Salida `info depth seldepth score cp|mate nodes nps time pv hashfull`.
-Opciones: `Hash`, `Threads` (futuro), `Evaluator`, `Contempt`, `Move Overhead`, `UCI_ShowWDL` (opcional).
+Opciones: `Style` (Space, Full, Material, Greedy), `Hash`, `Threads`, `Move Overhead`, `Greedy Depth` y `Weights` (fichero de pesos de Space o Full). El *contempt* lo define cada evaluador.
 La búsqueda corre en un hilo aparte para atender `stop`/`isready`.
 
 Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perft N`, `eval` (desglose de evaluación), `bench` (posiciones fijas → nodos y nps, útil para detectar cambios de comportamiento).
@@ -297,6 +297,26 @@ En CPU:
    - SPRT con fastchess para aceptar cada cambio: `elo0=0, elo1=5` (o similar) a control de tiempo corto, con el libro de aperturas equilibradas `tools/openings/balanced.epd` (generado con `tools/openings.py`) y cada apertura jugada con ambos colores (`-repeat`).
    - Calibración contra Stockfish con `UCI_LimitStrength`/`UCI_Elo` y contra motores de la lista CCRL de nivel conocido.
    - Rating del BOT en Lichess.
+
+### CCRL
+
+La escala `UCI_Elo` de Stockfish está ajustada con partidas contra versiones del motor Stash con rating CCRL Blitz, a 120+1 (`search.h`: de 1320 a 3190; las anclas de Stash están a ±100 Elo de CCRL y la más alta es 2744). Por eso la calibración contra Stockfish limitado da una estimación aproximada del rating en **CCRL Blitz**. A 2+1 Chessy rinde unos 100 Elo más que a 10+0,1 contra Stockfish 2800 (Space 61 %, Full 55 %, 40 partidas cada uno), así que la estimación actual es de **~2800–2850 en CCRL Blitz** (puesto ~295–310 de ~890) y ~2770–2820 en CCRL 40/2 FRC si jugara Chess960 (puesto ~105–110 de 151). Detalles en el README (*Versions and styles*).
+
+Listas y condiciones (máquina de referencia Intel i7-4770K, con el tiempo escalado según el `bench` de Stockfish 10 en la máquina del probador; *pondering* desactivado; sin aprendizaje; tablas de finales de hasta 6 piezas):
+
+| Lista | Control de tiempo | Hash | Aperturas | Motores |
+|---|---|---|---|---|
+| [CCRL Blitz](https://computerchess.org.uk/404/) | 2+1 | 128 o 256 MB | Libro genérico, como mucho 12 jugadas por bando | ~890 |
+| [CCRL 40/2 FRC](https://computerchess.org.uk/404FRC/) | 40 jugadas en 2 min | 256 MB | Posiciones de Chess960 | 151 |
+| [CCRL 40/15](https://computerchess.org.uk/4040/) | 40 jugadas en 15 min | 256 o 512 MB | Libro genérico, como mucho 12 jugadas por bando | |
+
+Para entrar en las listas en el futuro:
+
+1. Publicar una versión etiquetada (p. ej. `v1.0`) con un ejecutable fácil de usar en Windows (los probadores usan sobre todo Windows): un `.jar` con su lanzador `.bat`, o mejor un binario nativo con GraalVM `native-image`, sin depender de una JVM instalada.
+2. UCI completo y robusto en partidas largas (sin pérdidas por tiempo con `movestogo` y controles repetidos como 40/2), opción `Hash` hasta 256–512 MB y opción `SyzygyPath` para las tablas de finales (no obligatoria, pero los demás motores las usan).
+3. Para CCRL 40/2 FRC, soporte de **Chess960**: enroques desde cualquier columna, FEN con columnas de enroque (X-FEN/Shredder-FEN) y la opción `UCI_Chess960`.
+4. Comprobación propia antes de enviarlo: torneo *gauntlet* de unas 1000 partidas a 2+1 (escalado a la máquina con el `bench` de Stockfish 10) contra 4–6 motores con rating CCRL Blitz conocido cerca de la estimación (por ejemplo Frenzee 3.5.19, Bison 9.11, Octochess, Tornado 8.0), con el libro de CCRL y Ordo o BayesElo para calcular el rating.
+5. Anunciar el motor en el foro de CCRL ([talkchess](https://talkchess.com)): los probadores eligen qué motores prueban y publican sus resultados.
 
 ## 10. Fases
 
@@ -507,6 +527,15 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
     Fortalezas frente a la Fase 5: alfil contra caballo, control del centro, 7ª fila, puestos avanzados y evitar cambios inútiles (temas de piezas activas, que el ajuste valora más). Debilidades: actividad del rey, casillas vacías y columnas abiertas, y en general los temas de final y de maniobra lenta, donde Stockfish saca más ventaja. El Elo STS mide sobre todo la comprensión posicional en jugadas sueltas: Chessy juega mucho mejor de lo que indica (2296 frente a ~2750 en partidas).
   - `bench`: 1.617.877 nodos, ~780 k nodos/s.
 
+### Estilo Full (después de la Fase 6)
+
+- **Full**: la misma evaluación de Space con todos los pesos ajustados para la máxima fuerza (el ajuste completo, `full.weights`), como estilo para quien busque la fuerza y no el estilo. Opción `Style` (y `--style full`). La opción `Weights` vale para Space y Full.
+- Medidas (10+0,1, 100 partidas por nivel): contra Stockfish 2600 +200, contra 2800 −96 y contra 3000 −308 (Space: +177, −53 y −275), así que contra Stockfish queda igual que Space dentro del margen. En el enfrentamiento directo gana a Space por **+37 ± 16** (1000 partidas a 8+0,08). WAC 283/300, STS 10.868 (`sts.py`) y 2258 (`sts_rating.py`).
+- Estilo contra Stockfish 2600 y 2800: movilidad del rival 25,3 (Space 25,5), espacio 0,61 (Space 1,00), territorio 0,16 (Space 0,74), piezas atrapadas 0,19 (Space 0,21).
+- A 2+1 (el control de CCRL Blitz) contra Stockfish 2800: Space 61 % (+80 ± 96) y Full 55 % (+35 ± 105), 40 partidas cada uno.
+- Comparativa de todas las versiones y estilos (v0, Greedy, Material, Space, Full) en el README.
+- Los *snapshots* de `tools/engines/` se reducen a uno por fase (`phase3` a `phase6`) más el *worktree* de `v0`.
+
 ### Fase 7 — Despliegue y extras
 - BOT en Lichess con `lichess-bot`, empaquetado.
 - Opcionales: libro de aperturas, Syzygy, pondering, evaluadores alternativos (p. ej. NNUE, o el "valor × factor de control" del README de 2022) gracias a la interfaz.
@@ -534,7 +563,7 @@ Primera implementación (2018–2019): piezas como objetos, tablero como mapa/ma
 6. Ahogado detectado con movimientos pseudo-legales → estado calculado con movimientos legales y detección de ataques al rey.
 7. Ordenación que generaba y evaluaba el tablero siguiente para cada jugada (y fugas de memoria por cachés que retenían el árbol) → MVV-LVA barato.
 
-Después se completaron las reglas (enroque, captura al paso, subpromoción, material insuficiente con alfiles del mismo color), FEN, SAN, exportación a PGN (`--pgn`), búsqueda por tiempo sin límite de profundidad y tests (`mvn test`: perft de las posiciones de referencia, reglas, SAN, PGN y búsqueda). No tiene UCI: queda como referencia histórica, jugable en consola.
+Después se completaron las reglas (enroque, captura al paso, subpromoción, material insuficiente con alfiles del mismo color), FEN, SAN, exportación a PGN (`--pgn`), búsqueda por tiempo sin límite de profundidad y tests (`mvn test`: perft de las posiciones de referencia, reglas, SAN, PGN y búsqueda). No tiene UCI: queda como referencia histórica, jugable en consola. Con el adaptador `tools/v0_uci.py` (que la arranca desde la posición en cada jugada) se pudo medir: ~1500 en la escala de Stockfish (87,5 % contra 1320 y 25 % contra 1600, a 60+0,6), WAC 122/300 y STS 6.735/15.000. Gana el 97 % de las partidas a v1 Greedy.
 
 ## 13. Glosario
 
