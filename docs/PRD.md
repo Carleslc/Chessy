@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0 a 6 completadas · siguiente: Fase 7 (despliegue en Lichess) |
+| Versión | v1.0 (ver §8, Versiones) |
+| Estado | Fases 0 a 7 completadas (v1.0) · siguiente: mejoras v1.01… y el BOT en línea |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -228,7 +228,7 @@ Ideas de [chessprogramming.org/Space](https://www.chessprogramming.org/Space), [
 
 Comandos: `uci`, `isready`, `ucinewgame`, `position [startpos|fen …] [moves …]`, `go [wtime btime winc binc movestogo depth nodes movetime infinite]`, `stop`, `quit`, `setoption`.
 Salida `info depth seldepth score cp|mate nodes nps time pv hashfull`.
-Opciones: `Style` (Space, Full, Material, Greedy), `Hash`, `Threads`, `Move Overhead`, `Greedy Depth` y `Weights` (fichero de pesos de Space o Full). El *contempt* lo define cada evaluador.
+Opciones: `Style` (Space, Full, Material, Greedy), `Hash`, `Threads`, `Move Overhead`, `Ponder`, `Greedy Depth` y `Weights` (fichero de pesos de Space o Full). El *contempt* lo define cada evaluador.
 La búsqueda corre en un hilo aparte para atender `stop`/`isready`.
 
 Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perft N`, `eval` (desglose de evaluación), `bench` (posiciones fijas → nodos y nps, útil para detectar cambios de comportamiento).
@@ -266,8 +266,8 @@ En CPU:
 
 ## 8. Despliegue
 
-- Empaquetado: `./gradlew installDist` → script `engine/build/install/chessy/bin/chessy` (UCI). Opcional: GraalVM `native-image` para arrancar al instante.
-- **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`. Los bots solo juegan retos (no torneos ni emparejamiento por pools).
+- Empaquetado: `./gradlew installDist` → script `engine/build/install/chessy/bin/chessy` (UCI), y `./gradlew distZip` → `engine/build/distributions/chessy-<versión>.zip` con los lanzadores `bin/chessy` (macOS, Linux) y `bin/chessy.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
+- **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools).
 - Opcional: libro de aperturas (Polyglot) y tablas de finales Syzygy en fases avanzadas.
 
 ### Versiones
@@ -280,7 +280,7 @@ En CPU:
 | **v1.01, v1.02, …, v1.15, v1.26…** | Mejoras del motor y de las evaluaciones, una versión por cambio aceptado (SPRT) | Tags `v1.01`, `v1.02`… |
 | **v1.07.6** | Correcciones (*hotfix*) sobre una versión publicada | Tag `v1.07.6` |
 
-- La versión se define en un solo sitio, `engine/gradle.properties`, y el motor la usa en `id name` de UCI, en la CLI y en el `Site` de los PGN que exporta (`Chessy (v1.0-dev)`).
+- La versión se define en un solo sitio, `engine/gradle.properties`, y el motor la usa en `id name` de UCI, en la CLI y en el `Site` de los PGN que exporta (`Chessy (v1.0)`).
 - Cada versión publicada lleva un **tag anotado** de git (`git tag -a v1.01 -m "..."`) con un resumen de los cambios y, cuando aplique, el resultado del SPRT frente a la versión anterior.
 - `v0` es una rama y no un tag (un tag con el mismo nombre que una rama sería ambiguo para git).
 
@@ -536,9 +536,16 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - Comparativa de todas las versiones y estilos (v0, Greedy, Material, Space, Full) en el README.
 - Los *snapshots* de `tools/engines/` se reducen a uno por fase (`phase3` a `phase6`) más el *worktree* de `v0`.
 
-### Fase 7 — Despliegue y extras
+### Fase 7 — Despliegue y extras ✅
 - BOT en Lichess con `lichess-bot`, empaquetado.
 - Opcionales: libro de aperturas, Syzygy, pondering, evaluadores alternativos (p. ej. NNUE, o el "valor × factor de control" del README de 2022) gracias a la interfaz.
+- **Resultado**:
+  - ***Pondering***: `go ponder` piensa durante el turno del rival y `ponderhit` ya no detiene la búsqueda: la convierte en una búsqueda normal cuyo reloj empieza en el `ponderhit` (`Ponderhit` viaja en `SearchLimits`, y `TimeManager` no aplica límites mientras se piensa en el turno del rival), así que todo lo pensado se aprovecha. Opción UCI `Ponder`. Comprobado con python-chess en partidas a 10+0,1: el 65 % de las jugadas fueron *ponderhit* y ninguna partida se perdió por tiempo.
+  - **Empaquetado**: `./gradlew distZip` genera `chessy-1.0.zip` (1,9 MB) con los lanzadores para macOS, Linux y Windows. Sin `native-image` por ahora (requiere instalar GraalVM).
+  - **BOT en Lichess**: `tools/lichess/config.yml` al día con el formato actual de lichess-bot (*pondering*, abandono con −10 peones durante 5 jugadas, tablas en finales igualados, sin libro ni jugadas en línea, retos de bullet a clásicas, casuales y puntuables, de humanos y bots) y `tools/lichess/run.sh`, que compila el motor, copia la configuración con la ruta del motor y arranca lichess-bot (o convierte la cuenta en BOT con `--upgrade`). Falta crear la cuenta del BOT y su token, que son del usuario.
+  - **Tablero electrónico**: el ChessUp 2 (directamente o con chessconnect) juega contra el BOT desde la cuenta de Lichess del usuario; chessconnect no conecta con motores locales.
+  - Versión **v1.0** (tag `v1.0`).
+  - Quedan como mejoras futuras: libro de aperturas propio (lichess-bot ya admite libros Polyglot), tablas de finales Syzygy, Chess960 (para CCRL FRC), `native-image` y evaluadores alternativos.
 
 ## 11. Riesgos
 

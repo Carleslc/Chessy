@@ -1,43 +1,94 @@
-# lichess-bot configuration for Chessy (only the main keys).
-# Copy the full config.yml.default of lichess-bot and change these keys, or use this file as is.
-# See README.md in this folder.
+# lichess-bot configuration for Chessy (the keys of config.yml.default of lichess-bot that matter for Chessy).
+# run.sh copies it into the lichess-bot folder with the path of the engine. See README.md in this folder.
 
-token: "xxxxxxxxxxxxxxxxxxxxxx"     # Lichess OAuth2 token of the BOT account (bot:play scope). Do not commit it!
+# The token is read from the environment variable LICHESS_BOT_TOKEN (never write it here, never commit it)
+token: "set LICHESS_BOT_TOKEN"
 url: "https://lichess.org/"
 
 engine:
-  dir: "../Chessy/engine/build/install/chessy/bin/"  # Path to the engine, relative to the lichess-bot folder
+  dir: "../Chessy/engine/build/install/chessy/bin/"  # Replaced by run.sh with the absolute path of the engine
   name: "chessy"                    # chessy.bat on Windows
   working_dir: ""
   protocol: "uci"
-  ponder: false                     # Chessy does not ponder yet
+  ponder: true                      # Think on the opponent's time (UCI go ponder / ponderhit)
+
+  polyglot:
+    enabled: false                  # Chessy plays its own openings
+
+  draw_or_resign:
+    resign_enabled: true            # Resign lost positions...
+    resign_score: -1000             # ...when the score is this low (centipawns)...
+    resign_for_egtb_minus_two: true
+    resign_moves: 5                 # ...for this number of moves in a row
+    offer_draw_enabled: true        # Offer and accept draws in dead equal endgames
+    offer_draw_score: 0
+    offer_draw_for_egtb_zero: true
+    offer_draw_moves: 10
+    offer_draw_pieces: 10
+
+  online_moves:
+    max_out_of_book_moves: 10
+    max_retries: 2
+    chessdb_book:
+      enabled: false
+    lichess_cloud_analysis:
+      enabled: false                # Chessy always plays its own moves
+    lichess_opening_explorer:
+      enabled: false
+    online_egtb:
+      enabled: false
+
+  lichess_bot_tbs:
+    syzygy:
+      enabled: false
+    gaviota:
+      enabled: false
 
   uci_options:
     Style: Space                    # Space (the constrictor, default), Full (strongest), Material or Greedy (weakest)
-    Threads: 1
-    Hash: 64
-    Move Overhead: 100              # Milliseconds kept for network delays, increase it if the bot loses on time
+    Threads: 1                      # More threads are stronger (Lazy SMP), but the bot shares the machine
+    Hash: 128
+    Move Overhead: 100              # Milliseconds kept by Chessy for delays, on top of move_overhead
 
   silence_stderr: false
 
+abort_time: 30
+fake_think_time: false
+rate_limiting_delay: 0
+move_overhead: 1000                 # Milliseconds kept by lichess-bot for network delays, increase it if the bot loses on time
+
+correspondence:
+  move_time: 60
+  checkin_period: 300
+  disconnect_time: 150
+  ponder: false
+
 challenge:
-  concurrency: 1
+  concurrency: 1                    # One game at a time
   sort_by: "best"
+  preference: "none"
   accept_bot: true
   only_bot: false
-  max_increment: 20
+  max_increment: 30
   min_increment: 0
-  max_base: 1800
+  max_base: 3600
   min_base: 60
   variants:
-    - standard
+    - standard                      # Chessy does not play Chess960 yet
   time_controls:
+    - bullet
     - blitz
     - rapid
     - classical
   modes:
-    - casual                        # Add rated when Chessy is ready
+    - casual
+    - rated
 
 greeting:
   hello: "Hi! I'm {me}, a chess engine that likes space. Good luck!"
   goodbye: "Good game!"
+  hello_spectators: "I'm {me}, a constrictor: I gain space and squeeze my opponents. https://github.com/Carleslc/Chessy"
+  goodbye_spectators: "Thanks for watching!"
+
+matchmaking:
+  allow_matchmaking: false          # Only play challenges (set true to challenge other bots when idle)

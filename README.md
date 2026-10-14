@@ -70,7 +70,11 @@ ordering, safe check extension and Lazy SMP for several threads), and has four p
 - **Material**: material and piece-square tables, the baseline evaluation.
 - **Greedy**: a fixed-depth search counting only material (`Greedy Depth`, 2 by default), the weakest.
 
-Other UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Greedy Depth` and `Weights` (a weights file for Space or Full).
+Other UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Ponder` (think on the opponent's time), `Greedy Depth`
+and `Weights` (a weights file for Space or Full).
+
+`./gradlew distZip` packages the engine in `build/distributions/chessy-<version>.zip`, with the launchers `bin/chessy`
+(macOS, Linux) and `bin/chessy.bat` (Windows), to install it anywhere with Java 17+.
 
 ## Versions and styles
 
@@ -209,7 +213,8 @@ Without a command, `chessy` speaks UCI: add `engine/build/install/chessy/bin/che
 
 ### On Lichess (and with an electronic board)
 
-Chessy can play on Lichess as a BOT with [lichess-bot](tools/lichess): challenge it from your account,
+Chessy can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh`):
+challenge it from your account,
 from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
 and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
 so the bot plays the default style, Space. ChessConnect only connects boards to online sites, not to local engines,

@@ -1,29 +1,54 @@
 # Chessy on Lichess
 
-Chessy plays on [Lichess](https://lichess.org) as a BOT through [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot), which connects any UCI engine to the [Lichess Bot API](https://lichess.org/api#tag/Bot).
+Chessy plays on [Lichess](https://lichess.org) as a BOT through [lichess-bot](https://github.com/lichess-bot-devs/lichess-bot),
+which connects any UCI engine to the [Lichess Bot API](https://lichess.org/api#tag/Bot). Bots only play challenges
+(from humans or other bots), not tournaments or the lobby pools.
 
 Chess.com has no API for bots, so Chessy cannot play there (games can still be analyzed there from the exported PGN).
 
 ## Setup
 
-1. Build the engine: `./gradlew installDist` in `engine/`. The UCI executable is `engine/build/install/chessy/bin/chessy` (it needs Java 17+).
-2. Create a **new** Lichess account for the bot. Upgrading an account to BOT is permanent and only works on accounts that have not played games.
-3. Create an [API access token](https://lichess.org/account/oauth/token/create) with the `bot:play` scope.
-4. Install lichess-bot following its [instructions](https://github.com/lichess-bot-devs/lichess-bot/wiki), next to this repository:
+1. Create a **new** Lichess account for the bot (for example *ChessyBot*). Upgrading an account to BOT is permanent
+   and only works on accounts that have not played any game.
+2. Logged in with that account, create an [API access token](https://lichess.org/account/oauth/token/create)
+   with the `bot:play` scope. Keep it secret: anyone with it can play with the account.
+3. Install lichess-bot (Python 3.10+) next to this repository, so that `lichess-bot` and `Chessy` share the parent folder:
    ```
    git clone https://github.com/lichess-bot-devs/lichess-bot.git
    cd lichess-bot
-   python -m venv venv && source venv/bin/activate
+   python3 -m venv venv
+   . venv/bin/activate
    pip install -r requirements.txt
    ```
-5. Copy `config.yml` of this folder into the lichess-bot folder, set the `token` and check that `engine.dir` points to the engine.
-6. Upgrade the account to BOT and start the bot:
+   (or set `LICHESS_BOT_DIR` to its folder).
+4. Upgrade the account to BOT and start the bot (it needs Java 17+ to run Chessy):
    ```
-   python lichess-bot.py -u
-   python lichess-bot.py
+   LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh --upgrade
+   ```
+   The next times, without `--upgrade`:
+   ```
+   LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh
    ```
 
-Never commit the token. The bot accepts challenges according to the `challenge` section of the configuration.
+`run.sh` builds the engine, copies [`config.yml`](config.yml) into the lichess-bot folder with the path of the engine and
+starts lichess-bot. The token is only read from the `LICHESS_BOT_TOKEN` environment variable, never written in a file.
+Stop the bot with Ctrl+C.
+
+## Configuration
+
+[`config.yml`](config.yml) sets:
+
+- **Engine**: style Space (UCI option `Style`), 1 thread, 128 MB of hash and pondering (Chessy thinks on the opponent's time).
+- **Challenges**: one game at a time, standard chess, from bullet to classical (1 to 60 minutes, increment up to 30 s),
+  casual and rated, from humans and bots.
+- **Draws and resignation**: Chessy resigns after 5 moves below −10 pawns and offers or accepts draws
+  in dead equal endgames.
+- **Time**: lichess-bot keeps 1 s for network delays (`move_overhead`) and Chessy 100 ms (`Move Overhead`):
+  increase them if the bot loses on time.
+- No opening book, no online moves and no tablebases: Chessy plays every move.
+
+To run another style (Full, Material or Greedy), change `Style` in `config.yml`; each style needs its own BOT account
+to run at the same time.
 
 ## Before going online
 

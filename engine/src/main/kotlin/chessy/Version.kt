@@ -10,7 +10,7 @@ object Version {
         getProperty("version") ?: "unknown"
     }
 
-    /** Engine name with its version, such as `Chessy v1.0-dev`. */
+    /** Engine name with its version, such as `Chessy v1.0`. */
     val name: String = "Chessy v$number"
 
     const val AUTHOR = "Carleslc"
