@@ -74,7 +74,7 @@ class AlphaBetaSearchTest {
         assertEquals("Kh6", result.san)
         assertTrue(result.score > 200)
         // Black has many pieces but cannot move them: only Kxe1 does not lose for white
-        val blocked = search("8/8/8/2p5/1pp5/brpp4/qpprpK1P/1nkbn3 w - - 0 1", 16) // The draw (repetition) is seen from depth 15
+        val blocked = search("8/8/8/2p5/1pp5/brpp4/qpprpK1P/1nkbn3 w - - 0 1", 18) // The draw (repetition) is seen from depth 17
         assertEquals("Kxe1", blocked.san)
         assertEquals(Score.DRAW, blocked.score)
     }
@@ -121,6 +121,14 @@ class AlphaBetaSearchTest {
         val result = search("8/8/8/4k3/8/8/4P3/R3K3 w - - 99 80", 4)
         assertTrue(result.san in listOf("e3", "e4"), result.san)
         assertTrue(result.score > 500)
+    }
+
+    @Test
+    fun noProgressLowersTheScore() {
+        // Without pawn moves or captures for many moves, a winning position is closer to a draw
+        val fresh = search("4k3/8/8/8/8/8/8/R3K3 w - - 0 1", 1)
+        val stale = search("4k3/8/8/8/8/8/8/R3K3 w - - 80 1", 1)
+        assertTrue(stale.score in 1 until fresh.score, "${stale.score} ${fresh.score}")
     }
 
     @Test

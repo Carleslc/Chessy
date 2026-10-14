@@ -8,6 +8,7 @@ import chessy.core.MoveGenerator
 import chessy.core.MoveList
 import chessy.core.NO_PIECE
 import chessy.core.PAWN
+import chessy.core.PIECES
 import chessy.core.Position
 import chessy.core.QUEEN
 import chessy.core.ROOK
@@ -42,12 +43,15 @@ import java.util.concurrent.atomic.AtomicBoolean
  *   are reused, and their best move is searched first.
  * - Move ordering: move of the transposition table and principal variation first, then captures by MVV-LVA
  *   (most valuable victim, least valuable attacker), then promotions, then killer moves (quiet moves that caused
- *   a cutoff at the same ply) and the other quiet moves by their history (how often they caused cutoffs),
+ *   a cutoff at the same ply), the countermove (the quiet move that refuted the last move of the opponent)
+ *   and the other quiet moves by their history (how often they caused cutoffs),
  *   and finally the captures that lose material according to the static exchange evaluation (SEE).
  *   Good moves first produce more cutoffs.
  * - Checkmates are scored by distance (shorter mates are preferred) and draws by repetition, fifty-move rule
  *   and insufficient material are detected inside the search. Draws are scored with the contempt of the evaluator:
  *   negative for the engine (it avoids draws unless it is worse), positive for the opponent.
+ * - Progress: the static evaluation shrinks towards a draw as the fifty-move counter grows, so the side that is better
+ *   prefers to make progress (pawn moves, captures) instead of maneuvering forever.
  *
  * Scores are always from the point of view of the side to move (negamax: the score of a move is the negated score
  * of the position after it for the opponent).
@@ -84,6 +88,12 @@ class AlphaBetaSearch(
 
     /** history[color][from * 64 + to]: how good quiet moves were (https://www.chessprogramming.org/History_Heuristic). */
     private val history = Array(2) { IntArray(64 * 64) }
+
+    /**
+     * counterMoves[piece * 64 + to]: quiet move that caused a cutoff after the opponent moved that piece to that square
+     * (https://www.chessprogramming.org/Countermove_Heuristic).
+     */
+    private val counterMoves = IntArray(PIECES * 64)
 
     /** Quiet moves searched at each ply before a cutoff, to lower their history. */
     private val quietsSearched = Array(MAX_PLY + 1) { IntArray(MoveList.MAX_MOVES) }
@@ -190,7 +200,7 @@ class AlphaBetaSearch(
             return quiescence(ply, alpha, beta)
         }
         if (ply >= MAX_PLY) {
-            return evaluator.evaluate(position)
+            return evaluate()
         }
 
         countNode()
@@ -209,7 +219,7 @@ class AlphaBetaSearch(
         }
 
         val inCheck = position.inCheck()
-        val staticEval = if (inCheck) -Score.INFINITE else evaluator.evaluate(position)
+        val staticEval = if (inCheck) -Score.INFINITE else evaluate()
         val canPrune = !pvNode && !inCheck && !Score.isMate(alpha) && !Score.isMate(beta)
 
         // Reverse futility pruning: even losing a margin per remaining ply, the position stays above beta
@@ -335,7 +345,7 @@ class AlphaBetaSearch(
         selectiveDepth = maxOf(selectiveDepth, ply)
 
         if (ply >= MAX_PLY) {
-            return evaluator.evaluate(position)
+            return evaluate()
         }
 
         var alpha = alphaStart
@@ -345,7 +355,7 @@ class AlphaBetaSearch(
 
         if (!inCheck) {
             // Stand pat: the side to move can usually do at least as well as the static evaluation, by a quiet move
-            standPat = evaluator.evaluate(position)
+            standPat = evaluate()
             if (standPat >= beta) {
                 return standPat
             }
@@ -399,6 +409,9 @@ class AlphaBetaSearch(
         return best
     }
 
+    /** Static evaluation, scaled down as the fifty-move counter grows (no progress: closer to a draw). */
+    private fun evaluate(): Int = evaluator.evaluate(position) * (PROGRESS_SCALE - position.halfmoveClock) / PROGRESS_SCALE
+
     /** Knights, bishops, rooks and queens of [color]. */
     private fun pieceCount(color: Int): Int =
         popCount(position.pieces(color, KNIGHT) or position.pieces(color, BISHOP) or position.pieces(color, ROOK) or position.pieces(color, QUEEN))
@@ -437,6 +450,15 @@ class AlphaBetaSearch(
 
     fun clearHistory() {
         history.forEach { it.fill(0) }
+        counterMoves.fill(Move.NONE.bits)
+    }
+
+    /** Index in [counterMoves] of the last move (the piece moved and its destination), or -1 after a null move. */
+    private fun counterMoveIndex(): Int {
+        val last = position.lastMove()
+        if (last == Move.NONE) return -1
+        val piece = position.pieceOn(last.to)
+        return if (piece == NO_PIECE) -1 else piece * 64 + last.to
     }
 
     private fun isQuiet(move: Move) = !move.isCapture && !move.isPromotion
@@ -456,6 +478,8 @@ class AlphaBetaSearch(
             plyKillers[1] = plyKillers[0]
             plyKillers[0] = move.bits
         }
+        val counterIndex = counterMoveIndex()
+        if (counterIndex >= 0) counterMoves[counterIndex] = move.bits
         val bonus = minOf(depth * depth, MAX_HISTORY_BONUS)
         val colorHistory = history[position.sideToMove]
         addHistory(colorHistory, move, bonus)
@@ -479,6 +503,8 @@ class AlphaBetaSearch(
 
     private fun scoreMoves(moves: MoveList, ply: Int, pvMove: Move, tableMove: Move) {
         val scores = orderScores[ply]
+        val counterIndex = counterMoveIndex()
+        val counterMove = if (counterIndex >= 0) counterMoves[counterIndex] else Move.NONE.bits
         for (i in 0 until moves.size) {
             val move = moves[i]
             scores[i] = when {
@@ -490,6 +516,7 @@ class AlphaBetaSearch(
                 move.isPromotion -> if (move.promotionType == QUEEN) QUEEN_PROMOTION_SCORE else UNDERPROMOTION_SCORE
                 move.bits == killers[ply][0] -> FIRST_KILLER_SCORE
                 move.bits == killers[ply][1] -> SECOND_KILLER_SCORE
+                move.bits == counterMove -> COUNTER_MOVE_SCORE
                 else -> history[position.sideToMove][move.from * 64 + move.to]
             }
         }
@@ -560,11 +587,15 @@ class AlphaBetaSearch(
         private const val QUEEN_PROMOTION_SCORE = 90_000
         private const val FIRST_KILLER_SCORE = 80_000
         private const val SECOND_KILLER_SCORE = 79_000
+        private const val COUNTER_MOVE_SCORE = 78_000
         /** Quiet moves are ordered by their history, between -MAX_HISTORY and MAX_HISTORY. */
         private const val MAX_HISTORY = 16_384
         private const val MAX_HISTORY_BONUS = 1_200
         private const val UNDERPROMOTION_SCORE = -MAX_HISTORY - 1
         private const val BAD_CAPTURE_SCORE = -100_000
+
+        /** The evaluation is multiplied by (PROGRESS_SCALE - halfmove clock) / PROGRESS_SCALE: halved at the fifty-move rule. */
+        private const val PROGRESS_SCALE = 200
 
         /** Margin of the delta pruning in the quiescence search (positional gains of a capture). */
         private const val DELTA_MARGIN = 200
