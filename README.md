@@ -86,7 +86,7 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
 | **v1 Material** | ~2500–2600 | 54% vs 2400, 49.5% vs 2600 | 285/300 | 9631 | 2072 |
 | **v1 Space** (default) | ~2750 | 86% vs 2400, 73.5% vs 2600, 42.5% vs 2800, 17% vs 3000 | 285/300 | 10875 | 2296 |
 | **v1 Full** | ~2750 (+37 ± 16 vs Space) | 90% vs 2400, 76% vs 2600, 36.5% vs 2800, 14.5% vs 3000 | 283/300 | 10868 | 2258 |
-| Stockfish 19 (full strength, reference) | 3804 in CCRL Blitz (8 threads) | | | 13876 (0.1 s) | 3832 |
+| Stockfish 19 (full strength, reference) | 3804 in CCRL Blitz (8 threads) | | 279/300 | 13876 (0.1 s) | 3832 |
 
 - Against Stockfish, Space and Full score the same within the margin of error (±60–90 Elo per level),
   but Full wins the direct match against Space by +37 ± 16 (1000 games at 8+0.08).
@@ -94,6 +94,9 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   1500 positional positions, points out of 15000 with `tools/sts.py`; STS Elo is the CCRL 40/4 estimate of
   [`sts_rating.py`](https://github.com/fsmosca/STS-Rating) (v0: from its score with the same formula).
   STS Elo underrates Chessy: it measures single positional moves, while Chessy gains its points in the search.
+- WAC is from 1958 and some of its solutions are not the only winning move: Stockfish misses the expected move
+  in 21 positions, usually playing another winning move (sometimes a faster mate). WAC measures finding the expected move,
+  so it is useful to compare versions of Chessy, not to compare with Stockfish.
 
 STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
 
