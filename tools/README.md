@@ -94,7 +94,22 @@ fastchess -engine cmd=$CHESSY name=Chessy -engine cmd=stockfish name=SF1500 opti
   -each tc=10+0.1 -openings file=openings/balanced.epd format=epd order=random -rounds 50 -repeat -concurrency 8 -pgnout file=games/sf1500.pgn
 ```
 
-`-repeat` plays each opening twice with the colors swapped. For SPRT tests between two versions, add `-sprt elo0=0 elo1=5 alpha=0.05 beta=0.05` and a large `-rounds`.
+`-repeat` plays each opening twice with the colors swapped.
+
+## SPRT tests
+
+Each change of the engine is accepted only if it is stronger, with a Sequential Probability Ratio Test (SPRT),
+which plays games until it can decide with the given confidence. Save a copy of each version with `snapshot.sh`
+(so the engine can keep changing while the test runs), then compare two versions with `sprt.sh`:
+
+```
+./snapshot.sh base        # engines/base
+# ... change the engine ...
+./snapshot.sh new         # engines/new
+./sprt.sh new base        # elo0=0 elo1=10, tc=8+0.08, 10 games at a time
+./sprt.sh new base 0 5 10+0.1 8
+ROUNDS=750 ./sprt.sh new base   # at most 1500 games
+```
 
 ## Openings
 
@@ -112,7 +127,12 @@ and run an engine on any EPD suite with best moves (`bm`) or moves to avoid (`am
 ```
 python tactics.py games/*.pgn --count 100 --output suites/tactics.epd
 python epd.py suites/tactics.epd --movetime 1
+python epd.py suites/wac.epd --movetime 1
 ```
+
+Suites:
+- `suites/tactics.epd`: 100 tactical positions from games of Chessy, created with `tactics.py`.
+- `suites/wac.epd`: Win At Chess, 300 tactical positions by Fred Reinfeld (1958), from [viridithas](https://github.com/cosmobobak/viridithas/blob/master/assets/epds/wac.epd).
 
 ## Lichess
 

@@ -120,6 +120,11 @@ class UciTest {
         assertTrue("option name Search type combo default AlphaBeta var AlphaBeta var Greedy" in lines)
         assertTrue("option name Greedy Depth type spin default 2 min 1 max 4" in lines)
         assertTrue("option name Evaluator type combo default Material var Material" in lines)
+        assertTrue("option name Hash type spin default 64 min 1 max 1024" in lines)
+        assertTrue("option name Threads type spin default 1 min 1 max 256" in lines)
+        assertEquals(emptyList(), send("setoption name Threads value 2", "setoption name Hash value 16"))
+        assertTrue(bestMove(send("position startpos", "go depth 5")).length == 4)
+        send("setoption name Threads value 1")
         assertEquals(emptyList(), send("setoption name Search value greedy", "setoption name Greedy Depth value 1"))
         // Greedy depth 1 grabs the pawn defended by another pawn
         assertEquals("d1d5", bestMove(send("position fen 4k3/8/4p3/3p4/8/8/8/3QK3 w - - 0 1", "go")))

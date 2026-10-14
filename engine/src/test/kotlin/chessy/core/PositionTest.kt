@@ -104,6 +104,20 @@ class PositionTest {
     }
 
     @Test
+    fun nullMove() {
+        val position = Position.fromFen("rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3")
+        val fen = position.toFen()
+        val key = position.key
+        position.makeNullMove()
+        assertEquals(BLACK, position.sideToMove)
+        assertEquals(NO_SQUARE, position.enPassantSquare)
+        assertEquals(position.computeKey(), position.key)
+        position.unmakeNullMove()
+        assertEquals(fen, position.toFen())
+        assertEquals(key, position.key)
+    }
+
+    @Test
     fun castlingMovesRook() {
         val position = Position.fromFen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1")
         play(position, "e1g1")

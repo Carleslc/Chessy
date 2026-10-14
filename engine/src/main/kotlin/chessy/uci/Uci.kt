@@ -7,11 +7,12 @@ import chessy.core.Notation
 import chessy.core.Perft
 import chessy.core.Position
 import chessy.eval.Evaluator
-import chessy.search.AlphaBetaSearch
+import chessy.search.ParallelSearch
 import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Search
 import chessy.search.SearchLimits
+import chessy.search.TranspositionTable
 import java.io.BufferedReader
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
@@ -36,20 +37,29 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val searchOption = ComboOption("Search", default = "AlphaBeta", values = listOf("AlphaBeta", "Greedy"))
     private val greedyDepth = SpinOption("Greedy Depth", default = 2, min = 1, max = GreedySearch.MAX_DEPTH)
     private val evaluatorOption = ComboOption("Evaluator", default = "Material", values = Evaluator.all.keys.toList())
-    private val options = listOf<Option>(moveOverhead, searchOption, greedyDepth, evaluatorOption).associateBy { it.name.lowercase() }
+    private val hash = SpinOption("Hash", default = TranspositionTable.DEFAULT_SIZE_MB, min = 1, max = TranspositionTable.MAX_SIZE_MB) {
+        alphaBeta.transpositionTable.resize(it)
+    }
+    private val threads = SpinOption("Threads", default = 1, min = 1, max = ParallelSearch.MAX_THREADS) {
+        alphaBeta.threads = it
+    }
+    private val options = listOf<Option>(hash, threads, moveOverhead, searchOption, greedyDepth, evaluatorOption)
+        .associateBy { it.name.lowercase() }
 
-    private val alphaBeta = AlphaBetaSearch()
+    private val alphaBeta = ParallelSearch()
     private val greedy = GreedySearch()
 
     /** The search selected with the options. */
     private val search: Search get() =
         if (searchOption.value == "Greedy") greedy.apply { depth = greedyDepth.value }
-        else alphaBeta.apply { evaluator = evaluator() }
+        else alphaBeta.apply { evaluator() }
 
     /** The evaluator selected with the options. */
     private fun evaluator(): Evaluator {
         if (alphaBeta.evaluator.name != evaluatorOption.value) {
-            alphaBeta.evaluator = Evaluator.named(evaluatorOption.value)
+            val name = evaluatorOption.value
+            Evaluator.named(name) // Validate the name
+            alphaBeta.evaluatorFactory = { Evaluator.named(name) }
         }
         return alphaBeta.evaluator
     }
@@ -88,7 +98,8 @@ class Uci(private val output: (String) -> Unit = ::send) {
                 "isready" -> output("readyok")
                 "ucinewgame" -> {
                     stopSearch()
-                    search.clear()
+                    alphaBeta.clear()
+                    greedy.clear()
                     position = Position.startingPosition()
                 }
                 "position" -> {
@@ -251,7 +262,9 @@ class Uci(private val output: (String) -> Unit = ::send) {
     }
 
     /** Integer option in a range. */
-    private class SpinOption(override val name: String, val default: Int, val min: Int, val max: Int) : Option {
+    private class SpinOption(
+        override val name: String, val default: Int, val min: Int, val max: Int, val onChange: (Int) -> Unit = {},
+    ) : Option {
         var value = default
             private set
 
@@ -259,6 +272,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
             val number = text.toIntOrNull() ?: throw IllegalArgumentException("$name must be a number")
             require(number in min..max) { "$name must be between $min and $max" }
             value = number
+            onChange(number)
         }
 
         override fun toUci() = "option name $name type spin default $default min $min max $max"

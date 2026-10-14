@@ -258,6 +258,40 @@ class Position private constructor() {
         key = state.key
     }
 
+    /**
+     * Passes the turn to the opponent without moving (null move, only for the search: https://www.chessprogramming.org/Null_Move).
+     * It breaks the repetitions: positions before a null move cannot be repeated after it.
+     */
+    fun makeNullMove() {
+        history[historySize++].apply {
+            this.move = Move.NONE
+            this.captured = NO_PIECE
+            this.castlingRights = this@Position.castlingRights
+            this.enPassantSquare = this@Position.enPassantSquare
+            this.halfmoveClock = this@Position.halfmoveClock
+            this.key = this@Position.key
+        }
+        if (enPassantSquare != NO_SQUARE) {
+            key = key xor Zobrist.enPassant(enPassantSquare)
+            enPassantSquare = NO_SQUARE
+        }
+        halfmoveClock = 0
+        sideToMove = opposite(sideToMove)
+        key = key xor Zobrist.blackToMove
+    }
+
+    fun unmakeNullMove() {
+        val state = history[--historySize]
+        sideToMove = opposite(sideToMove)
+        enPassantSquare = state.enPassantSquare
+        halfmoveClock = state.halfmoveClock
+        key = state.key
+    }
+
+    /** Whether [color] has pieces other than pawns and king (without them, zugzwang is likely). */
+    fun hasNonPawnMaterial(color: Color): Boolean =
+        pieces(color, KNIGHT) or pieces(color, BISHOP) or rooksAndQueens(color) != EMPTY
+
     /** Last move played, or [Move.NONE]. */
     fun lastMove(): Move = if (historySize > 0) history[historySize - 1].move else Move.NONE
 

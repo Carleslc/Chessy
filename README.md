@@ -38,12 +38,12 @@ Commands:
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
   eval [fen]             Evaluation of the position, term by term
-  bench [depth]          Search fixed positions to a fixed depth (default: 6), to measure the speed
+  bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
 
 Options:
-  --threads <n>          Threads for perft and divide (default: available processors)
+  --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
   --evaluator <name>     Evaluator for eval, bench and play: Material (default: Material)
   --search <name>        Search of play and bench: alphabeta (default) or greedy
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
@@ -53,7 +53,9 @@ Options:
   --pgn <file>           Save the game played to this PGN file
 ```
 
-Chessy searches with alpha-beta and iterative deepening, and evaluates with the baseline material evaluator until the "constrictor" evaluation of phase 5.
+Chessy searches with alpha-beta (iterative deepening, transposition table, principal variation search, null move pruning, late move reductions, futility pruning, static exchange evaluation and Lazy SMP for several threads),
+and evaluates with the baseline material evaluator until the "constrictor" evaluation of phase 5.
+UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Evaluator`, `Search` and `Greedy Depth`.
 The greedy search (fixed depth, only material) is kept as a reference player (UCI options `Search` and `Greedy Depth`).
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.

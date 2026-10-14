@@ -10,7 +10,7 @@ import chessy.core.Pgn
 import chessy.core.Position
 import chessy.core.WHITE
 import chessy.eval.Evaluator
-import chessy.search.AlphaBetaSearch
+import chessy.search.ParallelSearch
 import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Score
@@ -33,12 +33,12 @@ Commands:
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
   eval [fen]             Evaluation of the position, term by term
-  bench [depth]          Search fixed positions to a fixed depth (default: 6), to measure the speed
+  bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
 
 Options:
-  --threads <n>          Threads for perft and divide (default: available processors)
+  --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
   --evaluator <name>     Evaluator for eval, bench and play: Material (default: Material)
   --search <name>        Search of play and bench: alphabeta (default) or greedy
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
@@ -81,7 +81,7 @@ private class Arguments(args: Array<String>) {
 
     /** Search selected with --search, --depth and --evaluator. */
     val search: Search get() = when (options["search"]?.lowercase() ?: "alphabeta") {
-        "alphabeta" -> AlphaBetaSearch(evaluator)
+        "alphabeta" -> ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator })
         "greedy" -> GreedySearch(intOption("depth") ?: 2)
         else -> throw IllegalArgumentException("Unknown search: ${options["search"]} (alphabeta or greedy)")
     }

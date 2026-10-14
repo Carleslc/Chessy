@@ -55,11 +55,14 @@ data class SearchInfo(
     val nodes: Long,
     val timeMillis: Long,
     val principalVariation: List<Move>,
+    /** Permille of the transposition table in use, if any. */
+    val hashfull: Int? = null,
 ) {
     fun toUci(): String {
         val nps = if (timeMillis > 0) nodes * 1000 / timeMillis else 0
         val pv = principalVariation.joinToString(" ")
-        return "info depth $depth seldepth $selectiveDepth score ${Score.toUci(score)} nodes $nodes nps $nps time $timeMillis pv $pv"
+        val hash = if (hashfull != null) " hashfull $hashfull" else ""
+        return "info depth $depth seldepth $selectiveDepth score ${Score.toUci(score)} nodes $nodes nps $nps$hash time $timeMillis pv $pv"
     }
 }
 

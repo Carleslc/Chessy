@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object Bench {
 
-    const val DEFAULT_DEPTH = 6
+    const val DEFAULT_DEPTH = 12
 
     val POSITIONS = listOf(
         Position.STARTING_FEN,

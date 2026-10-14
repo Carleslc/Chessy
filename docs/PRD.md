@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0 a 3 completadas · siguiente: Fase 4 (búsqueda avanzada) |
+| Estado | Fases 0 a 4 completadas · siguiente: Fase 5 (evaluación Constrictor) |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -246,7 +246,7 @@ En CPU:
 - Sin asignaciones de objetos en el bucle caliente (movimientos como `Int`, listas preasignadas, make/unmake).
 - Rendimiento orientativo (a medir en la máquina de desarrollo):
   - perft ≥ 5 M nodos/s (un hilo, sin *bulk counting*);
-  - búsqueda ≥ 500 k nps con evaluación de material y ≥ 150 k nps con la evaluación Constrictor completa.
+  - búsqueda ≥ 500 k nps con evaluación de material (medido: ~2 M con la búsqueda de la Fase 4) y ≥ 150 k nps con la evaluación Constrictor completa.
 - Determinismo: misma posición + mismos límites de nodos → misma jugada (para `bench` y regresiones).
 - Tests automáticos (`./gradlew test`) rápidos (< 1 min); tests lentos marcados aparte.
 
@@ -361,10 +361,41 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
     Estimación: **~1900** en la escala `UCI_Elo` de Stockfish (calibrada con controles de tiempo más largos, así que es orientativa), por encima de lo previsto para esta fase.
   - Suite táctica propia (`tools/suites/tactics.epd`, 100 posiciones con una sola jugada buena según Stockfish, ver §9): **97/100** con 1 s por posición (Stockfish 19: 100/100 con 0,1 s). Son posiciones extraídas de partidas de motores todavía débiles, así que es una suite fácil; WAC o STS servirán para medir con más precisión.
 
-### Fase 4 — Búsqueda avanzada
+### Fase 4 — Búsqueda avanzada ✅
 - TT, PVS, aspiration windows, killers/history/countermove, null move, LMR, futility, extensión por jaque, SEE.
 - Gestión del tiempo avanzada (§5.2) y **Lazy SMP** (§5.5).
 - **Aceptación**: cada técnica aceptada por SPRT; estimación ≥ 2000 con la evaluación base.
+- **Resultado**: cada técnica se probó con un SPRT (fastchess, 8+0,08, `elo0=0 elo1=10`, α = 0,05, β = 0,1, máximo 1500 partidas, libro `balanced.epd`) contra la versión anterior (`tools/sprt.sh`):
+
+  | Técnica | Resultado | Elo | Partidas |
+  |---|---|---|---|
+  | Tabla de transposición (opción `Hash`, `hashfull`, XOR de Hyatt) | ✅ aceptada | +235 ± 52 | 190 |
+  | *Killers* + historial (con gravedad y penalización de las jugadas que no cortan) | ✅ aceptada | +112 ± 34 | 318 |
+  | PVS + ventanas de aspiración (y cortes de la TT solo fuera de la variante principal) | ✅ aceptada | +28 ± 16 | 1192 |
+  | *Null move pruning* (R = 3 + depth/4, no sin piezas ni dos seguidos) | ✅ aceptada | +173 ± 44 | 226 |
+  | LMR (tabla logarítmica, menos reducción en la variante principal) | ✅ aceptada | +147 ± 40 | 258 |
+  | Extensión por jaque | ❌ rechazada (sin conclusión) | −4 ± 13 | 1500 |
+  | Quitar la extensión por jaque (confirmación) | neutral | +7 ± 13 | 1500 |
+  | SEE: ordenación (capturas perdedoras al final) y poda en quiescencia | ✅ aceptada (sin conclusión, LOS 96,9 %) | +12 ± 13 | 1500 |
+  | *Reverse futility*, *futility* y *late move pruning* | ✅ aceptada | +191 ± 43 | 212 |
+  | Gestión del tiempo por estabilidad de la jugada y caída de la puntuación | ❌ rechazada (H0) | −12 ± 14 | 1290 |
+  | Lazy SMP: 4 hilos frente a 1 (opción `Threads`) | ✅ aceptada | +223 ± 42 | 196 |
+
+  - Las pruebas de SEE detectaron dos errores en la implementación (una poda que solo vale para saber el signo del resultado, no su valor), corregidos y cubiertos por un test que compara SEE con una referencia que ejecuta las capturas. El primer SPRT de SEE (−4 ± 14) medía la versión con el error; se repitió con la versión corregida.
+  - La extensión por jaque y la gestión del tiempo por estabilidad no se usan. Se pueden volver a probar con otros parámetros en la Fase 6 (ajuste).
+  - Sin *countermove*: queda para la Fase 6.
+  - Medidas finales de la versión resultante (1 hilo salvo indicación):
+    - `bench` (12 posiciones a profundidad 12): 2.230.298 nodos, ~2 M nodos/s (la evaluación estática en cada nodo y la TT cuestan velocidad, pero reducen el árbol muchísimo: la profundidad 12 visita menos nodos que la profundidad 6 de la Fase 3).
+    - **WAC** (`tools/suites/wac.epd`, 1 s por posición): **285/300** con 1 hilo y **293/300** con 4 hilos (Fase 3: 230/300; Stockfish 19 con 0,1 s: 251/300). Suite táctica propia: 99/100.
+    - Partidas contra Stockfish 19 con fuerza limitada (fastchess, 10+0,1, 100 partidas por nivel, sin pérdidas por tiempo ni jugadas ilegales):
+
+      | Rival | + / − / = | Puntos | Diferencia de Elo |
+      |---|---|---|---|
+      | `UCI_Elo` 2000 | 86 / 12 / 2 | 87 % | +330 ± 109 |
+      | `UCI_Elo` 2200 | 77 / 21 / 2 | 78 % | +220 ± 82 |
+      | `UCI_Elo` 2400 | 61 / 35 / 4 | 63 % | +92 ± 69 |
+
+      Estimación: **~2450–2500** en la escala `UCI_Elo` de Stockfish con 1 hilo (orientativa: esa escala está calibrada con controles de tiempo más largos). El objetivo de ≥ 2000 se supera ya con la evaluación de material; la Fase 5 debe mantener esta fuerza mientras cambia el estilo de juego.
 
 ### Fase 5 — Evaluación Constrictor
 - Términos de §5.3 (prioridad alta primero), `explain`/`eval`, pesos en fichero, opción UCI `Evaluator`.
