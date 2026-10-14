@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Versión | v1.0-dev (ver §8, Versiones) |
-| Estado | Fases 0 a 5 completadas · siguiente: Fase 6 (ajuste y medición) |
+| Estado | Fases 0 a 6 completadas · siguiente: Fase 7 (despliegue en Lichess) |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -63,13 +63,15 @@ Chessy/
 │       ├── search/  Búsqueda (alfa-beta, TT, quiescencia, ordenación…)
 │       ├── eval/    Interfaz Evaluator + implementaciones (Material, Constrictor…)
 │       ├── uci/     Protocolo UCI y gestión del tiempo
+│       ├── tune/    Texel tuning de los pesos de la evaluación
 │       └── Main.kt  CLI (uci por defecto, perft, divide, eval, bench…)
 └── tools/           Herramientas Python alrededor del motor
     ├── board.py, game.py, app/, utils/   Visor de FEN/PGN (PyQt5 + python-chess)
-    ├── analysis/    (futuro) análisis de partidas, gráficas de espacio/movilidad
-    ├── match/       (futuro) scripts de fastchess/cutechess, SPRT
-    ├── tuning/      (futuro) Texel tuning de pesos de evaluación
-    └── lichess/     (futuro) configuración de lichess-bot
+    ├── match.py, sprt.sh, snapshot.sh    Partidas entre motores y SPRT (fastchess)
+    ├── epd.py, sts.py, tactics.py, suites/   Suites de test (táctica, WAC, STS)
+    ├── analysis.py, style.py             Análisis de partidas y métricas de estilo
+    ├── texel.py     Posiciones de entrenamiento para el Texel tuning
+    └── lichess/     Configuración de lichess-bot
 ```
 
 La rama `v0` conserva la primera implementación (2018–2019), arreglada y con las reglas completas para ser jugable en consola (ver §12). La rama `python-old` conserva el visor de 2022 tal como estaba.
@@ -128,7 +130,8 @@ Avanzado (cada técnica entra solo si gana en SPRT):
 - **PVS** (Principal Variation Search) y **aspiration windows**.
 - **Null move pruning** (desactivado en finales con riesgo de zugzwang).
 - **LMR** (Late Move Reductions), **futility** / **reverse futility pruning**, **late move pruning**.
-- **Extensión por jaque**.
+- **Extensión por jaque** (solo jaques seguros: la pieza que da jaque no puede ser capturada).
+- **Incentivo de progreso**: la evaluación estática se reduce a medida que avanza el contador de 50 movimientos, para que el bando mejor avance en lugar de maniobrar indefinidamente.
 - **SEE** (Static Exchange Evaluation): atacantes y defensores sobre una casilla, para ordenar y podar capturas.
 - **Lazy SMP** (multihilo, §5.5) y *pondering* (pensar durante el turno del rival).
 - Precaución con el **zugzwang**: el estilo constrictor busca precisamente posiciones en las que el rival se queda sin jugadas útiles, que es donde el *null move pruning* falla. Se usará *verification search* o se desactivará con poco material no-peón. Implementado en la Fase 5: sin piezas no hay jugada nula, y con 2 piezas o menos (o a profundidad ≥ 10) el corte se verifica buscando la misma posición sin jugada nula; tests con posiciones de zugzwang.
@@ -161,7 +164,7 @@ interface Evaluator {
 ```
 
 - La búsqueda solo conoce `Evaluator` (patrón *strategy*). La implementación se elige con la opción UCI `Style`, que define tres estilos (y niveles de dificultad): **Space** (por defecto, el evaluador "Constrictor"), **Material** (material y tablas de casillas) y **Greedy** (búsqueda de profundidad fija que solo cuenta material, opción `Greedy Depth`). Cada evaluador tiene su propio *contempt*.
-- Los **pesos** viven en una estructura de datos (cargable desde fichero) para poder ajustarlos sin recompilar y hacer *Texel tuning*.
+- Los **pesos** viven en una estructura de datos (`SpaceWeights`) que se lee y se escribe en ficheros de texto (`nombre = valor`). Los pesos por defecto son el recurso `chessy/eval/space.weights`, ajustado con *Texel tuning*. La opción UCI `Weights` (y `--weights`) permite probar otros ficheros sin recompilar. Las bonificaciones no pueden volverse penalizaciones al ajustarlas, ni al revés.
 - **Evaluación cónica** (*tapered*): cada término tiene valor de medio juego (mg) y de final (eg), interpolados según la fase (material no-peón restante).
 - La evaluación es simétrica por defecto (evaluar una posición y su espejo da lo mismo con signo opuesto) — se comprueba con un test. La "personalidad" se expresa con los pesos.
 - `explain` + comando CLI `eval <fen>` muestran cada término por bando, incluido el **valor dinámico de cada pieza**.
@@ -257,7 +260,7 @@ En CPU:
 - **Validación** (hecho): `tools/perft_check.py` compara `divide` y la SAN de las jugadas del motor con `python-chess` en posiciones aleatorias.
 - **Partidas**: el motor exporta las partidas en PGN (comando `play --pgn`, y las partidas de las fases siguientes) para verlas en el visor (`tools/game.py`) o analizarlas en Lichess o Chess.com.
 - **Matches**: scripts para `fastchess`/`cutechess-cli` (SPRT entre versiones, partidas contra Stockfish limitado).
-- **Tuning**: Texel tuning de los pesos sobre posiciones etiquetadas.
+- **Tuning** (hecho): `tools/texel.py` extrae las posiciones tranquilas de partidas con su resultado y `chessy tune` ajusta los pesos (Texel tuning).
 - **Lichess**: configuración de `lichess-bot` apuntando al ejecutable UCI del motor.
 - **CLI**: lanzadores para jugar contra el motor en consola o en una GUI.
 
@@ -288,7 +291,7 @@ En CPU:
    - búsqueda (Fase 3, ver sus tests);
    - simetría de la evaluación (Fase 5).
 2. **Táctica**: suites EPD con tiempo fijo (`tools/epd.py`): la suite propia `tools/suites/tactics.epd`, extraída con `tools/tactics.py` de partidas reales usando Stockfish como oráculo (posiciones con una sola jugada buena, al menos 200 cp mejor que la segunda), y suites clásicas como Win At Chess (WAC) cuando se añadan al repositorio; mates en N.
-3. **Posicional**: Strategic Test Suite (STS), con especial atención a las categorías de control del centro, espacio y juego de peones.
+3. **Posicional**: Strategic Test Suite (STS, `tools/suites/sts.epd` y `tools/sts.py`), con especial atención a las categorías de control del centro, espacio y juego de peones.
 4. **Estilo**: métricas por partida: movilidad media del rival, diferencial de espacio, número de piezas rivales atrapadas, % de partidas ganadas con material inferior.
 5. **Fuerza**:
    - SPRT con fastchess para aceptar cada cambio: `elo0=0, elo1=5` (o similar) a control de tiempo corto, con el libro de aperturas equilibradas `tools/openings/balanced.epd` (generado con `tools/openings.py`) y cada apertura jugada con ambos colores (`-repeat`).
@@ -430,11 +433,51 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 
     Entre ellos (Space contra Material), la movilidad del rival de Space es 21,4 frente a 29,7, y el 22 % de sus victorias llegan tras ir por detrás en material (Material: 0 %).
   - `tools/analysis.py`: gráfica de los términos de la evaluación a lo largo de una partida.
-  - Pendiente: STS (la suite no está en el repositorio), y los pesos en fichero, que se trasladan a la Fase 6 junto con el *Texel tuning*. Observación para la Fase 6: con el *contempt*, en posiciones cerradas a veces maniobra sin progresar durante muchas jugadas; conviene un incentivo de progreso (por ejemplo, reducir la evaluación cuando avanza el contador de 50 movimientos).
+  - STS (añadida en la Fase 6, 0,2 s por posición): Space **10.775/15.000** frente a 9.806 de Material, mejor en los 15 temas (socavar +151, columnas abiertas +161, casillas vacías +96, actividad del rey +85, control del centro +28…). Stockfish 19 con 0,1 s: 13.876.
+  - Los pesos en fichero pasaron a la Fase 6, junto con el *Texel tuning*. Observación para la Fase 6: con el *contempt*, en posiciones cerradas a veces maniobra sin progresar durante muchas jugadas; conviene un incentivo de progreso (por ejemplo, reducir la evaluación cuando avanza el contador de 50 movimientos).
 
-### Fase 6 — Ajuste y medición
+### Fase 6 — Ajuste y medición ✅
 - Texel tuning de pesos, ajuste de parámetros de búsqueda, calibración contra Stockfish limitado / CCRL.
 - **Aceptación**: ≥ 2000 Elo medido.
+- **Resultado**:
+  - **Pesos en fichero**: `SpaceWeights` se lee y se escribe como texto (`nombre = valor`, 92 pesos ajustables). Los pesos por defecto son el recurso `chessy/eval/space.weights`. Opción UCI `Weights` y `--weights` para probar otros ficheros, y comando `chessy weights` para ver los actuales.
+  - **Texel tuning** (`chessy tune`, búsqueda local con pasos adaptativos y error cuadrático medio contra el resultado de la partida, `k` ajustado al principio). Datos: posiciones tranquilas (sin jaque, y la jugada de la partida no es captura, promoción ni jaque) de partidas propias a 2+0,02 desde 5000 aperturas equilibradas (`tools/texel.py`). Los pesos del estilo (espacio, territorio, restricción, porcentaje de movilidad), el *contempt* y el peón de medio juego (la unidad) no se ajustan. Las bonificaciones no pueden volverse penalizaciones ni al revés.
+  - Cada cambio con SPRT (8+0,08, libro `balanced.epd`):
+
+    | Cambio | Resultado |
+    |---|---|
+    | Incentivo de progreso (evaluación × (200 − contador de 50 movimientos) / 200) | −1 ± 16 (1122 partidas): neutro, se mantiene por el comportamiento |
+    | *Countermove* | +6 ± 15 (1260): `bench` con un 17 % menos de nodos, se mantiene |
+    | Texel 1: 817 k posiciones de 10.000 partidas | ✅ **+142 ± 43** (284) |
+    | Texel 1 con el material fijo y cambios limitados | +76 ± 29 (458); la versión libre le gana por +48 ± 22 (732) |
+    | Texel 2: 1,72 M posiciones (10.000 partidas más del motor ajustado) | ✅ **+20 ± 13** (1698) |
+    | Extensión por jaque seguro (la pieza que da jaque no puede ser capturada) | +7,8 ± 9,2 (3000, LOS 95 %), se mantiene |
+    | Signos restringidos y reajuste (un alfil atrapado había quedado como bonificación) | +0,8 ± 8,8 (3580): sin regresión |
+
+  - El ajuste revaloriza las piezas frente a los peones en el medio juego (caballo 626, alfil 667, torre 871 y dama 2248 con el peón en 100; en el final 278, 313, 577 y 781), reduce la movilidad y aumenta amenazas, puestos avanzados y peones pasados.
+  - Calibración con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel, sin pérdidas por tiempo):
+
+    | Rival | + / − / = | Puntos | Diferencia de Elo | Fase 5 |
+    |---|---|---|---|---|
+    | `UCI_Elo` 2400 | 76 / 19 / 5 | 78,5 % | +225 ± 87 | +191 |
+    | `UCI_Elo` 2600 | 61 / 30 / 9 | 65,5 % | +111 ± 68 | +60 |
+    | `UCI_Elo` 2800 | 25 / 55 / 20 | 35 % | −108 ± 64 | −156 |
+    | `UCI_Elo` 3000 | 6 / 76 / 18 | 15 % | −301 ± 81 | — |
+
+    Estimación: **~2700–2750** en la escala `UCI_Elo` de Stockfish (Fase 5: ~2650–2700). La ganancia contra Stockfish (~+50) es mucho menor que la de los SPRT entre versiones propias, como es habitual.
+  - Táctica: WAC 283/300 con 1 s (Fase 5: 285). STS: 10.854/15.000 (Fase 5: 10.775), con más puntos en control del centro (+99), caballos (+80), 7ª fila (+62) y alfil contra caballo (+34), y menos en casillas vacías (−74), actividad del rey (−48) y columnas abiertas (−47).
+  - **Estilo**: las métricas contra Stockfish `UCI_Elo` 2400 muestran que el estilo se ha diluido. Sigue restringiendo más que Material, pero menos que la Fase 5: al revalorizar las piezas, los términos de espacio pesan menos en proporción y ya no juega con material de menos.
+
+    | Métrica | Material | Space (Fase 5) | Space (Fase 6) |
+    |---|---|---|---|
+    | Movilidad media del rival | 27,6 | **25,2** | 26,3 |
+    | Espacio (diferencia) | 0,67 | **1,57** | 0,80 |
+    | Territorio (diferencia) | −0,96 | **+2,44** | +1,34 |
+    | Piezas rivales atrapadas | 0,20 | **0,32** | 0,26 |
+    | Victorias tras ir por detrás en material | — | 3/69 | 0/76 |
+
+  - `bench`: 1.443.226 nodos, ~880 k nodos/s.
+  - Pendiente de decidir: recuperar el estilo subiendo los pesos del estilo (espacio, territorio, restricción) en proporción al nuevo material, a cambio de parte de la fuerza.
 
 ### Fase 7 — Despliegue y extras
 - BOT en Lichess con `lichess-bot`, empaquetado.
