@@ -1,0 +1,20 @@
+[Event "Chessy game"]
+[Site "Chessy (v0)"]
+[Date "2026.10.13"]
+[Round "-"]
+[White "Chessy"]
+[Black "Chessy"]
+[Result "1-0"]
+
+1. d4 d5 2. Be3 Be6 3. Nd2 Nd7 4. Ngf3 Ngf6 5. Ng5 Bf5 6. Bf4 h6 7. Ngf3 g5 8.
+Be5 Bg7 9. e3 a6 10. Bd3 Bxd3 11. cxd3 g4 12. Nh4 e6 13. O-O O-O 14. Bxf6 Nxf6
+15. Rc1 Rb8 16. Qc2 Rc8 17. Qa4 Nd7 18. g3 Nb6 19. Qa5 Qd6 20. Qc3 Rfe8 21. Nb3
+Qd7 22. e4 e5 23. dxe5 Rxe5 24. d4 Rxe4 25. Nc5 Qb5 26. Nxe4 dxe4 27. Rce1 Qd5
+28. Qc5 Qxa2 29. Nf5 Nd7 30. Qb4 Rb8 31. Nxg7 Qd5 32. Qe7 Kxg7 33. Rxe4 h5 34.
+Rfe1 Kg8 35. Rc1 Rc8 36. Rc2 Qb5 37. Rxc7 Rxc7 38. Qd8+ Nf8 39. Qxc7 Qxb2 40.
+Rf4 Qb3 41. Qd8 Kg7 42. Kg2 Qa2 43. d5 Qa1 44. Qe8 f6 45. Qxh5 Ng6 46. Rxg4 Qb1
+47. d6 Qc2 48. d7 Qc6+ 49. Kh3 Qxd7 50. Qxg6+ Kf8 51. Qxf6+ Ke8 52. Qg7 Qd5 53.
+Kh4 Qd8+ 54. Kh5 Qd5+ 55. Kg6 Qe6+ 56. Kg5 Qe7+ 57. Kf5 Qc5+ 58. Qe5+ Qxe5+ 59.
+Kxe5 Kd7 60. Kd5 Kc7 61. Kc5 b6+ 62. Kd5 Kb7 63. Rg7+ Kb8 64. g4 b5 65. Kc5 b4
+66. Kxb4 Kc8 67. Ra7 Kb8 68. g5 Kxa7 69. Kc5 Kb7 70. g6 Kc7 71. g7 Kd7 72. g8=Q
+Ke7 73. Qg6 a5 74. Kd5 Kd7 75. Qg7+ Kc8 76. Kc6 a4 77. Qg8# 1-0
