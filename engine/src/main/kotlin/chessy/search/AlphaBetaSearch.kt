@@ -104,6 +104,8 @@ class AlphaBetaSearch(
     private lateinit var timeManager: TimeManager
     /** Color of the engine in this search, for the contempt. */
     private var rootColor = 0
+    /** Depth of the current iteration, to limit the extensions. */
+    private var rootDepth = 0
     private var startTime = 0L
     private var nodes = 0L
     private var selectiveDepth = 0
@@ -135,7 +137,8 @@ class AlphaBetaSearch(
         for (depth in 1..maxDepth) {
             canAbort = depth > 1
             selectiveDepth = 0
-            val score = aspirationSearch(depth + depthOffset, result.score)
+            rootDepth = depth + depthOffset
+            val score = aspirationSearch(rootDepth, result.score)
             if (aborted) {
                 break // The previous iteration is the last complete one
             }
@@ -284,7 +287,9 @@ class AlphaBetaSearch(
                 }
             }
 
-            val newDepth = depth - 1
+            // Check extension: a safe check (the checking piece cannot be captured) is searched one ply deeper
+            val extension = if (givesCheck && ply < rootDepth * 2 && !position.isAttacked(move.to, position.sideToMove)) 1 else 0
+            val newDepth = depth - 1 + extension
             var score: Int
             if (legalMoves == 1) {
                 score = -negamax(newDepth, ply + 1, -beta, -alpha, childOnPv)

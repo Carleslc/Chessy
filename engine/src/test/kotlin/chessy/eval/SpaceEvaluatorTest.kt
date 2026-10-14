@@ -72,8 +72,8 @@ class SpaceEvaluatorTest {
 
     @Test
     fun trappedPiece() {
-        // The bishop on h8 is blocked by its own pawn on g7
-        assertTrue(term("7B/6P1/5p2/8/8/8/8/k3K3 w - - 0 1", "Trapped pieces") < 0)
+        // The knight on a8 is blocked by its own pawns on b6 and c7
+        assertTrue(term("N7/2P5/1P6/8/8/8/8/k3K3 w - - 0 1", "Trapped pieces") < 0)
     }
 
     @Test

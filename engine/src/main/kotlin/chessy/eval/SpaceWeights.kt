@@ -52,6 +52,11 @@ data class SpaceWeights(
     val passedOwnKingDistance: Int = 2,
     val overextendedPawn: TaperedScore = TaperedScore(-10, -5),
     val hole: TaperedScore = TaperedScore(-5, 0),
+    /**
+     * Threats are bonuses for the attacker, counted on the pieces of the opponent: enemy pieces attacked by a pawn,
+     * enemy rooks and queens attacked by a minor piece, an enemy queen attacked by a rook, and enemy pieces and pawns
+     * that are attacked and not defended (hanging). Leaving an own piece hanging gives the bonus to the opponent.
+     */
     val threatByPawn: TaperedScore = TaperedScore(60, 40),
     val threatByMinor: TaperedScore = TaperedScore(40, 30),
     val threatByRook: TaperedScore = TaperedScore(40, 30),
@@ -130,57 +135,64 @@ data class SpaceWeights(
         private fun scalar(name: String, get: (SpaceWeights) -> Int, range: IntRange = -10_000..10_000, set: SpaceWeights.(Int) -> SpaceWeights) =
             listOf(Parameter(name, get, { weights, value -> weights.set(value) }, range))
 
-        private fun tapered(name: String, get: (SpaceWeights) -> TaperedScore, set: SpaceWeights.(TaperedScore) -> SpaceWeights) = listOf(
-            Parameter("$name.mg", { get(it).middlegame }, { weights, value -> weights.set(get(weights).copy(middlegame = value)) }, -10_000..10_000),
-            Parameter("$name.eg", { get(it).endgame }, { weights, value -> weights.set(get(weights).copy(endgame = value)) }, -10_000..10_000),
+        /** Range of the bonuses (they cannot become penalties when tuned). */
+        private val BONUS = 0..10_000
+        /** Range of the penalties. */
+        private val PENALTY = -10_000..0
+        private val ANY = -10_000..10_000
+
+        private fun tapered(name: String, get: (SpaceWeights) -> TaperedScore, range: IntRange = ANY, set: SpaceWeights.(TaperedScore) -> SpaceWeights) = listOf(
+            Parameter("$name.mg", { get(it).middlegame }, { weights, value -> weights.set(get(weights).copy(middlegame = value)) }, range),
+            Parameter("$name.eg", { get(it).endgame }, { weights, value -> weights.set(get(weights).copy(endgame = value)) }, range),
         )
 
         /** Tapered weights of an array, for the given names and indexes. */
         private fun taperedArray(
-            name: String, indexes: Map<String, Int>, get: (SpaceWeights) -> Array<TaperedScore>, set: SpaceWeights.(Array<TaperedScore>) -> SpaceWeights,
+            name: String, indexes: Map<String, Int>, get: (SpaceWeights) -> Array<TaperedScore>, range: IntRange = ANY,
+            set: SpaceWeights.(Array<TaperedScore>) -> SpaceWeights,
         ) = indexes.flatMap { (label, index) ->
-            tapered("$name.$label", { get(it)[index] }) { score -> set(get(this).copyOf().also { it[index] = score }) }
+            tapered("$name.$label", { get(it)[index] }, range) { score -> set(get(this).copyOf().also { it[index] = score }) }
         }
 
         /** All the weights that can be saved and tuned (all but the mobility tables, computed from [mobilityScale]). */
         val PARAMETERS: List<Parameter> = listOf(
-            taperedArray("pieceValues", PIECES, { it.pieceValues }) { copy(pieceValues = it) },
+            taperedArray("pieceValues", PIECES, { it.pieceValues }, BONUS) { copy(pieceValues = it) },
             scalar("piecePstPercent", { it.piecePstPercent }, 0..200) { copy(piecePstPercent = it) },
             scalar("mobilityPercent", { it.mobilityPercent }, 0..500) { copy(mobilityPercent = it) },
-            taperedArray("mobilityScale", MOBILE_PIECES, { it.mobilityScale }) { copy(mobilityScale = it) },
+            taperedArray("mobilityScale", MOBILE_PIECES, { it.mobilityScale }, BONUS) { copy(mobilityScale = it) },
             scalar("trappedMobility", { it.trappedMobility }, 0..3) { copy(trappedMobility = it) },
-            taperedArray("trapped", TRAPPABLE_PIECES, { it.trapped }) { copy(trapped = it) },
+            taperedArray("trapped", TRAPPABLE_PIECES, { it.trapped }, PENALTY) { copy(trapped = it) },
             scalar("worstPiecePercent", { it.worstPiecePercent }, 0..200) { copy(worstPiecePercent = it) },
             scalar("spacePercent", { it.spacePercent }, 0..500) { copy(spacePercent = it) },
             scalar("spaceMaterialThreshold", { it.spaceMaterialThreshold }, 0..8000) { copy(spaceMaterialThreshold = it) },
-            tapered("territory", { it.territory }) { copy(territory = it) },
-            tapered("kingZoneControl", { it.kingZoneControl }) { copy(kingZoneControl = it) },
-            tapered("restriction", { it.restriction }) { copy(restriction = it) },
-            tapered("knightOutpost", { it.knightOutpost }) { copy(knightOutpost = it) },
-            tapered("bishopOutpost", { it.bishopOutpost }) { copy(bishopOutpost = it) },
-            tapered("rookOpenFile", { it.rookOpenFile }) { copy(rookOpenFile = it) },
-            tapered("rookSemiOpenFile", { it.rookSemiOpenFile }) { copy(rookSemiOpenFile = it) },
-            tapered("rookOnSeventh", { it.rookOnSeventh }) { copy(rookOnSeventh = it) },
-            tapered("doubledPawn", { it.doubledPawn }) { copy(doubledPawn = it) },
-            tapered("isolatedPawn", { it.isolatedPawn }) { copy(isolatedPawn = it) },
-            taperedArray("connectedPawn", PAWN_RANKS, { it.connectedPawn }) { copy(connectedPawn = it) },
-            taperedArray("passedPawn", PAWN_RANKS, { it.passedPawn }) { copy(passedPawn = it) },
-            scalar("passedEnemyKingDistance", { it.passedEnemyKingDistance }) { copy(passedEnemyKingDistance = it) },
-            scalar("passedOwnKingDistance", { it.passedOwnKingDistance }) { copy(passedOwnKingDistance = it) },
-            tapered("overextendedPawn", { it.overextendedPawn }) { copy(overextendedPawn = it) },
-            tapered("hole", { it.hole }) { copy(hole = it) },
-            tapered("threatByPawn", { it.threatByPawn }) { copy(threatByPawn = it) },
-            tapered("threatByMinor", { it.threatByMinor }) { copy(threatByMinor = it) },
-            tapered("threatByRook", { it.threatByRook }) { copy(threatByRook = it) },
-            tapered("hangingPiece", { it.hangingPiece }) { copy(hangingPiece = it) },
-            tapered("hangingPawn", { it.hangingPawn }) { copy(hangingPawn = it) },
+            tapered("territory", { it.territory }, BONUS) { copy(territory = it) },
+            tapered("kingZoneControl", { it.kingZoneControl }, BONUS) { copy(kingZoneControl = it) },
+            tapered("restriction", { it.restriction }, BONUS) { copy(restriction = it) },
+            tapered("knightOutpost", { it.knightOutpost }, BONUS) { copy(knightOutpost = it) },
+            tapered("bishopOutpost", { it.bishopOutpost }, BONUS) { copy(bishopOutpost = it) },
+            tapered("rookOpenFile", { it.rookOpenFile }, BONUS) { copy(rookOpenFile = it) },
+            tapered("rookSemiOpenFile", { it.rookSemiOpenFile }, BONUS) { copy(rookSemiOpenFile = it) },
+            tapered("rookOnSeventh", { it.rookOnSeventh }, BONUS) { copy(rookOnSeventh = it) },
+            tapered("doubledPawn", { it.doubledPawn }, PENALTY) { copy(doubledPawn = it) },
+            tapered("isolatedPawn", { it.isolatedPawn }, PENALTY) { copy(isolatedPawn = it) },
+            taperedArray("connectedPawn", PAWN_RANKS, { it.connectedPawn }, BONUS) { copy(connectedPawn = it) },
+            taperedArray("passedPawn", PAWN_RANKS, { it.passedPawn }, BONUS) { copy(passedPawn = it) },
+            scalar("passedEnemyKingDistance", { it.passedEnemyKingDistance }, 0..100) { copy(passedEnemyKingDistance = it) },
+            scalar("passedOwnKingDistance", { it.passedOwnKingDistance }, 0..100) { copy(passedOwnKingDistance = it) },
+            tapered("overextendedPawn", { it.overextendedPawn }, PENALTY) { copy(overextendedPawn = it) },
+            tapered("hole", { it.hole }, PENALTY) { copy(hole = it) },
+            tapered("threatByPawn", { it.threatByPawn }, BONUS) { copy(threatByPawn = it) },
+            tapered("threatByMinor", { it.threatByMinor }, BONUS) { copy(threatByMinor = it) },
+            tapered("threatByRook", { it.threatByRook }, BONUS) { copy(threatByRook = it) },
+            tapered("hangingPiece", { it.hangingPiece }, BONUS) { copy(hangingPiece = it) },
+            tapered("hangingPawn", { it.hangingPawn }, BONUS) { copy(hangingPawn = it) },
             scalar("kingDanger", { it.kingDanger }, 0..100) { copy(kingDanger = it) },
             scalar("kingDangerMinUnits", { it.kingDangerMinUnits }, 0..50) { copy(kingDangerMinUnits = it) },
             scalar("maxKingDanger", { it.maxKingDanger }, 0..2000) { copy(maxKingDanger = it) },
-            tapered("pawnShield", { it.pawnShield }) { copy(pawnShield = it) },
-            tapered("openFileNearKing", { it.openFileNearKing }) { copy(openFileNearKing = it) },
-            tapered("bishopPair", { it.bishopPair }) { copy(bishopPair = it) },
-            tapered("tempo", { it.tempo }) { copy(tempo = it) },
+            tapered("pawnShield", { it.pawnShield }, BONUS) { copy(pawnShield = it) },
+            tapered("openFileNearKing", { it.openFileNearKing }, PENALTY) { copy(openFileNearKing = it) },
+            tapered("bishopPair", { it.bishopPair }, BONUS) { copy(bishopPair = it) },
+            tapered("tempo", { it.tempo }, BONUS) { copy(tempo = it) },
             scalar("contempt", { it.contempt }, -200..200) { copy(contempt = it) },
         ).flatten()
 
