@@ -95,6 +95,31 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   [`sts_rating.py`](https://github.com/fsmosca/STS-Rating) (v0: from its score with the same formula).
   STS Elo underrates Chessy: it measures single positional moves, while Chessy gains its points in the search.
 
+STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
+
+| Theme | v0 | Greedy | Material | Space | Full | Stockfish 19 |
+|---|---|---|---|---|---|---|
+| Undermining | 317 | 230 | 542 | **679** | 675 | 929 |
+| Open files and diagonals | 344 | 251 | 553 | **681** | 680 | 912 |
+| Knight outposts | 396 | 178 | 632 | 700 | **731** | 923 |
+| Square vacancy | 312 | 197 | 607 | 650 | **686** | 941 |
+| Bishop vs knight | 543 | **857** | 744 | 843 | 841 | 962 |
+| Recapturing | 823 | 767 | 869 | 892 | **898** | 954 |
+| Offer of simplification | 434 | 212 | 631 | 665 | **666** | 902 |
+| Advancement of f/g/h pawns | 305 | 193 | 509 | **645** | 621 | 902 |
+| Advancement of a/b/c pawns | 305 | 190 | 495 | **590** | 521 | 862 |
+| Simplification | 652 | **865** | 726 | 826 | 793 | 967 |
+| King activity | 389 | 276 | 601 | 624 | **693** | 909 |
+| Center control | 436 | 264 | 672 | **774** | 764 | 923 |
+| Pawn play in the center | 524 | 278 | 701 | 752 | **761** | 907 |
+| 7th rank | 491 | 313 | 725 | **827** | 824 | 941 |
+| Avoid pointless exchange | 464 | 485 | 624 | **727** | 714 | 942 |
+| **Total** | 6735 | 5556 | 9631 | **10875** | 10868 | 13876 |
+
+Space is better at pawn play (pawn advances on both wings, undermining) and center control; Full at king activity,
+outposts and square vacancy (piece activity). Greedy only shines where the answer is a capture or an exchange
+(bishop vs knight, simplification).
+
 Style metrics (`tools/style.py`, after the opening, against Stockfish at a similar level: v0 and Greedy against
 1320–1600, Material against 2600, Space and Full against 2600 and 2800):
 
