@@ -39,9 +39,7 @@ import chessy.core.squareName
  *
  * Not thread-safe: it reuses internal arrays, so each search thread needs its own instance.
  */
-class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT) : Evaluator {
-
-    override val name = "Space"
+class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override val name: String = "Space") : Evaluator {
 
     override val contempt: Int get() = weights.contempt
 

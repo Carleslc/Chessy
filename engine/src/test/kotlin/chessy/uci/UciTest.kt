@@ -140,7 +140,7 @@ class UciTest {
     @Test
     fun options() {
         val lines = send("uci")
-        assertTrue("option name Style type combo default Space var Space var Material var Greedy" in lines, lines.toString())
+        assertTrue("option name Style type combo default Space var Space var Full var Material var Greedy" in lines, lines.toString())
         assertTrue("option name Greedy Depth type spin default 2 min 1 max 4" in lines)
         assertTrue("option name Hash type spin default 64 min 1 max 1024" in lines)
         assertTrue("option name Threads type spin default 1 min 1 max 256" in lines)
@@ -156,6 +156,9 @@ class UciTest {
         send("setoption name Style value Space")
         assertTrue(bestMove(send("go depth 4")) != "d1d5")
         assertTrue(send("eval").single().startsWith("Space evaluation"))
+        send("setoption name Style value Full")
+        assertTrue(bestMove(send("go depth 4")) != "d1d5")
+        assertTrue(send("eval").single().startsWith("Full evaluation"))
         assertTrue(send("setoption name Style value Foo").single().startsWith("info string Error"))
     }
 

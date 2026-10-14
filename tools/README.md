@@ -110,7 +110,26 @@ which plays games until it can decide with the given confidence. Save a copy of 
 ./sprt.sh new base 0 5 10+0.1 8
 ROUNDS=750 ./sprt.sh new base   # at most 1500 games
 # Two styles of the same version
-NEW_NAME=space NEW_ARGS=option.Style=Space BASE_NAME=material BASE_ARGS=option.Style=Material ./sprt.sh new new
+NEW_NAME=full NEW_ARGS=option.Style=Full BASE_NAME=space BASE_ARGS=option.Style=Space ./sprt.sh new new
+```
+
+`engines/` (ignored by git) keeps one snapshot per phase of the [PRD](../docs/PRD.md) to compare versions:
+`phase3` (first alpha-beta, Material), `phase4` (advanced search, Material), `phase5` (Space evaluation)
+and `phase6` (tuned, styles Space and Full), and `v0` (a worktree of the `v0` branch, see below).
+Snapshots of a single test are removed when the test ends.
+
+## Chessy v0
+
+The first implementation (branch `v0`) only plays in the console. `v0_uci.py` adapts it to UCI, to play it in fastchess
+or in a chess GUI (it starts v0 from the position of each move, so it pays the start of the JVM on every move:
+use time controls of at least 1 minute):
+
+```
+git worktree add engines/v0 v0
+(cd engines/v0 && mvn -q compile dependency:build-classpath -Dmdep.outputFile=classpath.txt)
+fastchess -engine cmd=python3 args=v0_uci.py name=Chessy-v0 -engine cmd=engines/phase6/bin/chessy name=Greedy option.Style=Greedy \
+  -each tc=60+0.6 -openings file=openings/balanced.epd format=epd -repeat -rounds 30 -concurrency 6 -pgnout file=games/v0.pgn
+python epd.py suites/wac.epd --movetime 1.6 -e "python3 v0_uci.py"
 ```
 
 ## Openings

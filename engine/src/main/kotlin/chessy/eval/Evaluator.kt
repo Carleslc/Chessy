@@ -30,17 +30,24 @@ interface Evaluator {
     val contempt: Int get() = 0
 
     companion object {
-        /** Available evaluators by name, the default one first. */
+        /**
+         * Available evaluators by name, the default one first: Space (the constrictor), Full (the same evaluation
+         * with every weight tuned for strength) and Material.
+         */
         val all: Map<String, () -> Evaluator> = linkedMapOf(
             "Space" to { SpaceEvaluator() },
+            "Full" to { SpaceEvaluator(SpaceWeights.FULL, "Full") },
             "Material" to ::MaterialEvaluator,
         )
 
         const val DEFAULT = "Space"
 
-        fun named(name: String): Evaluator =
-            all.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.invoke()
+        /** Evaluator by name. [weights] replace the weights of the evaluators of [SpaceEvaluator] (Space and Full). */
+        fun named(name: String, weights: SpaceWeights? = null): Evaluator {
+            val evaluator = all.entries.firstOrNull { it.key.equals(name, ignoreCase = true) }?.value?.invoke()
                 ?: throw IllegalArgumentException("Unknown evaluator: $name (${all.keys.joinToString()})")
+            return if (weights != null && evaluator is SpaceEvaluator) SpaceEvaluator(weights, evaluator.name) else evaluator
+        }
     }
 }
 

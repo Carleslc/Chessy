@@ -13,7 +13,7 @@ engine:
   ponder: false                     # Chessy does not ponder yet
 
   uci_options:
-    Style: Space                    # Space (the constrictor, strongest), Material or Greedy (weakest)
+    Style: Space                    # Space (the constrictor, default), Full (strongest), Material or Greedy (weakest)
     Threads: 1
     Hash: 64
     Move Overhead: 100              # Milliseconds kept for network delays, increase it if the bot loses on time

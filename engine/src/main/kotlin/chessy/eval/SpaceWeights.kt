@@ -4,11 +4,12 @@ import java.io.File
 import kotlin.math.sqrt
 
 /**
- * Weights of the "Constrictor" evaluation, in centipawns (middlegame, endgame).
+ * Weights of the "Constrictor" evaluation ([SpaceEvaluator]), in centipawns (middlegame, endgame).
  *
- * The values written here are the hand-chosen starting point. The weights used by default ([DEFAULT]) are read from
- * the file `space.weights` (resources), tuned with [chessy.tune.TexelTuner] on top of these values.
- * The style is given by the weights of space, territory, restriction and mobility ([STYLE], not tuned).
+ * The values written here are the hand-chosen starting point. The weights of the styles are read from resources,
+ * tuned with [chessy.tune.TexelTuner] on top of these values: [DEFAULT] (`space.weights`, style Space) keeps the
+ * constrictor style with the weights of space, territory, restriction and mobility ([STYLE]), and [FULL]
+ * (`full.weights`, style Full) has every weight tuned for strength.
  */
 data class SpaceWeights(
     /** Material values, indexed by piece type. */
@@ -102,7 +103,7 @@ data class SpaceWeights(
 
     /** Text of a weights file (`name = value` lines), readable with [parse]. */
     fun format(): String = buildString {
-        appendLine("# Weights of the Chessy \"Constrictor\" evaluation (Style Space), in centipawns.")
+        appendLine("# Weights of the Chessy \"Constrictor\" evaluation (styles Space and Full), in centipawns.")
         appendLine("# Tapered weights have a middlegame (mg) and an endgame (eg) value.")
         // A blank line around each group of weights (tapered weights and arrays)
         var group: String? = null
@@ -223,7 +224,14 @@ data class SpaceWeights(
 
         fun load(file: File): SpaceWeights = parse(file.readText())
 
-        /** Tuned weights of the resource `space.weights`, or the starting values if it is missing. */
-        val DEFAULT: SpaceWeights = SpaceWeights::class.java.getResource("space.weights")?.readText()?.let { parse(it) } ?: SpaceWeights()
+        /** Weights of a resource file, or the starting values if it is missing. */
+        private fun resource(name: String): SpaceWeights =
+            SpaceWeights::class.java.getResource(name)?.readText()?.let { parse(it) } ?: SpaceWeights()
+
+        /** Weights of the Space style (`space.weights`): tuned, keeping the constrictor style. */
+        val DEFAULT: SpaceWeights = resource("space.weights")
+
+        /** Weights of the Full style (`full.weights`): every weight tuned, for the strongest play. */
+        val FULL: SpaceWeights = resource("full.weights")
     }
 }

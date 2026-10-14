@@ -32,3 +32,17 @@ Test the engine locally with `tools/match.py`, which uses the same UCI protocol:
 ```
 python match.py --games 100 --tc 60+1
 ```
+
+## Playing with an electronic board
+
+Once the bot is online, challenge it from your own (human) Lichess account. Any electronic board connected to Lichess
+can then play against Chessy:
+
+- **ChessUp 2**: connect the board to your Lichess account in the ChessUp app and challenge the bot.
+- **[chessconnect](https://chessconnect.de/)** (Chrome extension, Android and iOS app) connects many boards, ChessUp included,
+  to Lichess through its official API. It allows rapid, classical and correspondence games, and also blitz
+  in direct challenges, such as a challenge to the bot.
+
+chessconnect and the board apps only connect to online sites, not to local engines, so the Lichess bot is the way
+to play Chessy on the board. A bot plays a single configuration: the default style, Space (set `Style` in `config.yml`
+to run another one, for example a second bot account with `Full`).

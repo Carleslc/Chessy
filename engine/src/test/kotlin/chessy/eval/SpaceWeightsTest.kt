@@ -5,6 +5,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
 
 class SpaceWeightsTest {
 
@@ -43,6 +44,19 @@ class SpaceWeightsTest {
     fun mobilityTablesFollowTheScale() {
         val weights = SpaceWeights().with(mapOf("mobilityScale.knight.mg" to 60))
         assertEquals(SpaceWeights().mobility[1][8].middlegame * 2, weights.mobility[1][8].middlegame, absoluteTolerance = 1)
+    }
+
+    @Test
+    fun fullStyle() {
+        val full = Evaluator.named("full")
+        assertEquals("Full", full.name)
+        assertTrue((full as SpaceEvaluator).weights === SpaceWeights.FULL)
+        assertNotEquals(SpaceWeights.DEFAULT.toParameters(), SpaceWeights.FULL.toParameters())
+        // Other weights keep the name of the style
+        val custom = Evaluator.named("Full", SpaceWeights.DEFAULT) as SpaceEvaluator
+        assertEquals("Full", custom.name)
+        assertTrue(custom.weights === SpaceWeights.DEFAULT)
+        assertTrue(Evaluator.named("Material", SpaceWeights.DEFAULT) is MaterialEvaluator)
     }
 
     @Test

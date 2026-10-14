@@ -7,7 +7,6 @@ import chessy.core.Notation
 import chessy.core.Perft
 import chessy.core.Position
 import chessy.eval.Evaluator
-import chessy.eval.SpaceEvaluator
 import chessy.eval.SpaceWeights
 import chessy.search.ParallelSearch
 import chessy.search.Bench
@@ -40,7 +39,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val moveOverhead = SpinOption("Move Overhead", default = 100, min = 0, max = 5000)
     /**
      * Playing style (and difficulty): the alpha-beta search with an evaluator ("Space", the constrictor, by default,
-     * or "Material"), or the greedy search ("Greedy", fixed depth and only material, the weakest).
+     * "Full", the strongest, or "Material"), or the greedy search ("Greedy", fixed depth and only material, the weakest).
      */
     private val style = ComboOption("Style", default = Evaluator.DEFAULT, values = Evaluator.all.keys.toList() + GREEDY)
     private val greedyDepth = SpinOption("Greedy Depth", default = 2, min = 1, max = GreedySearch.MAX_DEPTH)
@@ -50,11 +49,13 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val threads = SpinOption("Threads", default = 1, min = 1, max = ParallelSearch.MAX_THREADS) {
         alphaBeta.threads = it
     }
-    /** Weights file of the Space style (empty: the tuned weights of the engine). */
+    /** Weights file of the Space and Full styles (empty: the tuned weights of the style). */
     private val weightsFile = StringOption("Weights") { file ->
-        spaceWeights = if (file.isBlank()) SpaceWeights.DEFAULT else SpaceWeights.load(File(file))
+        customWeights = if (file.isBlank()) null else SpaceWeights.load(File(file))
     }
-    private var spaceWeights = SpaceWeights.DEFAULT
+    private var customWeights: SpaceWeights? = null
+    /** Evaluator name and weights file of the evaluators of the search, to create them again when they change. */
+    private var evaluatorSettings: Pair<String, SpaceWeights?> = Evaluator.DEFAULT to null
     private val options = listOf<Option>(style, hash, threads, moveOverhead, greedyDepth, weightsFile)
         .associateBy { it.name.lowercase() }
 
@@ -69,10 +70,10 @@ class Uci(private val output: (String) -> Unit = ::send) {
     /** The evaluator of the Style option (the greedy search only counts material). */
     private fun evaluator(): Evaluator {
         val name = if (style.value == GREEDY) "Material" else style.value
-        val current = alphaBeta.evaluator
-        if (current.name != name || (current is SpaceEvaluator && current.weights !== spaceWeights)) {
-            val weights = spaceWeights
-            alphaBeta.evaluatorFactory = { if (name == "Space") SpaceEvaluator(weights) else Evaluator.named(name) }
+        val settings = name to customWeights
+        if (settings != evaluatorSettings) {
+            evaluatorSettings = settings
+            alphaBeta.evaluatorFactory = { Evaluator.named(settings.first, settings.second) }
         }
         return alphaBeta.evaluator
     }

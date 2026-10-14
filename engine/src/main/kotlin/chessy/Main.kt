@@ -39,18 +39,19 @@ Commands:
   bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
-  weights                Weights of the Space style, in the format of a weights file
-  tune <file>            Tune the weights of the Space style with the positions of a training file (Texel's method)
+  weights                Weights of the Space style (or the Full style with --style full), in the format of a weights file
+  tune <file>            Tune the weights of the Space style (or Full) with the positions of a training file (Texel's method)
 
 Options:
   --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
-  --style <name>         Playing style of eval, bench and play: space (default, the constrictor), material or greedy
+  --style <name>         Playing style of eval, bench and play: space (default, the constrictor), full (the strongest),
+                         material or greedy (the weakest)
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file
-  --weights <file>       Weights file of the Space style (default: the tuned weights), also the starting point of tune
+  --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   --output <file>        Weights file written by tune (default: space.weights)
   --positions <n>        Maximum number of positions of the training file to tune
   --passes <n>           Maximum number of passes over the weights to tune (default: 100)
@@ -90,15 +91,13 @@ private class Arguments(args: Array<String>) {
 
     private val isGreedy: Boolean get() = style == "greedy"
 
-    /** Weights of the Space style: --weights file or the default ones. */
-    val weights: SpaceWeights get() = options["weights"]?.let { SpaceWeights.load(File(it)) } ?: SpaceWeights.DEFAULT
+    /** Evaluator of the --style (the greedy search only counts material), with the --weights file if any. */
+    val evaluator: Evaluator get() =
+        if (isGreedy) Evaluator.named("Material") else Evaluator.named(style, options["weights"]?.let { SpaceWeights.load(File(it)) })
 
-    /** Evaluator of the --style (the greedy search only counts material). */
-    val evaluator: Evaluator get() = when {
-        isGreedy -> Evaluator.named("Material")
-        style == "space" -> SpaceEvaluator(weights)
-        else -> Evaluator.named(style)
-    }
+    /** Weights of the Space or Full style: --weights file or the tuned weights of the style. */
+    val weights: SpaceWeights get() =
+        (evaluator as? SpaceEvaluator)?.weights ?: throw IllegalArgumentException("The $style style has no weights (only space and full)")
 
     fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
 
