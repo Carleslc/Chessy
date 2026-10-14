@@ -150,6 +150,15 @@ python sts.py --movetime 0.2 --option Style=Material
 python sts.py --engine stockfish --movetime 0.1
 ```
 
+The suite also works with `sts_rating.py` of [STS-Rating](https://github.com/fsmosca/STS-Rating), which estimates a CCRL 40/4 rating
+(`--getrating`). It expects `c9` to be the last field of each line and cannot set UCI options, so remove the `Ae` field first
+and use a wrapper script for other styles:
+
+```
+sed 's/ Ae "[^"]*";$//' suites/sts.epd > games/sts-rating.epd
+python sts_rating.py -f games/sts-rating.epd -e ../engine/build/install/chessy/bin/chessy -h 64 --getrating
+```
+
 ## Style
 
 Style metrics of the players of PGN games, to check that the "constrictor" style restricts the opponent:

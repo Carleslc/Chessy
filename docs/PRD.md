@@ -454,30 +454,58 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
     | Extensión por jaque seguro (la pieza que da jaque no puede ser capturada) | +7,8 ± 9,2 (3000, LOS 95 %), se mantiene |
     | Signos restringidos y reajuste (un alfil atrapado había quedado como bonificación) | +0,8 ± 8,8 (3580): sin regresión |
 
-  - El ajuste revaloriza las piezas frente a los peones en el medio juego (caballo 626, alfil 667, torre 871 y dama 2248 con el peón en 100; en el final 278, 313, 577 y 781), reduce la movilidad y aumenta amenazas, puestos avanzados y peones pasados.
-  - Calibración con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel, sin pérdidas por tiempo):
+  - El ajuste revaloriza las piezas frente a los peones en el medio juego (caballo 626, alfil 667, torre 871 y dama 2248 con el peón en 100; en el final 278, 313, 577 y 781), reduce la movilidad y aumenta amenazas, puestos avanzados y peones pasados. Con ello los términos del estilo pesan menos en proporción y **el estilo se diluyó**: contra Stockfish `UCI_Elo` 2400 la movilidad del rival subió de 25,2 a 26,3, el espacio bajó de 1,57 a 0,80, el territorio de 2,44 a 1,34, y dejó de ganar partidas yendo por detrás en material.
+  - **Recuperación del estilo** (SPRT de 1000 partidas como máximo, métricas de estilo con 100 partidas contra Stockfish 2400 a 10+0,1, reutilizando las posiciones de los ajustes anteriores):
+    1. Texel con todos los pesos, también los del estilo (`chessy tune --all true`, salvo el peón de medio juego y el *contempt*): +19,5 ± 17 frente a la versión anterior, 90 % contra Stockfish 2400. El ajuste baja el espacio (`spacePercent` 120 → 42) y sube el territorio (4 → 11) y sobre todo el control de la zona del rey (6 → 38): más territorio (2,92), pero menos espacio (0,54) y ninguna victoria con material de menos.
+    2. Partiendo de esos pesos, subir a mano los del estilo. Variantes probadas:
 
-    | Rival | + / − / = | Puntos | Diferencia de Elo | Fase 5 |
-    |---|---|---|---|---|
-    | `UCI_Elo` 2400 | 76 / 19 / 5 | 78,5 % | +225 ± 87 | +191 |
-    | `UCI_Elo` 2600 | 61 / 30 / 9 | 65,5 % | +111 ± 68 | +60 |
-    | `UCI_Elo` 2800 | 25 / 55 / 20 | 35 % | −108 ± 64 | −156 |
-    | `UCI_Elo` 3000 | 6 / 76 / 18 | 15 % | −301 ± 81 | — |
+       | Variante | Contra SF 2400 | Movilidad del rival | Espacio | Territorio | Piezas atrapadas | Victorias con material de menos |
+       |---|---|---|---|---|---|---|
+       | Space (Fase 5) | 75 % | **25,2** | **1,57** | 2,44 | 0,32 | 4 % |
+       | Fase 6 (primer ajuste) | 78,5 % | 26,3 | 0,80 | 1,34 | 0,26 | 0 % |
+       | Todos los pesos ajustados | 90 % | 25,7 | 0,54 | **2,92** | 0,29 | 0 % |
+       | Espacio 120, movilidad 150 %, restricción (10, 5) | 80,5 % | 26,6 | 1,28 | 2,17 | **0,39** | 4 % |
+       | Espacio 200, movilidad 180 %, restricción (15, 8), territorio 14 | 81 % | 26,9 | 1,60 | 1,68 | 0,33 | 2 % |
+       | Solo espacio 120 | 83,5 % | 25,9 | 1,09 | 1,76 | 0,29 | 1 % |
+       | ✅ **Espacio 90, movilidad 135 %, restricción (8, 3)** | **86 %** | 25,5 | 1,05 | 2,43 | 0,32 | **5 %** |
 
-    Estimación: **~2700–2750** en la escala `UCI_Elo` de Stockfish (Fase 5: ~2650–2700). La ganancia contra Stockfish (~+50) es mucho menor que la de los SPRT entre versiones propias, como es habitual.
-  - Táctica: WAC 283/300 con 1 s (Fase 5: 285). STS: 10.854/15.000 (Fase 5: 10.775), con más puntos en control del centro (+99), caballos (+80), 7ª fila (+62) y alfil contra caballo (+34), y menos en casillas vacías (−74), actividad del rey (−48) y columnas abiertas (−47).
-  - **Estilo**: las métricas contra Stockfish `UCI_Elo` 2400 muestran que el estilo se ha diluido. Sigue restringiendo más que Material, pero menos que la Fase 5: al revalorizar las piezas, los términos de espacio pesan menos en proporción y ya no juega con material de menos.
+       La elegida iguala a la Fase 5 en movilidad del rival, territorio, piezas atrapadas y victorias con material de menos, aunque gana menos espacio detrás de los peones. Fuerza: −6 ± 16 frente al primer ajuste (sin diferencia apreciable), −58 ± 31 frente a la versión con todos los pesos ajustados (el estilo cuesta fuerza en el enfrentamiento directo). La primera variante (espacio 120, movilidad 150 %), algo más débil, ganó a la Fase 5 por +164 ± 46.
+  - Calibración final con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel; Chessy no perdió ninguna por tiempo):
 
-    | Métrica | Material | Space (Fase 5) | Space (Fase 6) |
-    |---|---|---|---|
-    | Movilidad media del rival | 27,6 | **25,2** | 26,3 |
-    | Espacio (diferencia) | 0,67 | **1,57** | 0,80 |
-    | Territorio (diferencia) | −0,96 | **+2,44** | +1,34 |
-    | Piezas rivales atrapadas | 0,20 | **0,32** | 0,26 |
-    | Victorias tras ir por detrás en material | — | 3/69 | 0/76 |
+    | Rival | + / − / = | Puntos | Diferencia de Elo | Fase 6 (primer ajuste) | Fase 5 |
+    |---|---|---|---|---|---|
+    | `UCI_Elo` 2400 | 84 / 12 / 4 | 86 % | +315 | +225 | +191 |
+    | `UCI_Elo` 2600 | 70 / 23 / 7 | 73,5 % | +177 ± 70 | +111 | +60 |
+    | `UCI_Elo` 2800 | 34 / 49 / 17 | 42,5 % | −53 ± 60 | −108 | −156 |
+    | `UCI_Elo` 3000 | 11 / 77 / 12 | 17 % | −275 ± 89 | −301 | — |
 
-  - `bench`: 1.443.226 nodos, ~880 k nodos/s.
-  - Pendiente de decidir: recuperar el estilo subiendo los pesos del estilo (espacio, territorio, restricción) en proporción al nuevo material, a cambio de parte de la fuerza.
+    Estimación: **~2750–2800** en la escala `UCI_Elo` de Stockfish (Fase 5: ~2650–2700). Contra SF 2400 hubo 4 victorias por tiempo de Stockfish.
+  - Táctica: WAC **285/300** con 1 s (igual que la Fase 5).
+  - STS por temas, con `tools/sts.py` (0,2 s por posición, puntos sobre 1000 por tema) y con `sts_rating.py` de [STS-Rating](https://github.com/fsmosca/STS-Rating) (`--getrating`, 69 ms por posición en esta máquina; % de puntos y estimación de Elo CCRL 40/4):
+
+    | Tema | Material | Space (Fase 5) | Fase 6 (primer ajuste) | **Final** | Stockfish 19 |
+    |---|---|---|---|---|---|
+    | Socavar | 547 | **698** | 683 | 679 | 929 |
+    | Columnas y diagonales abiertas | 551 | **712** | 665 | 681 | 912 |
+    | Puestos avanzados de caballo | 613 | 645 | **725** | 700 | 923 |
+    | Casillas vacías | 615 | **711** | 637 | 650 | 941 |
+    | Alfil contra caballo | 709 | 782 | 816 | **843** | 962 |
+    | Recaptura | 870 | **897** | **897** | 892 | 954 |
+    | Ofrecer simplificación | 604 | 648 | 653 | **665** | 902 |
+    | Avance de peones f, g, h | 575 | **651** | 634 | 645 | 902 |
+    | Avance de peones a, b, c | 564 | **603** | 583 | 590 | 862 |
+    | Simplificación | 778 | **827** | 821 | 826 | 967 |
+    | Actividad del rey | 609 | **694** | 646 | 624 | 909 |
+    | Control del centro | 663 | 691 | **790** | 774 | 923 |
+    | Juego de peones en el centro | 702 | **755** | 735 | 752 | 907 |
+    | 7ª fila | 747 | 778 | **840** | 827 | 941 |
+    | Evitar cambios inútiles | 659 | 683 | 729 | **727** | 942 |
+    | **Total (`sts.py`)** | 9.806 | 10.775 | 10.854 | **10.875** | 13.876 |
+    | **% de puntos (`sts_rating.py`)** | 51,8 % | 56,7 % | 56,5 % | **57,0 %** | 91,5 % |
+    | **Elo STS (`sts_rating.py`)** | 2065 | 2283 | 2274 | **2296** | 3832 |
+
+    Fortalezas frente a la Fase 5: alfil contra caballo, control del centro, 7ª fila, puestos avanzados y evitar cambios inútiles (temas de piezas activas, que el ajuste valora más). Debilidades: actividad del rey, casillas vacías y columnas abiertas, y en general los temas de final y de maniobra lenta, donde Stockfish saca más ventaja. El Elo STS mide sobre todo la comprensión posicional en jugadas sueltas: Chessy juega mucho mejor de lo que indica (2296 frente a ~2750 en partidas).
+  - `bench`: 1.617.877 nodos, ~780 k nodos/s.
 
 ### Fase 7 — Despliegue y extras
 - BOT en Lichess con `lichess-bot`, empaquetado.

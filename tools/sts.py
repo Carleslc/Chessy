@@ -26,6 +26,8 @@ import chess.engine
 TOOLS = Path(__file__).resolve().parent
 DEFAULT_ENGINE = TOOLS.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
 THEME = re.compile(r'STS\(v[\d.]+\) (.+)\.\d+')
+# Themes with abbreviated names in the ids of the suite (titles of sts_rating.py)
+THEME_NAMES = {'AKPC': 'Advancement of f/g/h pawns', 'AT': 'Avoid pointless exchange'}
 
 def set_args():
   global args
@@ -45,6 +47,7 @@ def read_suite(path: str) -> list[tuple[str, chess.Board, dict[chess.Move, int]]
       continue
     board, operations = chess.Board.from_epd(line)
     theme = THEME.match(operations['id']).group(1)
+    theme = THEME_NAMES.get(theme, theme)
     if args.themes and not any(word.lower() in theme.lower() for word in args.themes):
       continue
     points = dict(zip((chess.Move.from_uci(move) for move in operations['c9'].split()), map(int, operations['c8'].split())))
