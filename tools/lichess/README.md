@@ -21,7 +21,14 @@ Chess.com has no API for bots, so Chessy cannot play there (games can still be a
    pip install -r requirements.txt
    ```
    (or set `LICHESS_BOT_DIR` to its folder).
-4. Upgrade the account to BOT and start the bot (it needs Java 17+ to run Chessy):
+4. Check that everything works offline, before going online: a game of Chessy through lichess-bot against a mocked
+   lichess.org (the one of the tests of lichess-bot), with Stockfish limited to 2000 as the opponent. It needs no token,
+   and checks the configuration, the UCI communication, pondering and the clock:
+   ```
+   pip install -r test_bot/test-requirements.txt   # in the lichess-bot folder, with its venv active
+   tools/lichess/run.sh --test
+   ```
+5. Upgrade the account to BOT and start the bot (it needs Java 17+ to run Chessy):
    ```
    LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh --upgrade
    ```
