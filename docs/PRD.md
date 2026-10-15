@@ -267,7 +267,7 @@ En CPU:
 ## 8. Despliegue
 
 - Empaquetado: `./gradlew installDist` → script `engine/build/install/chessy/bin/chessy` (UCI), y `./gradlew distZip` → `engine/build/distributions/chessy-<versión>.zip` con los lanzadores `bin/chessy` (macOS, Linux) y `bin/chessy.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
-- **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools).
+- **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools). El bot se ejecuta en la máquina que lo arranca (Lichess solo transmite las jugadas): para tenerlo siempre en línea, imagen Docker con el motor y lichess-bot (`tools/lichess/Dockerfile`, `compose.yaml`; x86-64 y ARM64, 436 MB) para un servidor, con las tablas Syzygy como volumen opcional y los comandos `play`, `upgrade` y `test` (partida sin conexión).
 - Libro de aperturas propio (Polyglot, `OwnBook`) y tablas de finales Syzygy (`SyzygyPath`), desde v1.01.
 
 ### Versiones

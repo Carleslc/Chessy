@@ -271,7 +271,8 @@ require); the tablebases of `tools/syzygy` are used by default (`SyzygyPath`).
 
 ### On Lichess (and with an electronic board)
 
-Chessy can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh`):
+Chessy can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh`,
+or on a server with Docker, so it stays online when your computer is off):
 challenge it from your account,
 from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
 and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,

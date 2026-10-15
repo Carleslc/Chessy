@@ -24,3 +24,6 @@ engines/
 
 # Syzygy endgame tablebases (downloaded, see tools/README.md)
 /tools/syzygy/
+
+# Secrets of the Lichess bot
+tools/lichess/.env

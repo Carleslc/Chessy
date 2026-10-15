@@ -1,10 +1,14 @@
 """
 A game of Chessy through lichess-bot against a mocked lichess.org (the one of the tests of lichess-bot), without connecting
-to Lichess: the opponent (white) is Stockfish limited to 2000 Elo, with a clock of 60+2.
-Checks the configuration, the UCI communication, pondering and the time. Run it with run.sh --test.
+to Lichess: the opponent (white) is Stockfish limited to 2000 Elo if it is installed (or the engine of the TEST_OPPONENT
+environment variable), else Chessy itself with the greedy search, with a clock of 60+2.
+Checks the configuration, the UCI communication, pondering and the time. Run it with run.sh --test (or the test command
+of the Docker image).
 """
 import datetime
 import logging
+import os
+import shutil
 import threading
 import yaml
 import chess
@@ -19,16 +23,25 @@ logging_level = logging.INFO
 lichess_bot.logging_configurer(logging_level, None, True)
 logger = logging.getLogger(__name__)
 
-def simulator(move_queue, board_queue, clock_queue, results):
+def opponent(chessy: str) -> tuple[str, dict]:
+    """Command and options of the opponent: TEST_OPPONENT, Stockfish limited to 2000 Elo, or Chessy with the greedy search."""
+    if os.environ.get("TEST_OPPONENT"):
+        return os.environ["TEST_OPPONENT"], {}
+    if shutil.which("stockfish"):
+        return "stockfish", {"UCI_LimitStrength": True, "UCI_Elo": 2000}
+    return chessy, {"Style": "Greedy"}
+
+def simulator(move_queue, board_queue, clock_queue, results, opponent_command, opponent_options):
     # Same clock as the mocked game stream of lichess-bot (60+2)
     wtime, btime, increment = seconds(60), seconds(60), seconds(2)
     board = chess.Board()
-    with chess.engine.SimpleEngine.popen_uci("stockfish") as stockfish:
-        stockfish.configure({"UCI_LimitStrength": True, "UCI_Elo": 2000})
+    with chess.engine.SimpleEngine.popen_uci(opponent_command) as engine:
+        engine.configure(opponent_options)
+        logger.info(f"Opponent: {engine.id.get('name')} {opponent_options}")
         while not board.is_game_over() and board.ply() < 200:
             timer = Timer()
             if board.turn == chess.WHITE:
-                board.push(stockfish.play(board, chess.engine.Limit(time=0.1)).move)
+                board.push(engine.play(board, chess.engine.Limit(time=0.1)).move)
                 board_queue.put(board)
                 clock_queue.put((wtime, btime, increment))
             else:
@@ -60,7 +73,8 @@ def test_chessy() -> None:
     board_queue, clock_queue, move_queue, results = manager.Queue(), manager.Queue(), manager.Queue(), manager.Queue()
     li = test_bot.lichess.Lichess(move_queue, board_queue, clock_queue)
     lichess_bot.disable_restart()
-    thread = threading.Thread(target=simulator, args=[move_queue, board_queue, clock_queue, results])
+    command, options = opponent(os.path.join(raw["engine"]["dir"], raw["engine"]["name"]))
+    thread = threading.Thread(target=simulator, args=[move_queue, board_queue, clock_queue, results, command, options])
     thread.start()
     lichess_bot.start(li, li.get_profile(), CONFIG, logging_level, None, True, one_game=True)
     assert results.get()

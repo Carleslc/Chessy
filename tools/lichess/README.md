@@ -22,7 +22,8 @@ Chess.com has no API for bots, so Chessy cannot play there (games can still be a
    ```
    (or set `LICHESS_BOT_DIR` to its folder).
 4. Check that everything works offline, before going online: a game of Chessy through lichess-bot against a mocked
-   lichess.org (the one of the tests of lichess-bot), with Stockfish limited to 2000 as the opponent. It needs no token,
+   lichess.org (the one of the tests of lichess-bot), with Stockfish limited to 2000 as the opponent (or Chessy if there
+   is no Stockfish). It needs no token,
    and checks the configuration, the UCI communication, pondering and the clock:
    ```
    pip install -r test_bot/test-requirements.txt   # in the lichess-bot folder, with its venv active
@@ -40,6 +41,35 @@ Chess.com has no API for bots, so Chessy cannot play there (games can still be a
 `run.sh` builds the engine, copies [`config.yml`](config.yml) into the lichess-bot folder with the path of the engine and
 starts lichess-bot. The token is only read from the `LICHESS_BOT_TOKEN` environment variable, never written in a file.
 Stop the bot with Ctrl+C.
+
+## Deploy on a server with Docker
+
+lichess-bot and Chessy run on the machine that starts them: Lichess only relays the moves. To keep the bot online
+when your computer is off, run it on a server (a VPS, a Raspberry Pi 4/5, the free tier of a cloud...) with Docker.
+The image ([`Dockerfile`](Dockerfile)) builds the engine and installs lichess-bot (a tested version, `LICHESS_BOT_COMMIT`)
+with Python and the Java runtime, for x86-64 and ARM64 servers (436 MB). One game at a time needs about 1-2 cores and 1 GB of RAM.
+
+1. On the server, install [Docker](https://docs.docker.com/engine/install/) and clone this repository.
+2. Write the token of the BOT account in `tools/lichess/.env` (copy [`.env.example`](.env.example); it is ignored by git).
+3. Optional: download the tablebases into `tools/syzygy` (939 MiB, see [tools](../README.md)); they are mounted read-only.
+4. Check it offline, then upgrade the account to BOT (once) and start the bot:
+   ```
+   docker compose -f tools/lichess/compose.yaml build
+   docker compose -f tools/lichess/compose.yaml run --rm bot test
+   docker compose -f tools/lichess/compose.yaml run --rm bot upgrade
+   docker compose -f tools/lichess/compose.yaml up -d
+   ```
+   ([`compose.yaml`](compose.yaml)). Stop `run --rm bot upgrade` with Ctrl+C once the account is upgraded (it starts playing too).
+5. The bot restarts with the server (`restart: unless-stopped`). Follow it, stop it or update it:
+   ```
+   docker compose -f tools/lichess/compose.yaml logs -f
+   docker compose -f tools/lichess/compose.yaml down
+   git pull && docker compose -f tools/lichess/compose.yaml up -d --build
+   ```
+
+The image uses [`config.yml`](config.yml); to change it without rebuilding the image (another style, an Elo,
+the accepted challenges...), mount a copy as `/chessy-config/config.yml` (commented in `compose.yaml`).
+The offline test plays against Chessy with the greedy search, because the image has no Stockfish.
 
 ## Configuration
 

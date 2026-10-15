@@ -1,0 +1,26 @@
+# Chessy as a Lichess BOT on a server, with Docker Compose (see README.md in this folder):
+#
+#   cp tools/lichess/.env.example tools/lichess/.env    # and write the token in .env
+#   docker compose -f tools/lichess/compose.yaml run --rm bot upgrade    # once: convert the account to BOT
+#   docker compose -f tools/lichess/compose.yaml up -d --build           # play, restarting with the server
+#   docker compose -f tools/lichess/compose.yaml logs -f
+services:
+  bot:
+    build:
+      context: ../..
+      dockerfile: tools/lichess/Dockerfile
+    image: chessy-bot
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      LICHESS_BOT_TOKEN: ${LICHESS_BOT_TOKEN:-}
+    volumes:
+      # Syzygy tablebases downloaded in tools/syzygy (optional, see tools/README.md)
+      - ../syzygy:/syzygy:ro
+      # Uncomment to use another configuration (style, Elo, accepted challenges...) without rebuilding the image
+      # - ./config.yml:/chessy-config/config.yml:ro
+    # One game at a time with 1 thread and 128 MB of hash (config.yml)
+    cpus: 2
+    mem_limit: 1g

@@ -1,0 +1,8 @@
+# The image only needs the engine and the files of the bot: tablebases, games, snapshots and builds stay out
+*
+!engine/
+!tools/lichess/
+engine/build/
+engine/.gradle/
+engine/.kotlin/
+tools/lichess/.env
