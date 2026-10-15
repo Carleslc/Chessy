@@ -129,6 +129,20 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   even depths end on the reply of the opponent and are more careful (better in STS). Greedy searches a fixed depth,
   so the time per position does not change its moves.
 
+v1.01 adds the opening book and the Syzygy tablebases. Against Stockfish with both (`OwnBook`, 3–5 pieces), from the
+initial position so that the book plays the opening (v1.0: balanced openings), 100 games per level at 10+0.1:
+
+| Against Stockfish | 2400 | 2600 | 2800 | 3000 | Elo (fit of the 4 levels) |
+|---|---|---|---|---|---|
+| Space v1.0 | 86% | 73.5% | 42.5% | 17% | 2746 ± 40 |
+| Space v1.01 | 86% | 79% | 42.5% | 20.5% | 2768 ± 40 |
+| Full v1.0 | 90% | 76% | 36.5% | 14.5% | 2741 ± 40 |
+| Full v1.01 | 84% | 71% | 42.5% | 25.5% | 2756 ± 40 |
+
+- v1.01 is +22 (Space) and +15 (Full) Elo, within the margin of error (±57 for a difference): no measurable change.
+- Against limited Stockfish the book plays only ~2.5 moves per game: Stockfish varies its replies (93% of the games
+  have different first 8 plies) and soon leaves the repertoire. The tablebases are reached in 20–45% of the games.
+
 STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
 
 | Theme | v0 | Greedy | Material | Space | Full | Stockfish 19 |
