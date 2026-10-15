@@ -89,7 +89,7 @@ class TranspositionTable(sizeMb: Int = DEFAULT_SIZE_MB) {
     companion object {
         const val DEFAULT_SIZE_MB = 64
         const val MAX_SIZE_MB = 1024
-        private const val ENTRY_BYTES = 16
+        const val ENTRY_BYTES = 16
 
         const val NO_ENTRY = 0L
 

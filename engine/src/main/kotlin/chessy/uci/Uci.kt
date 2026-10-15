@@ -47,10 +47,10 @@ class Uci(private val output: (String) -> Unit = ::send) {
      */
     private val style = ComboOption("Style", default = Evaluator.DEFAULT, values = Evaluator.all.keys.toList() + GREEDY)
     private val greedyDepth = SpinOption("Greedy Depth", default = 2, min = 1, max = GreedySearch.MAX_DEPTH)
-    private val hash = SpinOption("Hash", default = TranspositionTable.DEFAULT_SIZE_MB, min = 1, max = TranspositionTable.MAX_SIZE_MB) {
+    private val hash = SpinOption("Hash", default = ParallelSearch.DEFAULT_HASH_MB, min = 1, max = TranspositionTable.MAX_SIZE_MB) {
         alphaBeta.transpositionTable.resize(it)
     }
-    private val threads = SpinOption("Threads", default = 1, min = 1, max = ParallelSearch.MAX_THREADS) {
+    private val threads = SpinOption("Threads", default = ParallelSearch.DEFAULT_THREADS, min = 1, max = ParallelSearch.MAX_THREADS) {
         alphaBeta.threads = it
     }
     /** Weights file of the Space and Full styles (empty: the tuned weights of the style). */
@@ -102,7 +102,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
         return names.firstNotNullOfOrNull { name -> books.getOrPut(name) { OpeningBook.resource(name) }.pick(position) }
     }
 
-    private val alphaBeta = ParallelSearch().apply {
+    private val alphaBeta = ParallelSearch(ParallelSearch.DEFAULT_THREADS, transpositionTable = TranspositionTable(ParallelSearch.DEFAULT_HASH_MB)).apply {
         tablebases = Syzygy.defaultPath()?.let(::Syzygy)
     }
     private val greedy = GreedySearch()
@@ -118,7 +118,11 @@ class Uci(private val output: (String) -> Unit = ::send) {
     /** The search of the current [setting]. */
     private fun search(setting: Strength.Setting = this.setting): Search =
         if (setting.isGreedy) greedy.apply { depth = setting.greedyDepth }
-        else alphaBeta.apply { evaluator(setting) }
+        else alphaBeta.apply {
+            evaluator(setting)
+            // The strength levels are calibrated with one thread
+            singleThreaded = limitStrength.value
+        }
 
     /** The evaluator of the current [setting] (the greedy search only counts material). */
     private fun evaluator(setting: Strength.Setting = this.setting): Evaluator {

@@ -50,8 +50,8 @@ engine:
     SyzygyPath: "tools/syzygy"      # Replaced by run.sh with the absolute path of the tablebases (if downloaded)
     # UCI_LimitStrength: true       # A weaker bot: UCI_Elo from 900 to 2800 in steps of 100
     # UCI_Elo: 1600
-    Threads: 1                      # More threads are stronger (Lazy SMP), but the bot shares the machine
-    Hash: 128
+    Threads: 4                      # Lazy SMP: more threads are stronger, up to the cores of the machine (1 with UCI_Elo)
+    Hash: 256                       # MB of transposition table
     Move Overhead: 100              # Milliseconds kept by Chessy for delays, on top of move_overhead
 
   silence_stderr: false

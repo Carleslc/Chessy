@@ -3,6 +3,7 @@ package chessy.uci
 import chessy.core.MoveGenerator
 import chessy.core.Notation
 import chessy.core.Position
+import chessy.search.ParallelSearch
 import chessy.search.Strength
 import java.util.Collections
 import kotlin.test.Test
@@ -159,8 +160,8 @@ class UciTest {
         val lines = send("uci")
         assertTrue("option name Style type combo default Space var Space var Full var Material var Greedy" in lines, lines.toString())
         assertTrue("option name Greedy Depth type spin default 2 min 1 max 4" in lines)
-        assertTrue("option name Hash type spin default 64 min 1 max 1024" in lines)
-        assertTrue("option name Threads type spin default 1 min 1 max 256" in lines)
+        assertTrue("option name Hash type spin default 256 min 1 max 1024" in lines)
+        assertTrue("option name Threads type spin default ${ParallelSearch.DEFAULT_THREADS} min 1 max 256" in lines)
         assertEquals(emptyList(), send("setoption name Threads value 2", "setoption name Hash value 16"))
         assertTrue(bestMove(send("position startpos", "go depth 5")).length == 4)
         send("setoption name Threads value 1")
@@ -215,7 +216,7 @@ class UciTest {
         val lines = send("uci")
         assertTrue("option name UCI_LimitStrength type check default false" in lines)
         assertTrue("option name UCI_Elo type spin default 1500 min 900 max 2800" in lines)
-        // At 1500 Elo the search stops after a few hundred nodes
+        // At 1500 Elo the search stops after a few hundred nodes, with one thread whatever the Threads option
         send("setoption name UCI_LimitStrength value true", "setoption name UCI_Elo value 1500")
         val info = send("position startpos", "go wtime 60000 btime 60000").last { it.startsWith("info depth") }
         val nodes = info.split(" ").let { it[it.indexOf("nodes") + 1].toLong() }

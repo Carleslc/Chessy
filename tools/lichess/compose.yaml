@@ -21,6 +21,6 @@ services:
       - ../syzygy:/syzygy:ro
       # Uncomment to use another configuration (style, Elo, accepted challenges...) without rebuilding the image
       # - ./config.yml:/chessy-config/config.yml:ro
-    # One game at a time with 1 thread and 128 MB of hash (config.yml)
-    cpus: 2
-    mem_limit: 1g
+    # One game at a time with 4 threads and 256 MB of hash (config.yml): lower Threads in config.yml on a smaller server
+    cpus: 4
+    mem_limit: 1536m

@@ -57,6 +57,9 @@ class Stats:
 
 def open_engine(command: str, options: dict[str, str]) -> chess.engine.SimpleEngine:
   engine = chess.engine.SimpleEngine.popen_uci(command.split())
+  # One thread by default (Chessy plays with 4), as several games run at the same time
+  if 'Threads' in engine.options and 'Threads' not in options:
+    options = {'Threads': '1', **options}
   if options:
     engine.configure(options)
   return engine

@@ -29,6 +29,13 @@ THEME = re.compile(r'STS\(v[\d.]+\) (.+)\.\d+')
 # Themes with abbreviated names in the ids of the suite (titles of sts_rating.py)
 THEME_NAMES = {'AKPC': 'Advancement of f/g/h pawns', 'AT': 'Avoid pointless exchange'}
 
+def configure(engine: chess.engine.SimpleEngine, options: dict[str, str]):
+  # One thread by default (Chessy plays with 4), as several engines run at the same time
+  if 'Threads' in engine.options and 'Threads' not in options:
+    options = {'Threads': '1', **options}
+  if options:
+    engine.configure(options)
+
 def set_args():
   global args
   parser = argparse.ArgumentParser()
@@ -57,8 +64,7 @@ def read_suite(path: str) -> list[tuple[str, chess.Board, dict[chess.Move, int]]
 def solve(positions: list[tuple[str, chess.Board, dict[chess.Move, int]]]) -> list[tuple[str, int]]:
   results = []
   with chess.engine.SimpleEngine.popen_uci(args.engine.split()) as engine:
-    if args.option:
-      engine.configure(dict(option.split('=', 1) for option in args.option))
+    configure(engine, dict(option.split('=', 1) for option in args.option))
     for number, (theme, board, points) in enumerate(positions):
       move = engine.play(board, chess.engine.Limit(time=args.movetime), game=number).move
       results.append((theme, points.get(move, 0)))

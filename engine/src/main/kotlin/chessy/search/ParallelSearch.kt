@@ -51,6 +51,9 @@ class ParallelSearch(
             workers.forEach { it.tablebaseProbeDepth = value }
         }
 
+    /** Search with the main thread only, keeping the threads for later (the strength levels are calibrated with one thread). */
+    var singleThreaded: Boolean = false
+
     /** Evaluator of the main thread. */
     val evaluator: Evaluator get() = workers[0].evaluator
 
@@ -76,7 +79,7 @@ class ParallelSearch(
 
     override fun search(position: Position, limits: SearchLimits, stop: AtomicBoolean, listener: (SearchInfo) -> Unit): SearchResult {
         val main = workers[0]
-        val helpers = workers.drop(1)
+        val helpers = if (singleThreaded) emptyList() else workers.drop(1)
         val helpersStop = AtomicBoolean(false)
         // Helpers search until the main thread finishes, each on its own copy of the position
         val helperLimits = SearchLimits(depth = limits.depth, infinite = true, searchMoves = limits.searchMoves)
@@ -105,5 +108,11 @@ class ParallelSearch(
 
     companion object {
         const val MAX_THREADS = 256
+
+        /** Threads when Chessy plays (UCI and play): 4, or the processors of the machine if it has fewer. */
+        val DEFAULT_THREADS: Int = minOf(4, Runtime.getRuntime().availableProcessors())
+
+        /** Transposition table size when Chessy plays (UCI and play), in MB. */
+        const val DEFAULT_HASH_MB = 256
     }
 }

@@ -21,6 +21,7 @@ import chessy.search.Score
 import chessy.search.Search
 import chessy.search.SearchLimits
 import chessy.search.Strength
+import chessy.search.TranspositionTable
 import chessy.syzygy.Syzygy
 import chessy.tune.TexelTuner
 import chessy.uci.Uci
@@ -48,7 +49,9 @@ Commands:
   tune <file>            Tune the weights of the Space style (or Full) with the positions of a training file (Texel's method)
 
 Options:
-  --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
+  --threads <n>          Threads for perft and divide (default: available processors), bench (default: 1)
+                         and play (default: 4, or the processors if fewer; 1 with --elo)
+  --hash <mb>            Transposition table of bench (default: 64) and play (default: 256), in MB
   --style <name>         Playing style of eval, bench and play: space (default, the constrictor), full (the strongest),
                          material or greedy (the weakest)
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
@@ -154,11 +157,18 @@ private class Arguments(args: Array<String>) {
 
     fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
 
-    /** Search of the [setting], with --threads. */
-    val search: Search get() {
+    /**
+     * Search of the [setting], with --threads and --hash: by default 1 thread for bench (to measure the speed of one thread)
+     * and the threads and hash of the engine for play, which plays with one thread with --elo (as the levels were calibrated).
+     */
+    fun search(play: Boolean): Search {
         val setting = setting
-        return if (setting.isGreedy) GreedySearch(setting.greedyDepth)
-        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator(setting) }).apply {
+        if (setting.isGreedy) return GreedySearch(setting.greedyDepth)
+        val hash = intOption("hash") ?: if (play) ParallelSearch.DEFAULT_HASH_MB else TranspositionTable.DEFAULT_SIZE_MB
+        require(hash in 1..TranspositionTable.MAX_SIZE_MB) { "--hash must be between 1 and ${TranspositionTable.MAX_SIZE_MB}" }
+        val threads = intOption("threads") ?: if (play) ParallelSearch.DEFAULT_THREADS else 1
+        return ParallelSearch(threads, { evaluator(setting) }, TranspositionTable(hash)).apply {
+            singleThreaded = play && options["elo"] != null
             // The tables downloaded in tools/syzygy by default, --syzygy off to play without them
             tablebases = when (val path = options["syzygy"]) {
                 "off", "false" -> null
@@ -190,7 +200,7 @@ fun main(args: Array<String>) {
             "d" -> println(arguments.position(1))
             "moves" -> moves(arguments.position(1))
             "eval" -> println(arguments.evaluator.explain(arguments.position(1)))
-            "bench" -> bench(arguments.search, arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
+            "bench" -> bench(arguments.search(play = false), arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
             "play" -> play(arguments)
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
             "syzygy" -> syzygy(arguments)
@@ -259,10 +269,11 @@ private fun bench(search: Search, depth: Int) {
 private fun play(arguments: Arguments) {
     val chessy = chessyColors(arguments.options["chessy"])
     val setting = arguments.setting
-    val search = arguments.search
+    val search = arguments.search(play = true)
     val limits = arguments.limits
     val pgnFile = arguments.options["pgn"]?.let(::File)
-    val elo = arguments.intOption("elo")?.let(Strength::roundElo) ?: Strength.estimatedElo(setting)
+    val threads = (search as? ParallelSearch)?.let { if (it.singleThreaded) 1 else it.threads } ?: 1
+    val elo = arguments.intOption("elo")?.let(Strength::roundElo) ?: Strength.estimatedElo(setting, threads)
     val chessyName = "${Version.name} ($setting)"
 
     val book = arguments.book
@@ -281,6 +292,9 @@ private fun play(arguments: Arguments) {
     println("Opening book: ${if (book == null) "off" else arguments.options["opening"] ?: arguments.options["book"]?.takeIf { it != "on" } ?: "on"}" +
         ", endgame tablebases: ${if (tablebases == null) "off" else "${tablebases.size} tables up to ${tablebases.maxPieces} pieces"}" +
         if (game.chess960) ", Chess960" else "")
+    if (search is ParallelSearch) {
+        println("Threads: $threads, hash: ${search.transpositionTable.entries.toLong() * TranspositionTable.ENTRY_BYTES / (1024 * 1024)} MB")
+    }
     println("Moves in SAN (e4, Nf3, O-O, exd6, a8=Q) or UCI (e2e4). Commands: moves, eval, undo, pgn, resign, draw, quit.")
     println("Evaluations are in pawns from the point of view of White: positive is better for White, negative for Black.")
     while (!game.status.isOver) {

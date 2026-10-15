@@ -47,7 +47,8 @@ Stop the bot with Ctrl+C.
 lichess-bot and Chessy run on the machine that starts them: Lichess only relays the moves. To keep the bot online
 when your computer is off, run it on a server (a VPS, a Raspberry Pi 4/5, the free tier of a cloud...) with Docker.
 The image ([`Dockerfile`](Dockerfile)) builds the engine and installs lichess-bot (a tested version, `LICHESS_BOT_COMMIT`)
-with Python and the Java runtime, for x86-64 and ARM64 servers (436 MB). One game at a time needs about 1-2 cores and 1 GB of RAM.
+with Python and the Java runtime, for x86-64 and ARM64 servers (436 MB). One game at a time with the default configuration
+needs 4 cores and 1.5 GB of RAM; on a smaller server, lower `Threads` in `config.yml` (and `cpus` in `compose.yaml`).
 
 1. On the server, install [Docker](https://docs.docker.com/engine/install/) and clone this repository.
 2. Write the token of the BOT account in `tools/lichess/.env` (copy [`.env.example`](.env.example); it is ignored by git).
@@ -75,14 +76,16 @@ The offline test plays against Chessy with the greedy search, because the image 
 
 [`config.yml`](config.yml) sets:
 
-- **Engine**: style Space (UCI option `Style`), 1 thread, 128 MB of hash and pondering (Chessy thinks on the opponent's time).
-- **Challenges**: one game at a time, standard chess, from bullet to classical (1 to 60 minutes, increment up to 30 s),
+- **Engine**: style Space (UCI option `Style`), 4 threads (`Threads`, up to the cores of the machine), 256 MB of hash
+  and pondering (`ponder: true`: Chessy thinks on the opponent's time, in real-time games; not in correspondence games).
+- **Challenges**: one game at a time, standard chess and Chess960, from bullet to classical (1 to 60 minutes, increment up to 30 s),
   casual and rated, from humans and bots.
 - **Draws and resignation**: Chessy resigns after 5 moves below −10 pawns and offers or accepts draws
   in dead equal endgames.
 - **Time**: lichess-bot keeps 1 s for network delays (`move_overhead`) and Chessy 100 ms (`Move Overhead`):
   increase them if the bot loses on time.
-- No opening book, no online moves and no tablebases: Chessy plays every move.
+- The opening book and the Syzygy tablebases of Chessy (`OwnBook`, `SyzygyPath`). The books, tablebases and analysis
+  of lichess-bot (`polyglot`, `online_moves`, `lichess_bot_tbs`) are disabled: Chessy plays every move.
 
 To run another style (Full, Material or Greedy), change `Style` in `config.yml`; each style needs its own BOT account
 to run at the same time.

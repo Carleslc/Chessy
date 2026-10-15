@@ -46,7 +46,9 @@ Commands:
   tune <file>            Tune the weights of the Space style (or Full) with the positions of a training file (Texel's method)
 
 Options:
-  --threads <n>          Threads for perft and divide (default: available processors), and for bench and play (default: 1)
+  --threads <n>          Threads for perft and divide (default: available processors), bench (default: 1)
+                         and play (default: 4, or the processors if fewer; 1 with --elo)
+  --hash <mb>            Transposition table of bench (default: 64) and play (default: 256), in MB
   --style <name>         Playing style of eval, bench and play: space (default, the constrictor), full (the strongest),
                          material or greedy (the weakest)
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
@@ -58,8 +60,8 @@ Options:
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
-  --pgn <file>           Save the game played to this PGN file
-  --syzygy <path>        Folder of the Syzygy tablebases (several separated by the path separator)
+  --pgn <file>           Save the game played to this PGN file (added at the end if the file exists)
+  --syzygy <path|off>    Folder of the Syzygy tablebases (default: tools/syzygy if downloaded), or off to play without them
   --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   (and the options of tune: --output, --positions, --passes, --all, --freeze, --max-change)
 ```
@@ -91,8 +93,10 @@ And besides:
 - **Chess960**: `UCI_Chess960` (`--chess960` in the command line).
 - **Pondering**: `Ponder`, thinking on the opponent's time.
 
-Other UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Greedy Depth`, `SyzygyProbeDepth` and `Weights`
-(a weights file for Space or Full).
+Chessy plays with **4 threads and 256 MB of hash** by default (UCI options `Threads` and `Hash`, `--threads` and `--hash`
+in the command line; fewer threads if the machine has fewer processors), about 90–120 Elo stronger than with one thread
+(see *Threads and hash*). The tools of `tools/` measure with one thread, as the results of this README.
+Other UCI options: `Move Overhead`, `Greedy Depth`, `SyzygyProbeDepth` and `Weights` (a weights file for Space or Full).
 
 `./gradlew distZip` packages the engine in `build/distributions/chessy-<version>.zip`, with the launchers `bin/chessy`
 (macOS, Linux) and `bin/chessy.bat` (Windows), to install it anywhere with Java 17+.
@@ -192,9 +196,29 @@ Style metrics (`tools/style.py`, after the opening, against Stockfish at a simil
 - Against Stockfish 2800, Stockfish restricts Chessy more (Chessy keeps 22.3 moves, Stockfish 24.7),
   but Chessy still gains more space; against 2600 the restriction is even.
 
+### Threads and hash
+
+Since v1.01 Chessy plays with 4 threads and 256 MB of hash by default (before, 1 thread and 64 MB). Against Stockfish
+(1 thread), with the book and the tablebases, 100 games per level at 10+0.1 (3 games at a time, 14 cores):
+
+| Against Stockfish | 2800 | 3000 | Elo (fit of both levels) |
+|---|---|---|---|
+| Space, 1 thread, 64 MB | 42.5% | 20.5% | 2754 ± 54 |
+| **Space, 4 threads, 256 MB** | 57% | 28% | **2843 ± 51** (+89) |
+| Full, 1 thread, 64 MB | 42.5% | 25.5% | 2775 ± 53 |
+| **Full, 4 threads, 256 MB** | 63.5% | 35% | **2894 ± 50** (+119) |
+
+Lazy SMP searches about 2.5 times more nodes per second with 4 threads, which is about +50 Elo per doubling of the threads.
+
+At 2+1, closer to a real game, 4 threads against Stockfish 3000 (1 thread): Full 31.7% (30 games, −134 ± 121),
+Space 40% (20 games, −70 ± 92), together 35% in 50 games (**~2890 ± 75**). So the Lichess bot (Space, 4 threads)
+plays at about **2850–2900** in the scale of Stockfish. This is not comparable with CCRL, where both engines play
+with one thread (see below).
+
 ### Strength levels (UCI_Elo)
 
-With `UCI_LimitStrength` and `UCI_Elo` (or `--elo` in `play`), Chessy plays at an Elo from 900 to 2800 in steps of 100.
+With `UCI_LimitStrength` and `UCI_Elo` (or `--elo` in `play`), Chessy plays at an Elo from 900 to 2800 in steps of 100,
+always with one thread (whatever `Threads`), as the levels were calibrated.
 The lowest levels play the greedy search, the middle levels the Space style (or the style of the `Style` option)
 limited to a number of nodes per move, so it keeps every technique of its search (quiescence, extensions, reductions)
 and only sees less, and the top level plays Full without limit. The Elo of the limited search grows with the logarithm
@@ -222,7 +246,8 @@ so it is roughly a **CCRL Blitz** scale. At the time control of CCRL Blitz (2+1)
 | Space | 42.5% (−53 ± 60) | 61.3% (+80 ± 96) |
 | Full | 36.5% (−96 ± 62) | 55% (+35 ± 105) |
 
-Estimate: **~2800–2850 in CCRL Blitz** for Space and Full (the same within the margin of error), with these caveats:
+Estimate: **~2800–2850 in CCRL Blitz** for Space and Full (the same within the margin of error), with one thread
+(CCRL Blitz plays each engine on one CPU; engines with more threads are rated in separate lists), with these caveats:
 few games at 2+1 (±70 Elo for both styles together), this machine is faster than the reference machine of CCRL
 (Intel i7-4770K), which makes 2+1 here a longer time control, and above 2744 the scale of Stockfish is extrapolated.
 
@@ -292,7 +317,7 @@ or on a server with Docker, so it stays online when your computer is off):
 challenge it from your account,
 from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
 and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
-so the bot plays the default style, Space, with its opening book and the tablebases (set `UCI_LimitStrength` and
+so the bot plays the default style, Space, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and
 `UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines,
 so playing on the board against a local Chessy needs the Lichess bot.
 

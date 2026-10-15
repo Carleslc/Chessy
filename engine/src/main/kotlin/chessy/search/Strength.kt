@@ -24,8 +24,15 @@ object Strength {
     /** Estimated Elo of the greedy search by depth (without quiescence, depth 4 is barely better than depth 3). */
     val GREEDY_ELO: Map<Int, Int> = mapOf(2 to 900, 3 to 1100, 4 to 1120)
 
-    /** Estimated Elo of the styles of the alpha-beta search without limit. */
+    /** Estimated Elo of the styles of the alpha-beta search without limit, with one thread. */
     val STYLE_ELO: Map<String, Int> = mapOf("Space" to 2750, "Full" to 2800, "Material" to 2550)
+
+    /**
+     * Elo gained by each doubling of the threads of the search without limit (Lazy SMP), measured with 4 threads against
+     * 1 at 10+0.1: +89 for Space and +119 for Full. More than [MAX_MEASURED_THREADS] threads are not counted (not measured).
+     */
+    private const val ELO_PER_THREAD_DOUBLING = 50.0
+    private const val MAX_MEASURED_THREADS = 4
 
     /**
      * Elo of the Space style limited to [REFERENCE_NODES] nodes per move: a linear fit of the Elo against the logarithm
@@ -65,12 +72,13 @@ object Strength {
         return Setting(style, nodes = maxOf(nodesFor(target), MIN_NODES))
     }
 
-    /** Estimated Elo of a [setting]. */
-    fun estimatedElo(setting: Setting): Int = when {
+    /** Estimated Elo of a [setting], searching with [threads] (only the search without limit uses them). */
+    fun estimatedElo(setting: Setting, threads: Int = 1): Int = when {
         setting.isGreedy -> GREEDY_ELO[setting.greedyDepth]
             ?: if (setting.greedyDepth < 2) GREEDY_ELO.getValue(2) - 300 else GREEDY_ELO.getValue(4) + 100 * (setting.greedyDepth - 4)
         setting.nodes != null -> minOf(eloFor(setting.nodes), STYLE_ELO[setting.style] ?: STYLE_ELO.getValue("Space"))
-        else -> STYLE_ELO[setting.style] ?: STYLE_ELO.getValue("Space")
+        else -> (STYLE_ELO[setting.style] ?: STYLE_ELO.getValue("Space")) +
+            (ELO_PER_THREAD_DOUBLING * ln(threads.coerceIn(1, MAX_MEASURED_THREADS).toDouble()) / ln(2.0)).roundToInt()
     }
 
     fun roundElo(elo: Int): Int = ((elo.toDouble() / STEP).roundToInt() * STEP).coerceIn(MIN_ELO, MAX_ELO)

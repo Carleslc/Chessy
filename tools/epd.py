@@ -17,6 +17,13 @@ import chess.engine
 
 DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
 
+def configure(engine: chess.engine.SimpleEngine, options: dict[str, str]):
+  # One thread by default (Chessy plays with 4), as in the results of the README
+  if 'Threads' in engine.options and 'Threads' not in options:
+    options = {'Threads': '1', **options}
+  if options:
+    engine.configure(options)
+
 def set_args():
   global args
   parser = argparse.ArgumentParser()
@@ -37,8 +44,7 @@ if __name__ == "__main__":
   failed = []
 
   with chess.engine.SimpleEngine.popen_uci(args.engine.split()) as engine:
-    if args.option:
-      engine.configure(dict(option.split('=', 1) for option in args.option))
+    configure(engine, dict(option.split('=', 1) for option in args.option))
     for number, line in enumerate(lines, 1):
       board, operations = chess.Board.from_epd(line)
       move = engine.play(board, limit, game=number).move

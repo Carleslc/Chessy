@@ -42,6 +42,14 @@ class StrengthTest {
     }
 
     @Test
+    fun threads() {
+        // 4 threads add about 100 Elo to the search without limit, but not to the limited levels (played with one thread)
+        assertEquals(2850, Strength.estimatedElo(Strength.Setting("Space"), threads = 4))
+        assertEquals(2850, Strength.estimatedElo(Strength.Setting("Space"), threads = 16))
+        assertEquals(Strength.estimatedElo(Strength.settingFor(2000)), Strength.estimatedElo(Strength.settingFor(2000), threads = 4))
+    }
+
+    @Test
     fun rounding() {
         assertEquals(1500, Strength.roundElo(1549))
         assertEquals(1600, Strength.roundElo(1550))
