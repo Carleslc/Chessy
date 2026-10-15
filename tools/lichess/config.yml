@@ -64,7 +64,8 @@ fake_think_time: false
 rate_limiting_delay: 0
 move_overhead: 1000                 # Milliseconds kept by lichess-bot for network delays, increase it if the bot loses on time
 
-# Correspondence games (days per move), not accepted (time_controls below)
+# Correspondence games (days per move): the bot thinks a fixed time per move, waits a while for the reply and disconnects,
+# freeing its game slot for real-time games, then checks the game from time to time
 correspondence:
   move_time: 60                     # Seconds to think per move
   checkin_period: 300               # Seconds between checks for the moves of the opponent, after disconnecting
@@ -81,6 +82,8 @@ challenge:
   min_increment: 0
   max_base: 3600
   min_base: 60
+  max_days: 14                      # Days per move of correspondence games
+  min_days: 1
   variants:
     - standard
     - chess960
@@ -89,6 +92,7 @@ challenge:
     - blitz
     - rapid
     - classical
+    - correspondence
   modes:
     - casual
     - rated

@@ -78,7 +78,8 @@ The offline test plays against Snaky with the greedy search, because the image h
 
 - **Engine**: style Space (UCI option `Style`), 4 threads (`Threads`, up to the cores of the machine), 256 MB of hash
   and pondering (`ponder: true`: Snaky thinks on the opponent's time, in real-time games; not in correspondence games).
-- **Challenges**: one game at a time, standard chess and Chess960, from bullet to classical (1 to 60 minutes, increment up to 30 s),
+- **Challenges**: one game at a time, standard chess and Chess960, from bullet to classical (1 to 60 minutes, increment up to 30 s)
+  and correspondence (1 to 14 days per move: Snaky thinks 1 minute per move and only takes the game slot while it plays),
   casual and rated, from humans and bots.
 - **Draws and resignation**: Snaky resigns after 10 moves below −30 pawns and offers or accepts draws
   in dead equal endgames (score 0 for 10 moves, with 10 pieces or fewer).
