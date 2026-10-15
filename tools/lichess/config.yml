@@ -1,4 +1,4 @@
-# lichess-bot configuration for Chessy (the keys of config.yml.default of lichess-bot that matter for Chessy).
+# lichess-bot configuration for Snaky (the keys of config.yml.default of lichess-bot that matter for Snaky).
 # run.sh copies it into the lichess-bot folder with the path of the engine. See README.md in this folder.
 
 # The token is read from the environment variable LICHESS_BOT_TOKEN (never write it here, never commit it)
@@ -6,14 +6,14 @@ token: "set LICHESS_BOT_TOKEN"
 url: "https://lichess.org/"
 
 engine:
-  dir: "../Chessy/engine/build/install/chessy/bin/"  # Replaced by run.sh with the absolute path of the engine
-  name: "chessy"                    # chessy.bat on Windows
+  dir: "../Snaky/engine/build/install/snaky/bin/"  # Replaced by run.sh with the absolute path of the engine
+  name: "snaky"                    # snaky.bat on Windows
   working_dir: ""
   protocol: "uci"
   ponder: true                      # Think on the opponent's time (UCI go ponder / ponderhit)
 
   polyglot:
-    enabled: false                  # Polyglot books read by lichess-bot: off, Chessy plays its own book (OwnBook)
+    enabled: false                  # Polyglot books read by lichess-bot: off, Snaky plays its own book (OwnBook)
 
   draw_or_resign:
     resign_enabled: true            # Resign lost positions...
@@ -26,7 +26,7 @@ engine:
     offer_draw_pieces: 10           # ...with this number of pieces or fewer
     offer_draw_for_egtb_zero: false # Offer draws when online_egtb says the game is drawn (online_egtb is off)
 
-  # Moves from online services, played by lichess-bot instead of asking Chessy: all off, so that Chessy plays every move
+  # Moves from online services, played by lichess-bot instead of asking Snaky: all off, so that Snaky plays every move
   # with its own style (they would play the moves of databases and Stockfish). They work from any computer (web APIs).
   online_moves:
     max_out_of_book_moves: 10       # Stop asking the online books after this number of positions without a move
@@ -38,9 +38,9 @@ engine:
     lichess_opening_explorer:
       enabled: false                # The opening explorer of Lichess: games of masters or of Lichess players
     online_egtb:
-      enabled: false                # The tablebases of Lichess (up to 7 pieces) or chessdb; Chessy has its own up to 5 pieces
+      enabled: false                # The tablebases of Lichess (up to 7 pieces) or chessdb; Snaky has its own up to 5 pieces
 
-  # Tablebases probed by lichess-bot itself before asking the engine: off, Chessy probes its own Syzygy tables (SyzygyPath)
+  # Tablebases probed by lichess-bot itself before asking the engine: off, Snaky probes its own Syzygy tables (SyzygyPath)
   lichess_bot_tbs:
     syzygy:
       enabled: false
@@ -49,13 +49,13 @@ engine:
 
   uci_options:
     Style: Space                    # Space (the constrictor, default), Full (strongest), Material or Greedy (weakest)
-    OwnBook: true                   # Opening book of Chessy (Opening: KingsIndian, French... to play only one opening)
+    OwnBook: true                   # Opening book of Snaky (Opening: KingsIndian, French... to play only one opening)
     SyzygyPath: "tools/syzygy"      # Replaced by run.sh with the absolute path of the tablebases (if downloaded)
     # UCI_LimitStrength: true       # A weaker bot: UCI_Elo from 900 to 2800 in steps of 100
     # UCI_Elo: 1600
     Threads: 4                      # Lazy SMP: more threads are stronger, up to the cores of the machine (1 with UCI_Elo)
     Hash: 256                       # MB of transposition table
-    Move Overhead: 100              # Milliseconds kept by Chessy for delays, on top of move_overhead
+    Move Overhead: 100              # Milliseconds kept by Snaky for delays, on top of move_overhead
 
   silence_stderr: false
 
@@ -96,7 +96,7 @@ challenge:
 greeting:
   hello: "Hi! I'm {me}, a chess engine that likes space. Good luck!"
   goodbye: "Good game!"
-  hello_spectators: "I'm {me}: I gain space and squeeze my opponents. https://github.com/Carleslc/Chessy"
+  hello_spectators: "I'm {me}: I gain space and squeeze my opponents. https://github.com/Carleslc/Snaky"
   goodbye_spectators: "Thanks for watching!"
 
 matchmaking:

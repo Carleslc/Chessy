@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Create a training file for the Texel tuning of Chessy (chessy tune) from PGN games:
+Create a training file for the Texel tuning of Snaky (snaky tune) from PGN games:
 one quiet position per line with the result of its game for white, "<fen>;<result>" (1, 0.5 or 0).
 
 A position is quiet when the side to move is not in check and the move played in the game is not a capture,
@@ -10,7 +10,7 @@ a promotion or a check: the static evaluation can judge it without searching tac
 Repeated positions are kept once. Games without a result are skipped.
 
 python texel.py games/texel-selfplay.pgn --output games/texel.txt
-cd ../engine && build/install/chessy/bin/chessy tune ../tools/games/texel.txt --output src/main/resources/chessy/eval/space.weights
+cd ../engine && build/install/snaky/bin/snaky tune ../tools/games/texel.txt --output src/main/resources/snaky/eval/space.weights
 '''
 
 import argparse

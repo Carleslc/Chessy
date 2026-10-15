@@ -9,5 +9,5 @@ DIR=$(cd "$(dirname "$0")" && pwd)
 (cd "$DIR/../engine" && ./gradlew -q installDist)
 rm -rf "$DIR/engines/$NAME"
 mkdir -p "$DIR/engines"
-cp -R "$DIR/../engine/build/install/chessy" "$DIR/engines/$NAME"
-echo "$DIR/engines/$NAME/bin/chessy"
+cp -R "$DIR/../engine/build/install/snaky" "$DIR/engines/$NAME"
+echo "$DIR/engines/$NAME/bin/snaky"

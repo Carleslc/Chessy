@@ -1,4 +1,4 @@
-# Chessy as a Lichess BOT on a server, with Docker Compose (see README.md in this folder):
+# Snaky as a Lichess BOT on a server, with Docker Compose (see README.md in this folder):
 #
 #   cp tools/lichess/.env.example tools/lichess/.env    # and write the token in .env
 #   docker compose -f tools/lichess/compose.yaml run --rm bot upgrade    # once: convert the account to BOT
@@ -9,7 +9,7 @@ services:
     build:
       context: ../..
       dockerfile: tools/lichess/Dockerfile
-    image: chessy-bot
+    image: snaky-bot
     restart: unless-stopped
     env_file:
       - path: .env
@@ -20,7 +20,7 @@ services:
       # Syzygy tablebases downloaded in tools/syzygy (optional, see tools/README.md)
       - ../syzygy:/syzygy:ro
       # Uncomment to use another configuration (style, Elo, accepted challenges...) without rebuilding the image
-      # - ./config.yml:/chessy-config/config.yml:ro
+      # - ./config.yml:/snaky-config/config.yml:ro
     # One game at a time with 4 threads and 256 MB of hash (config.yml): lower Threads in config.yml on a smaller server
     cpus: 4
     mem_limit: 1536m

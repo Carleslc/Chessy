@@ -1,4 +1,4 @@
-# Chessy — PRD (Product Requirements Document)
+# Snaky — PRD (Product Requirements Document)
 
 > Motor de ajedrez "constrictor": gana espacio, controla casillas y asfixia al rival limitando sus movimientos y posibilidades.
 
@@ -16,7 +16,7 @@
 
 ## 1. Visión
 
-Chessy es un motor de ajedrez propio cuya evaluación se basa principalmente en el concepto ajedrecístico de **espacio** y sus heurísticas relacionadas: **control de casillas**, **movilidad** y **restricción del rival**. Juega como una serpiente constrictora: no busca el golpe táctico inmediato, sino ir ganando terreno, quitar casillas a las piezas rivales, atrapar piezas, inhabilitar planes y esperar a que la posición contraria colapse.
+Snaky es un motor de ajedrez propio cuya evaluación se basa principalmente en el concepto ajedrecístico de **espacio** y sus heurísticas relacionadas: **control de casillas**, **movilidad** y **restricción del rival**. Juega como una serpiente constrictora: no busca el golpe táctico inmediato, sino ir ganando terreno, quitar casillas a las piezas rivales, atrapar piezas, inhabilitar planes y esperar a que la posición contraria colapse.
 
 Sin descuidar lo necesario para jugar bien (táctica, material, seguridad del rey, estructura de peones), el motor debe entender que **el valor de una pieza no es estático**: depende de su actividad y potencial. Un caballo que domina el centro puede valer más que una torre encerrada. Esto le debe permitir:
 
@@ -44,8 +44,8 @@ Sin descuidar lo necesario para jugar bien (táctica, material, seguridad del re
 
 ## 3. Casos de uso
 
-- Jugar contra Chessy desde una GUI UCI local.
-- Chessy jugando como **BOT** en Lichess (retos de humanos y de otros bots).
+- Jugar contra Snaky desde una GUI UCI local.
+- Snaky jugando como **BOT** en Lichess (retos de humanos y de otros bots).
 - Analizar una posición (FEN) o una partida (PGN) viendo el desglose de la evaluación (cuánto aporta el espacio, la movilidad, el material…).
 - Comparar versiones del motor entre sí (SPRT) y contra motores de referencia.
 - Experimentar con otras evaluaciones/personalidades cambiando solo el evaluador.
@@ -55,10 +55,10 @@ Sin descuidar lo necesario para jugar bien (táctica, material, seguridad del re
 ### 4.1 Estructura del repositorio
 
 ```
-Chessy/
+Snaky/
 ├── docs/            PRD y documentación
 ├── engine/          Motor en Kotlin (Gradle)
-│   └── src/main/kotlin/chessy/
+│   └── src/main/kotlin/snaky/
 │       ├── core/    Tablero (bitboards), ataques, movimientos, FEN, Zobrist, perft
 │       ├── search/  Búsqueda (alfa-beta, TT, quiescencia, ordenación…)
 │       ├── eval/    Interfaz Evaluator + implementaciones (Material, Constrictor…)
@@ -74,7 +74,7 @@ Chessy/
     └── lichess/     Configuración de lichess-bot
 ```
 
-La rama `v0` conserva la primera implementación (2018–2019), arreglada y con las reglas completas para ser jugable en consola (ver §12). La rama `python-old` conserva el visor de 2022 tal como estaba.
+El motor se llamaba Chessy hasta v1.01, cuando pasó a llamarse Snaky (una serpiente constrictora, como su estilo; en Lichess, Snaky-Bot). La rama `v0` conserva la primera implementación (2018–2019), Chessy v0, arreglada y con las reglas completas para ser jugable en consola (ver §12). La rama `python-old` conserva el visor de 2022 tal como estaba.
 
 ### 4.2 Módulos del motor
 
@@ -164,7 +164,7 @@ interface Evaluator {
 ```
 
 - La búsqueda solo conoce `Evaluator` (patrón *strategy*). La implementación se elige con la opción UCI `Style`, que define cuatro estilos (y niveles de dificultad): **Space** (por defecto, el evaluador "Constrictor" con pesos que conservan el estilo), **Full** (la misma evaluación con todos los pesos ajustados para la máxima fuerza), **Material** (material y tablas de casillas) y **Greedy** (búsqueda de profundidad fija que solo cuenta material, opción `Greedy Depth`). Cada evaluador tiene su propio *contempt*.
-- Los **pesos** viven en una estructura de datos (`SpaceWeights`) que se lee y se escribe en ficheros de texto (`nombre = valor`). Los pesos por defecto son el recurso `chessy/eval/space.weights`, ajustado con *Texel tuning*. La opción UCI `Weights` (y `--weights`) permite probar otros ficheros sin recompilar. Las bonificaciones no pueden volverse penalizaciones al ajustarlas, ni al revés.
+- Los **pesos** viven en una estructura de datos (`SpaceWeights`) que se lee y se escribe en ficheros de texto (`nombre = valor`). Los pesos por defecto son el recurso `snaky/eval/space.weights`, ajustado con *Texel tuning*. La opción UCI `Weights` (y `--weights`) permite probar otros ficheros sin recompilar. Las bonificaciones no pueden volverse penalizaciones al ajustarlas, ni al revés.
 - **Evaluación cónica** (*tapered*): cada término tiene valor de medio juego (mg) y de final (eg), interpolados según la fase (material no-peón restante).
 - La evaluación es simétrica por defecto (evaluar una posición y su espejo da lo mismo con signo opuesto) — se comprueba con un test. La "personalidad" se expresa con los pesos.
 - `explain` + comando CLI `eval <fen>` muestran cada término por bando, incluido el **valor dinámico de cada pieza**.
@@ -235,7 +235,7 @@ Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perf
 
 ### 5.5 Paralelismo
 
-**CPU, no GPU.** La búsqueda alfa-beta es secuencial por naturaleza (cada poda depende de los resultados anteriores), con mucha ramificación condicional y acceso aleatorio a memoria (tabla de transposición): justo lo que peor se le da a una GPU, que necesita miles de hilos haciendo la misma operación sobre datos contiguos. Las GPU se usan en motores con redes neuronales grandes y búsqueda MCTS (como Leela Chess Zero), que evalúan lotes de posiciones a la vez; no encaja con una evaluación clásica y alfa-beta. La evaluación de Chessy (bitboards, `popcount`) es rapidísima en CPU y no compensaría el coste de transferir posiciones a la GPU.
+**CPU, no GPU.** La búsqueda alfa-beta es secuencial por naturaleza (cada poda depende de los resultados anteriores), con mucha ramificación condicional y acceso aleatorio a memoria (tabla de transposición): justo lo que peor se le da a una GPU, que necesita miles de hilos haciendo la misma operación sobre datos contiguos. Las GPU se usan en motores con redes neuronales grandes y búsqueda MCTS (como Leela Chess Zero), que evalúan lotes de posiciones a la vez; no encaja con una evaluación clásica y alfa-beta. La evaluación de Snaky (bitboards, `popcount`) es rapidísima en CPU y no compensaría el coste de transferir posiciones a la GPU.
 
 En CPU:
 - **Perft paralelo** (hecho): el árbol se reparte a dos plies de la raíz en tareas independientes, cada hilo con su copia de la posición. Medido en la máquina de desarrollo: 38 M nodos/s con 1 hilo, ~207 M con 8 (×5,4).
@@ -260,13 +260,13 @@ En CPU:
 - **Validación** (hecho): `tools/perft_check.py` compara `divide` y la SAN de las jugadas del motor con `python-chess` en posiciones aleatorias.
 - **Partidas**: el motor exporta las partidas en PGN (comando `play --pgn`, y las partidas de las fases siguientes) para verlas en el visor (`tools/game.py`) o analizarlas en Lichess o Chess.com.
 - **Matches**: scripts para `fastchess`/`cutechess-cli` (SPRT entre versiones, partidas contra Stockfish limitado).
-- **Tuning** (hecho): `tools/texel.py` extrae las posiciones tranquilas de partidas con su resultado y `chessy tune` ajusta los pesos (Texel tuning).
+- **Tuning** (hecho): `tools/texel.py` extrae las posiciones tranquilas de partidas con su resultado y `snaky tune` ajusta los pesos (Texel tuning).
 - **Lichess**: configuración de `lichess-bot` apuntando al ejecutable UCI del motor.
 - **CLI**: lanzadores para jugar contra el motor en consola o en una GUI.
 
 ## 8. Despliegue
 
-- Empaquetado: `./gradlew installDist` → script `engine/build/install/chessy/bin/chessy` (UCI), y `./gradlew distZip` → `engine/build/distributions/chessy-<versión>.zip` con los lanzadores `bin/chessy` (macOS, Linux) y `bin/chessy.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
+- Empaquetado: `./gradlew installDist` → script `engine/build/install/snaky/bin/snaky` (UCI), y `./gradlew distZip` → `engine/build/distributions/snaky-<versión>.zip` con los lanzadores `bin/snaky` (macOS, Linux) y `bin/snaky.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
 - **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools). El bot se ejecuta en la máquina que lo arranca (Lichess solo transmite las jugadas): para tenerlo siempre en línea, imagen Docker con el motor y lichess-bot (`tools/lichess/Dockerfile`, `compose.yaml`; x86-64 y ARM64, 436 MB) para un servidor, con las tablas Syzygy como volumen opcional y los comandos `play`, `upgrade` y `test` (partida sin conexión).
 - Libro de aperturas propio (Polyglot, `OwnBook`) y tablas de finales Syzygy (`SyzygyPath`), desde v1.01.
 
@@ -280,7 +280,7 @@ En CPU:
 | **v1.01, v1.02, …, v1.15, v1.26…** | Mejoras del motor y de las evaluaciones, una versión por cambio aceptado (SPRT) | Tags `v1.01`, `v1.02`… |
 | **v1.07.6** | Correcciones (*hotfix*) sobre una versión publicada | Tag `v1.07.6` |
 
-- La versión se define en un solo sitio, `engine/gradle.properties`, y el motor la usa en `id name` de UCI, en la CLI y en el `Site` de los PGN que exporta (`Chessy (v1.0)`).
+- La versión se define en un solo sitio, `engine/gradle.properties`, y el motor la usa en `id name` de UCI, en la CLI y en el `Site` de los PGN que exporta (`Snaky (v1.0)`).
 - Cada versión publicada lleva un **tag anotado** de git (`git tag -a v1.01 -m "..."`) con un resumen de los cambios y, cuando aplique, el resultado del SPRT frente a la versión anterior.
 - `v0` es una rama y no un tag (un tag con el mismo nombre que una rama sería ambiguo para git).
 
@@ -300,7 +300,7 @@ En CPU:
 
 ### CCRL
 
-La escala `UCI_Elo` de Stockfish está ajustada con partidas contra versiones del motor Stash con rating CCRL Blitz, a 120+1 (`search.h`: de 1320 a 3190; las anclas de Stash están a ±100 Elo de CCRL y la más alta es 2744). Por eso la calibración contra Stockfish limitado da una estimación aproximada del rating en **CCRL Blitz**. A 2+1 Chessy rinde unos 100 Elo más que a 10+0,1 contra Stockfish 2800 (Space 61 %, Full 55 %, 40 partidas cada uno), así que la estimación actual es de **~2800–2850 en CCRL Blitz** (puesto ~295–310 de ~890) y ~2770–2820 en CCRL 40/2 FRC si jugara Chess960 (puesto ~105–110 de 151). Detalles en el README (*Versions and styles*).
+La escala `UCI_Elo` de Stockfish está ajustada con partidas contra versiones del motor Stash con rating CCRL Blitz, a 120+1 (`search.h`: de 1320 a 3190; las anclas de Stash están a ±100 Elo de CCRL y la más alta es 2744). Por eso la calibración contra Stockfish limitado da una estimación aproximada del rating en **CCRL Blitz**. A 2+1 Snaky rinde unos 100 Elo más que a 10+0,1 contra Stockfish 2800 (Space 61 %, Full 55 %, 40 partidas cada uno), así que la estimación actual es de **~2800–2850 en CCRL Blitz** (puesto ~295–310 de ~890) y ~2770–2820 en CCRL 40/2 FRC si jugara Chess960 (puesto ~105–110 de 151). Detalles en el README (*Versions and styles*).
 
 Listas y condiciones (máquina de referencia Intel i7-4770K, con el tiempo escalado según el `bench` de Stockfish 10 en la máquina del probador; *pondering* desactivado; sin aprendizaje; tablas de finales de hasta 6 piezas):
 
@@ -347,8 +347,8 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - **Resultado**:
   - UCI completo (`uci`, `isready`, `ucinewgame`, `position`, `go` con todos sus parámetros incluidos `searchmoves`, `infinite` y `ponder`, `stop`, `ponderhit`, `setoption`, `quit`) con la búsqueda en otro hilo; opción `Move Overhead`; comandos de depuración `d`, `moves`, `perft` y `go perft`. Es el modo por defecto del ejecutable.
   - Interfaz `Search` (límites, `info`, puntuaciones de mate) y jugador provisional `GreedySearch` (1 ply, material, mate en 1, evita el ahogado si gana).
-  - `play --chessy <color>`: partida contra Chessy en consola, exportable a PGN.
-  - `tools/match.py` en lugar de fastchess (no instalado): partidas entre motores UCI con `python-chess`, que valida cada jugada y el protocolo, controla el reloj y guarda los PGN. 1000 partidas Chessy contra Chessy a 10+0,1 sin errores (102.383 jugadas, 2,3 ms de media) y 10 partidas contra Stockfish (`UCI_Elo` 1320) sin errores.
+  - `play --snaky <color>`: partida contra Snaky en consola, exportable a PGN.
+  - `tools/match.py` en lugar de fastchess (no instalado): partidas entre motores UCI con `python-chess`, que valida cada jugada y el protocolo, controla el reloj y guarda los PGN. 1000 partidas Snaky contra Snaky a 10+0,1 sin errores (102.383 jugadas, 2,3 ms de media) y 10 partidas contra Stockfish (`UCI_Elo` 1320) sin errores.
   - `tools/lichess`: configuración y guía de lichess-bot. Pendiente de probar en Lichess con una cuenta BOT (requiere crear la cuenta y un token).
 
 ### Fase 3 — Búsqueda base + evaluación base ✅
@@ -460,8 +460,8 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - Texel tuning de pesos, ajuste de parámetros de búsqueda, calibración contra Stockfish limitado / CCRL.
 - **Aceptación**: ≥ 2000 Elo medido.
 - **Resultado**:
-  - **Pesos en fichero**: `SpaceWeights` se lee y se escribe como texto (`nombre = valor`, 92 pesos ajustables). Los pesos por defecto son el recurso `chessy/eval/space.weights`. Opción UCI `Weights` y `--weights` para probar otros ficheros, y comando `chessy weights` para ver los actuales.
-  - **Texel tuning** (`chessy tune`, búsqueda local con pasos adaptativos y error cuadrático medio contra el resultado de la partida, `k` ajustado al principio). Datos: posiciones tranquilas (sin jaque, y la jugada de la partida no es captura, promoción ni jaque) de partidas propias a 2+0,02 desde 5000 aperturas equilibradas (`tools/texel.py`). Los pesos del estilo (espacio, territorio, restricción, porcentaje de movilidad), el *contempt* y el peón de medio juego (la unidad) no se ajustan. Las bonificaciones no pueden volverse penalizaciones ni al revés.
+  - **Pesos en fichero**: `SpaceWeights` se lee y se escribe como texto (`nombre = valor`, 92 pesos ajustables). Los pesos por defecto son el recurso `snaky/eval/space.weights`. Opción UCI `Weights` y `--weights` para probar otros ficheros, y comando `snaky weights` para ver los actuales.
+  - **Texel tuning** (`snaky tune`, búsqueda local con pasos adaptativos y error cuadrático medio contra el resultado de la partida, `k` ajustado al principio). Datos: posiciones tranquilas (sin jaque, y la jugada de la partida no es captura, promoción ni jaque) de partidas propias a 2+0,02 desde 5000 aperturas equilibradas (`tools/texel.py`). Los pesos del estilo (espacio, territorio, restricción, porcentaje de movilidad), el *contempt* y el peón de medio juego (la unidad) no se ajustan. Las bonificaciones no pueden volverse penalizaciones ni al revés.
   - Cada cambio con SPRT (8+0,08, libro `balanced.epd`):
 
     | Cambio | Resultado |
@@ -476,7 +476,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 
   - El ajuste revaloriza las piezas frente a los peones en el medio juego (caballo 626, alfil 667, torre 871 y dama 2248 con el peón en 100; en el final 278, 313, 577 y 781), reduce la movilidad y aumenta amenazas, puestos avanzados y peones pasados. Con ello los términos del estilo pesan menos en proporción y **el estilo se diluyó**: contra Stockfish `UCI_Elo` 2400 la movilidad del rival subió de 25,2 a 26,3, el espacio bajó de 1,57 a 0,80, el territorio de 2,44 a 1,34, y dejó de ganar partidas yendo por detrás en material.
   - **Recuperación del estilo** (SPRT de 1000 partidas como máximo, métricas de estilo con 100 partidas contra Stockfish 2400 a 10+0,1, reutilizando las posiciones de los ajustes anteriores):
-    1. Texel con todos los pesos, también los del estilo (`chessy tune --all true`, salvo el peón de medio juego y el *contempt*): +19,5 ± 17 frente a la versión anterior, 90 % contra Stockfish 2400. El ajuste baja el espacio (`spacePercent` 120 → 42) y sube el territorio (4 → 11) y sobre todo el control de la zona del rey (6 → 38): más territorio (2,92), pero menos espacio (0,54) y ninguna victoria con material de menos.
+    1. Texel con todos los pesos, también los del estilo (`snaky tune --all true`, salvo el peón de medio juego y el *contempt*): +19,5 ± 17 frente a la versión anterior, 90 % contra Stockfish 2400. El ajuste baja el espacio (`spacePercent` 120 → 42) y sube el territorio (4 → 11) y sobre todo el control de la zona del rey (6 → 38): más territorio (2,92), pero menos espacio (0,54) y ninguna victoria con material de menos.
     2. Partiendo de esos pesos, subir a mano los del estilo. Variantes probadas:
 
        | Variante | Contra SF 2400 | Movilidad del rival | Espacio | Territorio | Piezas atrapadas | Victorias con material de menos |
@@ -490,7 +490,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
        | ✅ **Espacio 90, movilidad 135 %, restricción (8, 3)** | **86 %** | 25,5 | 1,05 | 2,43 | 0,32 | **5 %** |
 
        La elegida iguala a la Fase 5 en movilidad del rival, territorio, piezas atrapadas y victorias con material de menos, aunque gana menos espacio detrás de los peones. Fuerza: −6 ± 16 frente al primer ajuste (sin diferencia apreciable), −58 ± 31 frente a la versión con todos los pesos ajustados (el estilo cuesta fuerza en el enfrentamiento directo). La primera variante (espacio 120, movilidad 150 %), algo más débil, ganó a la Fase 5 por +164 ± 46.
-  - Calibración final con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel; Chessy no perdió ninguna por tiempo):
+  - Calibración final con 1 hilo a 10+0,1 contra Stockfish 19 limitado (100 partidas por nivel; Snaky no perdió ninguna por tiempo):
 
     | Rival | + / − / = | Puntos | Diferencia de Elo | Fase 6 (primer ajuste) | Fase 5 |
     |---|---|---|---|---|---|
@@ -524,7 +524,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
     | **% de puntos (`sts_rating.py`)** | 51,8 % | 56,7 % | 56,5 % | **57,0 %** | 91,5 % |
     | **Elo STS (`sts_rating.py`)** | 2065 | 2283 | 2274 | **2296** | 3832 |
 
-    Fortalezas frente a la Fase 5: alfil contra caballo, control del centro, 7ª fila, puestos avanzados y evitar cambios inútiles (temas de piezas activas, que el ajuste valora más). Debilidades: actividad del rey, casillas vacías y columnas abiertas, y en general los temas de final y de maniobra lenta, donde Stockfish saca más ventaja. El Elo STS mide sobre todo la comprensión posicional en jugadas sueltas: Chessy juega mucho mejor de lo que indica (2296 frente a ~2750 en partidas).
+    Fortalezas frente a la Fase 5: alfil contra caballo, control del centro, 7ª fila, puestos avanzados y evitar cambios inútiles (temas de piezas activas, que el ajuste valora más). Debilidades: actividad del rey, casillas vacías y columnas abiertas, y en general los temas de final y de maniobra lenta, donde Stockfish saca más ventaja. El Elo STS mide sobre todo la comprensión posicional en jugadas sueltas: Snaky juega mucho mejor de lo que indica (2296 frente a ~2750 en partidas).
   - `bench`: 1.617.877 nodos, ~780 k nodos/s.
 
 ### Estilo Full (después de la Fase 6)
@@ -541,17 +541,18 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - Opcionales: libro de aperturas, Syzygy, pondering, evaluadores alternativos (p. ej. NNUE, o el "valor × factor de control" del README de 2022) gracias a la interfaz.
 - **Resultado**:
   - ***Pondering*** ([Pondering](https://chessprogramming.org/Pondering)): `go ponder` piensa durante el turno del rival y `ponderhit` ya no detiene la búsqueda: la convierte en una búsqueda normal cuyo reloj empieza en el `ponderhit` (`Ponderhit` viaja en `SearchLimits`, y `TimeManager` no aplica límites mientras se piensa en el turno del rival), así que todo lo pensado se aprovecha. Opción UCI `Ponder`. Comprobado con python-chess en partidas a 10+0,1: el 65 % de las jugadas fueron *ponderhit* y ninguna partida se perdió por tiempo.
-  - **Empaquetado**: `./gradlew distZip` genera `chessy-1.0.zip` (1,9 MB) con los lanzadores para macOS, Linux y Windows. Sin `native-image` por ahora (requiere instalar GraalVM).
-  - **BOT en Lichess**: `tools/lichess/config.yml` al día con el formato actual de lichess-bot (*pondering*, abandono con −10 peones durante 5 jugadas, tablas en finales igualados, sin libro ni jugadas en línea, retos de bullet a clásicas, casuales y puntuables, de humanos y bots) y `tools/lichess/run.sh`, que compila el motor, copia la configuración con la ruta del motor y arranca lichess-bot (o convierte la cuenta en BOT con `--upgrade`). Comprobado sin conexión con el simulador de lichess.org de los tests de lichess-bot (`run.sh --test`, lichess-bot 2026.10.11.1): la configuración es válida y Chessy juega partidas completas a 60+2 contra Stockfish 2000 con *pondering* (`go ponder`, `ponderhit` y `stop`) sin problemas de tiempo. Falta crear la cuenta del BOT y su token, que son del usuario.
+  - **Empaquetado**: `./gradlew distZip` genera `snaky-1.0.zip` (1,9 MB) con los lanzadores para macOS, Linux y Windows. Sin `native-image` por ahora (requiere instalar GraalVM).
+  - **BOT en Lichess**: `tools/lichess/config.yml` al día con el formato actual de lichess-bot (*pondering*, abandono con −10 peones durante 5 jugadas, tablas en finales igualados, sin libro ni jugadas en línea, retos de bullet a clásicas, casuales y puntuables, de humanos y bots) y `tools/lichess/run.sh`, que compila el motor, copia la configuración con la ruta del motor y arranca lichess-bot (o convierte la cuenta en BOT con `--upgrade`). Comprobado sin conexión con el simulador de lichess.org de los tests de lichess-bot (`run.sh --test`, lichess-bot 2026.10.11.1): la configuración es válida y Snaky juega partidas completas a 60+2 contra Stockfish 2000 con *pondering* (`go ponder`, `ponderhit` y `stop`) sin problemas de tiempo. Falta crear la cuenta del BOT y su token, que son del usuario.
   - **Tablero electrónico**: el ChessUp 2 (directamente o con chessconnect) juega contra el BOT desde la cuenta de Lichess del usuario; chessconnect no conecta con motores locales.
   - Versión **v1.0** (tag `v1.0`).
   - Quedaban como mejoras futuras el libro de aperturas, las tablas Syzygy y Chess960 (hechos en v1.01, abajo), `native-image` y evaluadores alternativos.
 
 ### Mejoras antes del BOT en línea (v1.01)
 
+- **Nombre**: el motor pasa a llamarse **Snaky** (antes Chessy; v0 conserva el nombre Chessy), como la cuenta del BOT, Snaky-Bot: paquete `snaky`, lanzador `bin/snaky`, opción `--snaky` de `play` (antes `--chessy`) y repositorio `Carleslc/Snaky`. Los *snapshots* anteriores de `tools/engines/` conservan el lanzador `bin/chessy` (`sprt.sh` acepta los dos).
 - **Referencias**: §14 con todas las páginas de chessprogramming.org que cita el código, por temas.
-- **`chessy play`**: muestra el estilo (con la profundidad de Greedy, o el Elo elegido) y su Elo estimado al empezar, y los guarda en el PGN (`White`/`Black` con el estilo, `WhiteElo`/`BlackElo` con el Elo estimado y `-` para la persona). La evaluación se muestra en peones desde el punto de vista de las blancas, como en los tableros de análisis (`+2.40 (White is better)`, `mate in 3 for Black`): antes era la puntuación de la búsqueda desde el punto de vista de Chessy (`cp -240`) y se confundía. Comando `eval` durante la partida.
-  - Ejemplo de la partida del usuario contra Greedy (profundidad 2): 12...Nxe4?? 13.Bxe4. Greedy no tiene búsqueda de quiescencia: tras cualquier jugada tranquila veía 13.Qxf6 (gana el caballo) sin ver la recaptura ...Qxf6, así que prefirió "salvar" el caballo con Nxe4, que pierde pieza por peón (−2,40 para Chessy) pero menos que el caballo que creía perder (efecto horizonte).
+- **`snaky play`**: muestra el estilo (con la profundidad de Greedy, o el Elo elegido) y su Elo estimado al empezar, y los guarda en el PGN (`White`/`Black` con el estilo, `WhiteElo`/`BlackElo` con el Elo estimado y `-` para la persona). La evaluación se muestra en peones desde el punto de vista de las blancas, como en los tableros de análisis (`+2.40 (White is better)`, `mate in 3 for Black`): antes era la puntuación de la búsqueda desde el punto de vista de Snaky (`cp -240`) y se confundía. Comando `eval` durante la partida.
+  - Ejemplo de la partida del usuario contra Greedy (profundidad 2): 12...Nxe4?? 13.Bxe4. Greedy no tiene búsqueda de quiescencia: tras cualquier jugada tranquila veía 13.Qxf6 (gana el caballo) sin ver la recaptura ...Qxf6, así que prefirió "salvar" el caballo con Nxe4, que pierde pieza por peón (−2,40 para Snaky) pero menos que el caballo que creía perder (efecto horizonte).
 - **Niveles de fuerza** ([Playing Strength](https://chessprogramming.org/Playing_Strength); `UCI_LimitStrength`, `UCI_Elo` de 900 a 2800 en pasos de 100, `--elo`; clase `Strength`): Greedy a profundidad 2, 3 y 4 para los niveles bajos (~900, ~1100 y ~1120: sin quiescencia la profundidad 4 apenas mejora a la 3), el estilo elegido (Space por defecto) limitado a un número de nodos por jugada para los intermedios, conservando toda la búsqueda (quiescencia, extensiones, reducciones), y Full sin límite para 2800. Calibración con 50 partidas por punto contra Stockfish limitado: la fuerza crece **~135 Elo por cada duplicación de nodos** (64 nodos ~1310, 1024 ~1590, 4096 ~1990, 16384 ~2310, 65536 ~2510, 262144 ~2800).
 - **Libro de aperturas** ([Opening Book](https://chessprogramming.org/Opening_Book), [PolyGlot](https://chessprogramming.org/PolyGlot); `OwnBook`, desactivado por defecto como piden las listas de rating; activado en `play` y en el BOT): libros Polyglot construidos con `tools/book.py` desde un repertorio de 63 líneas de aperturas de espacio (India de Rey, Benoni, Francesa, Caro-Kann y siciliana Alapin con e5, Gambito de Dama cerrado, Española cerrada, Pirc y Moderna; 12 jugadas por bando como máximo, como los libros de CCRL), comprobadas con Stockfish (se cortaron las líneas con jugadas que perdían más de 60 cp a profundidad 16). Un libro con todo y uno por apertura: la opción `Opening` fuerza una apertura (y el libro general cuando se agota), y `Book File` usa otro libro Polyglot. Las claves Polyglot se comprueban con los valores de la especificación.
 - **Chess960** ([Chess960](https://chessprogramming.org/Chess960); `UCI_Chess960`, `--chess960`, PGN con `Variant`): el enroque se codifica como el rey tomando su torre (la representación de Stockfish), que permite enroques en los que el rey o la torre no se mueven o se intercambian; derechos de enroque con la casilla de cada torre; FEN con KQkq, X-FEN y Shredder-FEN; las 960 posiciones iniciales por número de Scharnagl. Validado contra python-chess con perft y SAN en 150 posiciones aleatorias de Chess960 (`perft_check.py --chess960`); el perft estándar no cambia.
@@ -559,7 +560,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
 - **Fuerza de v1.01 con libro y tablas** contra Stockfish limitado (100 partidas por nivel a 10+0,1, desde la posición inicial para que juegue el libro): Space 86 / 79 / 42,5 / 20,5% contra 2400 / 2600 / 2800 / 3000 (v1.0: 86 / 73,5 / 42,5 / 17%), Full 84 / 71 / 42,5 / 25,5% (v1.0: 90 / 76 / 36,5 / 14,5%). Ajustando un Elo a los cuatro niveles: Space 2768 ± 40 (v1.0: 2746), Full 2756 ± 40 (v1.0: 2741), +22 y +15 dentro del margen de error: sin cambio medible. El libro solo cubre ~2,5 jugadas por partida porque Stockfish limitado varía sus respuestas, y las tablas se alcanzan en el 20–45% de las partidas; su valor está en la variedad y el estilo de las aperturas y en jugar perfectamente los finales de 5 piezas, más que en el Elo.
 - **4 hilos y 256 MB de hash por defecto** (antes 1 hilo y 64 MB), en UCI, `play` y el BOT: contra Stockfish 2800 / 3000 a 10+0,1 (100 partidas por nivel), Space 57 / 28% (con 1 hilo 42,5 / 20,5%) y Full 63,5 / 35% (con 1 hilo 42,5 / 25,5%): Space 2843 ± 51 (+89) y Full 2894 ± 50 (+119), unos +50 Elo por cada duplicación de hilos. A 2+1 contra Stockfish 3000 (con 1 hilo): Full 31,7% (30 partidas) y Space 40% (20 partidas), 35% en total, ~2890 ± 75: el BOT juega a unos 2850–2900 en la escala de Stockfish. La estimación CCRL sigue siendo la de 1 hilo, porque CCRL Blitz juega con una CPU por motor. Los niveles de fuerza juegan con un hilo (`ParallelSearch.singleThreaded`), y el Elo estimado que muestra `play` cuenta los hilos (`Strength.estimatedElo`).
 - **Evaluación**:
-  - El término de espacio es el *Space* / *Space area* clásico de Stockfish ([guía](https://hxim.github.io/Stockfish-Evaluation-Guide/)): casillas seguras de las columnas c–f en las filas 2–4 propias (sin peones propios ni atacadas por peones rivales), contando dos veces las que están detrás de los propios peones (hasta tres casillas) si no las ataca ninguna pieza rival; peso = piezas − 3 + mín(peones bloqueados, 9); bonus × peso² / 16, solo en el medio juego y con suficiente material. Diferencias: el porcentaje del estilo (`spacePercent`), el umbral de material ajustado por el *tuning* y un conteo más simple de los peones bloqueados. Territorio y Restricción son términos propios de Chessy, más allá del espacio de Stockfish.
+  - El término de espacio es el *Space* / *Space area* clásico de Stockfish ([guía](https://hxim.github.io/Stockfish-Evaluation-Guide/)): casillas seguras de las columnas c–f en las filas 2–4 propias (sin peones propios ni atacadas por peones rivales), contando dos veces las que están detrás de los propios peones (hasta tres casillas) si no las ataca ninguna pieza rival; peso = piezas − 3 + mín(peones bloqueados, 9); bonus × peso² / 16, solo en el medio juego y con suficiente material. Diferencias: el porcentaje del estilo (`spacePercent`), el umbral de material ajustado por el *tuning* y un conteo más simple de los peones bloqueados. Territorio y Restricción son términos propios de Snaky, más allá del espacio de Stockfish.
   - La evaluación es cónica (*tapered*): cada término tiene valor de medio juego y de final, interpolados con una fase continua de 0 a 24 según el material sin peones, así que no hay saltos entre fases. La única discontinuidad apreciable es el umbral de material del espacio (igual que en Stockfish): por debajo el término desaparece de golpe, aunque es pequeño (unos 10 cp, porque solo cuenta en el medio juego y la fase ya es media en el umbral; [Evaluation Discontinuity](https://chessprogramming.org/Evaluation_Discontinuity)). Se probó a desvanecerlo linealmente en el último cuarto del umbral: −20 ± 28 (300 partidas, sin demostrar que no empeore), probablemente porque los pesos se ajustaron con el umbral brusco; se mantiene el umbral, y queda para un próximo ajuste de pesos con la rampa.
 
 ## 11. Riesgos

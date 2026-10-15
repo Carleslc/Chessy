@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Analyze a game with the evaluation of Chessy: for each position, the terms of the evaluation
+Analyze a game with the evaluation of Snaky: for each position, the terms of the evaluation
 (space, territory, restriction, mobility, material...) from the point of view of white, plotted along the game.
 
 python analysis.py games/match.pgn --match 3 --output games/analysis.png
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import chess.pgn
 
-DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 DEFAULT_TERMS = ['Material', 'Mobility', 'Space', 'Territory', 'Restriction', 'King safety']
 
 def set_args():
@@ -25,13 +25,13 @@ def set_args():
   parser.add_argument("pgn", help="game file with PGN notation")
   parser.add_argument("--match", "-m", help="game number in the file", default=1, type=int)
   parser.add_argument("--terms", "-t", help="evaluation terms to plot", nargs='+', default=DEFAULT_TERMS)
-  parser.add_argument("--style", "-s", help="evaluation style of Chessy", default="Space")
-  parser.add_argument("--engine", "-e", help="Chessy command (build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
+  parser.add_argument("--style", "-s", help="evaluation style of Snaky", default="Space")
+  parser.add_argument("--engine", "-e", help="Snaky command (build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   parser.add_argument("--output", "-o", help="image file (default: show the plot)")
   args = parser.parse_args()
 
 class Evaluator:
-  '''Chessy in UCI mode, asked with the debug command "eval".'''
+  '''Snaky in UCI mode, asked with the debug command "eval".'''
 
   TERM = re.compile(r'^(.+?)\s+\(-?\d+, -?\d+\)\s+\(-?\d+, -?\d+\)\s+\(-?\d+, -?\d+\) = (-?\d+)$')
 

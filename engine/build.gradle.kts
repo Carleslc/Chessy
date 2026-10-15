@@ -19,14 +19,14 @@ kotlin {
 }
 
 application {
-    mainClass.set("chessy.MainKt")
+    mainClass.set("snaky.MainKt")
     applicationDefaultJvmArgs = listOf("-Xss16m")
 }
 
 tasks.processResources {
     // The engine reads its version from this resource
     inputs.property("version", project.version)
-    filesMatching("chessy/version.properties") {
+    filesMatching("snaky/version.properties") {
         expand("version" to project.version)
     }
 }
@@ -35,7 +35,7 @@ tasks.test {
     useJUnitPlatform()
     maxHeapSize = "1g"
     // Deep perft tests are slow: ./gradlew test -Pslow
-    systemProperty("chessy.slow", project.hasProperty("slow"))
+    systemProperty("snaky.slow", project.hasProperty("slow"))
     testLogging {
         events("passed", "failed", "skipped")
         showStandardStreams = true

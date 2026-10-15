@@ -18,7 +18,7 @@ import chess
 import chess.syzygy
 
 TOOLS = Path(__file__).resolve().parent
-DEFAULT_ENGINE = TOOLS.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = TOOLS.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 PIECES = {'K': chess.KING, 'Q': chess.QUEEN, 'R': chess.ROOK, 'B': chess.BISHOP, 'N': chess.KNIGHT, 'P': chess.PAWN}
 
 def set_args():

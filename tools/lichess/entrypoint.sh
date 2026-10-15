@@ -6,16 +6,16 @@
 #   upgrade   Convert the account to BOT (once, irreversible), then play. Needs LICHESS_BOT_TOKEN.
 #   test      Play a game offline against a mocked lichess.org, without a token.
 #
-# The configuration is /chessy-config/config.yml (tools/lichess/config.yml): mount another file there to change it.
+# The configuration is /snaky-config/config.yml (tools/lichess/config.yml): mount another file there to change it.
 set -e
 
 SYZYGY=""
 if ls /syzygy/*.rtbw > /dev/null 2>&1; then
   SYZYGY=/syzygy
 fi
-sed -e 's|^  dir: .*|  dir: "/chessy/bin/"|' \
-    -e "s|^    SyzygyPath: .*|    SyzygyPath: \"$SYZYGY\"|" /chessy-config/config.yml > config.yml
-echo "$(ls /chessy/lib | grep '^chessy-' | sed 's/\.jar$//'), tablebases: ${SYZYGY:-none}"
+sed -e 's|^  dir: .*|  dir: "/snaky/bin/"|' \
+    -e "s|^    SyzygyPath: .*|    SyzygyPath: \"$SYZYGY\"|" /snaky-config/config.yml > config.yml
+echo "$(ls /snaky/lib | grep '^snaky-' | sed 's/\.jar$//'), tablebases: ${SYZYGY:-none}"
 
 if [ "${1:-play}" = play ] || [ "$1" = upgrade ]; then
   if [ -z "$LICHESS_BOT_TOKEN" ]; then
@@ -33,8 +33,8 @@ case "${1:-play}" in
     ;;
   test)
     # The test uses the mocked lichess.org of the tests of lichess-bot, so it runs inside its test_bot package
-    cp /chessy-tools/test_offline.py test_bot/test_chessy_offline.py
-    exec python -m pytest -q -s -p no:cacheprovider -W ignore::DeprecationWarning test_bot/test_chessy_offline.py
+    cp /snaky-tools/test_offline.py test_bot/test_snaky_offline.py
+    exec python -m pytest -q -s -p no:cacheprovider -W ignore::DeprecationWarning test_bot/test_snaky_offline.py
     ;;
   *)
     exec "$@"

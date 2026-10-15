@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''
-Play games between two UCI engines (Chessy against itself by default), checking that every move is legal,
+Play games between two UCI engines (Snaky against itself by default), checking that every move is legal,
 the protocol works and no engine runs out of time. Games are saved in PGN.
 
 python match.py --games 100 --tc 10+0.1
@@ -23,7 +23,7 @@ import chess
 import chess.engine
 import chess.pgn
 
-DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 
 MAX_PLIES = 600
 
@@ -31,7 +31,7 @@ def set_args():
   global args
   parser = argparse.ArgumentParser()
   parser.add_argument("--games", "-n", help="number of games (colors alternate)", type=int, default=10)
-  parser.add_argument("--engine1", "-e1", help="first engine command (default: Chessy, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
+  parser.add_argument("--engine1", "-e1", help="first engine command (default: Snaky, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   parser.add_argument("--engine2", "-e2", help="second engine command (default: same as the first)")
   parser.add_argument("--option1", "-o1", help="UCI option NAME=VALUE for the first engine", action='append', default=[])
   parser.add_argument("--option2", "-o2", help="UCI option NAME=VALUE for the second engine", action='append', default=[])
@@ -57,7 +57,7 @@ class Stats:
 
 def open_engine(command: str, options: dict[str, str]) -> chess.engine.SimpleEngine:
   engine = chess.engine.SimpleEngine.popen_uci(command.split())
-  # One thread by default (Chessy plays with 4), as several games run at the same time
+  # One thread by default (Snaky plays with 4), as several games run at the same time
   if 'Threads' in engine.options and 'Threads' not in options:
     options = {'Threads': '1', **options}
   if options:
@@ -136,7 +136,7 @@ def play_game(index: int, engines: list[chess.engine.SimpleEngine], names: list[
     result = board.outcome(claim_draw=True).result()
 
   game = chess.pgn.Game.from_board(board)
-  game.headers['Event'] = 'Chessy match'
+  game.headers['Event'] = 'Snaky match'
   game.headers['Round'] = str(index + 1)
   game.headers['White'] = names[white]
   game.headers['Black'] = names[black]

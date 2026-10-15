@@ -1,4 +1,4 @@
-# Chessy tools
+# Snaky tools
 
 Python tooling around the engine: board and game viewer, matches between UCI engines, testing helpers and the [lichess-bot](lichess) configuration.
 
@@ -50,7 +50,7 @@ options:
 
 ## Match
 
-Play games between two UCI engines (Chessy against itself by default), checking that every move is legal, the protocol works and no engine runs out of time.
+Play games between two UCI engines (Snaky against itself by default), checking that every move is legal, the protocol works and no engine runs out of time.
 Openings start with random plies for variety and colors alternate. Games are saved in PGN (open them with `game.py`).
 
 ```
@@ -62,7 +62,7 @@ python game.py games/match.pgn --match 3
 ```
 options:
   --games, -n         number of games (colors alternate)
-  --engine1, -e1      first engine command (default: Chessy, build it with ./gradlew installDist)
+  --engine1, -e1      first engine command (default: Snaky, build it with ./gradlew installDist)
   --engine2, -e2      second engine command (default: same as the first)
   --option1, -o1      UCI option NAME=VALUE for the first engine (repeatable)
   --option2, -o2      UCI option NAME=VALUE for the second engine (repeatable)
@@ -84,13 +84,13 @@ make -C ~/.local/src/fastchess -j8
 ln -s ~/.local/src/fastchess/fastchess ~/.local/bin/fastchess
 ```
 
-Chessy (alpha-beta search) against Chessy with the greedy search, and against Stockfish with a limited strength:
+Snaky (alpha-beta search) against Snaky with the greedy search, and against Stockfish with a limited strength:
 
 ```
-CHESSY=../engine/build/install/chessy/bin/chessy
-fastchess -engine cmd=$CHESSY name=AlphaBeta -engine cmd=$CHESSY name=Greedy2 option.Search=Greedy "option.Greedy Depth=2" \
+SNAKY=../engine/build/install/snaky/bin/snaky
+fastchess -engine cmd=$SNAKY name=AlphaBeta -engine cmd=$SNAKY name=Greedy2 option.Search=Greedy "option.Greedy Depth=2" \
   -each tc=10+0.1 -openings file=openings/balanced.epd format=epd order=random -rounds 50 -repeat -concurrency 8 -pgnout file=games/greedy.pgn
-fastchess -engine cmd=$CHESSY name=Chessy -engine cmd=stockfish name=SF1500 option.UCI_LimitStrength=true option.UCI_Elo=1500 \
+fastchess -engine cmd=$SNAKY name=Snaky -engine cmd=stockfish name=SF1500 option.UCI_LimitStrength=true option.UCI_Elo=1500 \
   -each tc=10+0.1 -openings file=openings/balanced.epd format=epd order=random -rounds 50 -repeat -concurrency 8 -pgnout file=games/sf1500.pgn
 ```
 
@@ -127,7 +127,7 @@ use time controls of at least 1 minute):
 ```
 git worktree add engines/v0 v0
 (cd engines/v0 && mvn -q compile dependency:build-classpath -Dmdep.outputFile=classpath.txt)
-fastchess -engine cmd=python3 args=v0_uci.py name=Chessy-v0 -engine cmd=engines/phase6/bin/chessy name=Greedy option.Style=Greedy \
+fastchess -engine cmd=python3 args=v0_uci.py name=Chessy-v0 -engine cmd=engines/phase6/bin/snaky name=Greedy option.Style=Greedy \
   -each tc=60+0.6 -openings file=openings/balanced.epd format=epd -repeat -rounds 30 -concurrency 6 -pgnout file=games/v0.pgn
 python epd.py suites/wac.epd --movetime 1.6 -e "python3 v0_uci.py"
 ```
@@ -152,7 +152,7 @@ python epd.py suites/wac.epd --movetime 1
 ```
 
 Suites:
-- `suites/tactics.epd`: 100 tactical positions from games of Chessy, created with `tactics.py`.
+- `suites/tactics.epd`: 100 tactical positions from games of Snaky, created with `tactics.py`.
 - `suites/wac.epd`: Win At Chess, 300 tactical positions by Fred Reinfeld (1958), from [viridithas](https://github.com/cosmobobak/viridithas/blob/master/assets/epds/wac.epd).
 
 ### Strategic Test Suite (STS)
@@ -175,7 +175,7 @@ and use a wrapper script for other styles:
 
 ```
 sed 's/ Ae "[^"]*";$//' suites/sts.epd > games/sts-rating.epd
-python sts_rating.py -f games/sts-rating.epd -e ../engine/build/install/chessy/bin/chessy -h 64 --getrating
+python sts_rating.py -f games/sts-rating.epd -e ../engine/build/install/snaky/bin/snaky -h 64 --getrating
 ```
 
 ## Style
@@ -189,7 +189,7 @@ python style.py games/space-vs-sf.pgn games/material-vs-sf.pgn
 
 ## Analysis
 
-Plot the terms of the evaluation of Chessy (space, territory, restriction, mobility, material...) along a game:
+Plot the terms of the evaluation of Snaky (space, territory, restriction, mobility, material...) along a game:
 
 ```
 python analysis.py games/match.pgn --match 3 --output games/analysis.png
@@ -198,7 +198,7 @@ python analysis.py games/match.pgn --terms Space Territory Restriction Mobility 
 
 ## Opening book
 
-`book.py` builds the Polyglot opening books of Chessy (`engine/src/main/resources/chessy/book/`) from the repertoire of
+`book.py` builds the Polyglot opening books of Snaky (`engine/src/main/resources/snaky/book/`) from the repertoire of
 [`openings/book.txt`](openings/book.txt): one line per variation (opening, weight, moves in SAN, at most 12 moves per side).
 The openings are those where one side gains space and the other prepares a freeing break (King's Indian, Benoni,
 French, Caro-Kann and Sicilian with an early e5, closed Queen's Pawn, closed Ruy Lopez, Pirc and Modern).
@@ -211,7 +211,7 @@ python book.py --check --depth 16
 
 ## Syzygy tablebases
 
-Chessy probes the [Syzygy tablebases](https://syzygy-tables.info/), by default the ones of `tools/syzygy` if they are downloaded
+Snaky probes the [Syzygy tablebases](https://syzygy-tables.info/), by default the ones of `tools/syzygy` if they are downloaded
 (UCI option `SyzygyPath`, `--syzygy` in the command line).
 The tables of up to 5 pieces take 939 MiB (378 MiB of WDL tables, used in the search, and 561 MiB of DTZ tables,
 used at the root). Download them into `tools/syzygy` (ignored by git):
@@ -232,24 +232,24 @@ python syzygy_check.py --positions 5000
 
 Tune the weights of the Space evaluation with the results of games ([Texel's tuning method](https://www.chessprogramming.org/Texel%27s_Tuning_Method)).
 `texel.py` extracts the quiet positions of PGN games (not in check, the move played is not a capture, a promotion or a check)
-with the result of their game, and `chessy tune` minimizes the error between the evaluation and the results,
+with the result of their game, and `snaky tune` minimizes the error between the evaluation and the results,
 saving the weights after every pass:
 
 ```
 python openings.py --count 5000 --max-score 150 --depth 10 --seed 2 --output games/texel-openings.epd
-fastchess -engine cmd=engines/phase5/bin/chessy name=a -engine cmd=engines/phase5/bin/chessy name=b -each tc=2+0.02 \
+fastchess -engine cmd=engines/phase5/bin/snaky name=a -engine cmd=engines/phase5/bin/snaky name=b -each tc=2+0.02 \
   -openings file=games/texel-openings.epd format=epd -repeat -rounds 5000 -concurrency 10 -pgnout file=games/texel-selfplay.pgn
 python texel.py games/texel-selfplay.pgn --output games/texel.txt
-../engine/build/install/chessy/bin/chessy tune games/texel.txt --output games/space.weights
+../engine/build/install/snaky/bin/snaky tune games/texel.txt --output games/space.weights
 ```
 
 The weights of the style (space, territory, restriction and mobility) are not tuned unless `--all true` is given.
 Test a weights file with the UCI option `Weights` (for example `option.Weights=/path/space.weights` in fastchess)
-before copying it to `engine/src/main/resources/chessy/eval/space.weights`, the default weights of the engine.
+before copying it to `engine/src/main/resources/snaky/eval/space.weights`, the default weights of the engine.
 
 ## Lichess
 
-See [lichess/README.md](lichess/README.md) to run Chessy as a Lichess BOT with lichess-bot.
+See [lichess/README.md](lichess/README.md) to run Snaky as a Lichess BOT with lichess-bot.
 
 ## Perft check
 

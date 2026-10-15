@@ -15,10 +15,10 @@ from pathlib import Path
 import chess
 import chess.engine
 
-DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 
 def configure(engine: chess.engine.SimpleEngine, options: dict[str, str]):
-  # One thread by default (Chessy plays with 4), as in the results of the README
+  # One thread by default (Snaky plays with 4), as in the results of the README
   if 'Threads' in engine.options and 'Threads' not in options:
     options = {'Threads': '1', **options}
   if options:
@@ -28,7 +28,7 @@ def set_args():
   global args
   parser = argparse.ArgumentParser()
   parser.add_argument("epd", help="EPD file")
-  parser.add_argument("--engine", "-e", help="engine command (default: Chessy, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
+  parser.add_argument("--engine", "-e", help="engine command (default: Snaky, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   parser.add_argument("--option", "-o", help="UCI option NAME=VALUE (repeatable)", action='append', default=[])
   parser.add_argument("--movetime", "-t", help="seconds per position", type=float, default=1)
   parser.add_argument("--depth", "-d", help="fixed depth instead of time", type=int)

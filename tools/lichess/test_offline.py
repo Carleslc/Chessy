@@ -1,7 +1,7 @@
 """
-A game of Chessy through lichess-bot against a mocked lichess.org (the one of the tests of lichess-bot), without connecting
+A game of Snaky through lichess-bot against a mocked lichess.org (the one of the tests of lichess-bot), without connecting
 to Lichess: the opponent (white) is Stockfish limited to 2000 Elo if it is installed (or the engine of the TEST_OPPONENT
-environment variable), else Chessy itself with the greedy search, with a clock of 60+2.
+environment variable), else Snaky itself with the greedy search, with a clock of 60+2.
 Checks the configuration, the UCI communication, pondering and the time. Run it with run.sh --test (or the test command
 of the Docker image).
 """
@@ -23,13 +23,13 @@ logging_level = logging.INFO
 lichess_bot.logging_configurer(logging_level, None, True)
 logger = logging.getLogger(__name__)
 
-def opponent(chessy: str) -> tuple[str, dict]:
-    """Command and options of the opponent: TEST_OPPONENT, Stockfish limited to 2000 Elo, or Chessy with the greedy search."""
+def opponent(snaky: str) -> tuple[str, dict]:
+    """Command and options of the opponent: TEST_OPPONENT, Stockfish limited to 2000 Elo, or Snaky with the greedy search."""
     if os.environ.get("TEST_OPPONENT"):
         return os.environ["TEST_OPPONENT"], {}
     if shutil.which("stockfish"):
         return "stockfish", {"UCI_LimitStrength": True, "UCI_Elo": 2000}
-    return chessy, {"Style": "Greedy"}
+    return snaky, {"Style": "Greedy"}
 
 def simulator(move_queue, board_queue, clock_queue, results, opponent_command, opponent_options):
     # Same clock as the mocked game stream of lichess-bot (60+2)
@@ -54,14 +54,14 @@ def simulator(move_queue, board_queue, clock_queue, results, opponent_command, o
                 if board.ply() > 2:
                     btime -= timer.time_since_reset()
                     btime += increment
-                assert btime > datetime.timedelta(0), "Chessy lost on time"
+                assert btime > datetime.timedelta(0), "Snaky lost on time"
     board_queue.put(board)
     clock_queue.put((wtime, btime, increment))
-    logger.info(f"Game over: {board.result(claim_draw=True)} in {board.ply()} plies, Chessy clock {btime}")
+    logger.info(f"Game over: {board.result(claim_draw=True)} in {board.ply()} plies, Snaky clock {btime}")
     logger.info(chess.Board().variation_san(board.move_stack))
     results.put(board.is_game_over())
 
-def test_chessy() -> None:
+def test_snaky() -> None:
     with open("config.yml") as file:
         raw = yaml.safe_load(file)
     raw["token"] = ""

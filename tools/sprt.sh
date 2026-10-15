@@ -13,7 +13,12 @@
 # NEW_NAME=space NEW_ARGS=option.Style=Space BASE_NAME=material BASE_ARGS=option.Style=Material ./sprt.sh phase5 phase5
 set -e
 DIR=$(cd "$(dirname "$0")" && pwd)
-engine() { if [ -d "$DIR/engines/$1" ]; then echo "$DIR/engines/$1/bin/chessy"; else echo "$1"; fi; }
+# Snapshots before v1.01 have the launcher bin/chessy (the engine was named Chessy)
+engine() {
+  if [ -x "$DIR/engines/$1/bin/snaky" ]; then echo "$DIR/engines/$1/bin/snaky"
+  elif [ -x "$DIR/engines/$1/bin/chessy" ]; then echo "$DIR/engines/$1/bin/chessy"
+  else echo "$1"; fi
+}
 NEW=${1:?Usage: ./sprt.sh <new> <base> [elo0] [elo1] [tc] [concurrency]}
 BASE=${2:?Usage: ./sprt.sh <new> <base> [elo0] [elo1] [tc] [concurrency]}
 ELO0=${3:-0}

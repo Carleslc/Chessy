@@ -24,13 +24,13 @@ import chess
 import chess.engine
 
 TOOLS = Path(__file__).resolve().parent
-DEFAULT_ENGINE = TOOLS.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = TOOLS.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 THEME = re.compile(r'STS\(v[\d.]+\) (.+)\.\d+')
 # Themes with abbreviated names in the ids of the suite (titles of sts_rating.py)
 THEME_NAMES = {'AKPC': 'Advancement of f/g/h pawns', 'AT': 'Avoid pointless exchange'}
 
 def configure(engine: chess.engine.SimpleEngine, options: dict[str, str]):
-  # One thread by default (Chessy plays with 4), as several engines run at the same time
+  # One thread by default (Snaky plays with 4), as several engines run at the same time
   if 'Threads' in engine.options and 'Threads' not in options:
     options = {'Threads': '1', **options}
   if options:
@@ -40,7 +40,7 @@ def set_args():
   global args
   parser = argparse.ArgumentParser()
   parser.add_argument("--epd", help="STS file", default=str(TOOLS / 'suites' / 'sts.epd'))
-  parser.add_argument("--engine", "-e", help="engine command (default: Chessy, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
+  parser.add_argument("--engine", "-e", help="engine command (default: Snaky, build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   parser.add_argument("--option", "-o", help="UCI option NAME=VALUE (repeatable)", action='append', default=[])
   parser.add_argument("--movetime", "-t", help="seconds per position", type=float, default=0.2)
   parser.add_argument("--concurrency", "-c", help="engines running at the same time", type=int, default=4)

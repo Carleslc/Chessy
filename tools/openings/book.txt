@@ -1,4 +1,4 @@
-# Opening repertoire of Chessy for its own book (built with book.py into Polyglot books).
+# Opening repertoire of Snaky for its own book (built with book.py into Polyglot books).
 # Openings where one side gains space and the other prepares a freeing break: King's Indian, Benoni, French,
 # Advance variations and closed Queen's Pawn positions, plus answers to the other main openings.
 # Lines have at most 12 moves per side (the limit of CCRL books), in SAN without move numbers.

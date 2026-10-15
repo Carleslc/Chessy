@@ -17,7 +17,7 @@ from pathlib import Path
 
 from chess import Board, STARTING_FEN
 
-DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'chessy' / 'bin' / 'chessy'
+DEFAULT_ENGINE = Path(__file__).resolve().parent.parent / 'engine' / 'build' / 'install' / 'snaky' / 'bin' / 'snaky'
 
 def set_args():
   global args

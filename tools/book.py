@@ -2,14 +2,14 @@
 # -*- coding: utf-8 -*-
 
 '''
-Build the opening books of Chessy (Polyglot format, https://chessprogramming.org/PolyGlot) from a repertoire of lines:
+Build the opening books of Snaky (Polyglot format, https://chessprogramming.org/PolyGlot) from a repertoire of lines:
 one book with every line (book.bin) and one book per opening (<opening>.bin), to play only that opening,
 and the list of openings (openings.txt).
 
 Each position of a line gets its move, weighted by the weight of the line (the sum when several lines share it).
 Engines choose book moves at random in proportion to their weights.
 
-python book.py                    # openings/book.txt -> ../engine/src/main/resources/chessy/book/
+python book.py                    # openings/book.txt -> ../engine/src/main/resources/snaky/book/
 python book.py --check --depth 18 # also analyze every move with Stockfish and report the moves that lose too much
 '''
 
@@ -29,7 +29,7 @@ def set_args():
   global args
   parser = argparse.ArgumentParser()
   parser.add_argument("repertoire", nargs='?', help="repertoire file", default=str(TOOLS / 'openings' / 'book.txt'))
-  parser.add_argument("--output", "-o", help="folder of the books", default=str(TOOLS.parent / 'engine' / 'src' / 'main' / 'resources' / 'chessy' / 'book'))
+  parser.add_argument("--output", "-o", help="folder of the books", default=str(TOOLS.parent / 'engine' / 'src' / 'main' / 'resources' / 'snaky' / 'book'))
   parser.add_argument("--check", help="analyze every move of the lines with Stockfish", action='store_true')
   parser.add_argument("--depth", help="Stockfish depth for --check", type=int, default=16)
   parser.add_argument("--max-loss", help="moves losing more centipawns than this are reported by --check", type=int, default=60)
