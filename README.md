@@ -321,5 +321,7 @@ and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A
 so the bot plays the default style, Space, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and
 `UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines,
 so playing on the board against a local Snaky needs the Lichess bot.
+To watch Snaky play, [`tools/lichess/challenge.py`](tools/lichess/README.md#challenge-to-watch-a-game) makes the bot
+challenge a player or an online bot of similar rating.
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.

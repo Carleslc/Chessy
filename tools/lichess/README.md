@@ -91,6 +91,26 @@ The offline test plays against Snaky with the greedy search, because the image h
 To run another style (Full, Material or Greedy), change `Style` in `config.yml`; each style needs its own BOT account
 to run at the same time.
 
+## Challenge to watch a game
+
+The bot only plays the challenges it receives (`matchmaking` is off), but it can also challenge when you want to watch
+a game: [`challenge.py`](challenge.py) challenges a player or a bot with the BOT account, and the running bot
+(`run.sh` or Docker) plays the game like any other. It needs only Python 3 and reads the token from `.env`:
+
+```
+python challenge.py Maia1 --tc 3+2                       # a bot or a player (a player has 60 s to accept)
+python challenge.py someone --days 3 --color white       # correspondence
+python challenge.py --bot --tc 5+3 --rated               # online bots close to the rating of Snaky, until one accepts
+python challenge.py --bot --tc 3+2 --min-rating 2600 --max-rating 3000 --variant chess960
+python challenge.py --bot --tc 3+2 --list                # only list the bots it would challenge
+```
+
+It prints the link of the game to watch it. With Docker (on a server), run it in a new container of the image:
+`docker compose -f tools/lichess/compose.yaml run --rm bot challenge --bot --tc 3+2`.
+It does not challenge while Snaky is playing (`--force` to do it anyway). While the rating of Snaky is provisional
+(its first games), `--bot` looks for bots from 2200 to 2800. Bots can play 100 games a day against other bots
+(unlimited against humans).
+
 ## Before going online
 
 Test the engine locally with `tools/match.py`, which uses the same UCI protocol:

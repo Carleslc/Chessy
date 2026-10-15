@@ -32,7 +32,7 @@ COPY --from=lichess-bot /lichess-bot /lichess-bot
 RUN pip install --no-cache-dir --requirement /lichess-bot/requirements.txt "pytest~=9.1"
 COPY --from=engine /snaky/engine/build/install/snaky /snaky
 COPY tools/lichess/config.yml /snaky-config/config.yml
-COPY tools/lichess/test_offline.py tools/lichess/entrypoint.sh /snaky-tools/
+COPY tools/lichess/test_offline.py tools/lichess/challenge.py tools/lichess/entrypoint.sh /snaky-tools/
 RUN chmod +x /snaky-tools/entrypoint.sh \
     && useradd --create-home --shell /usr/sbin/nologin bot \
     && chown -R bot /lichess-bot

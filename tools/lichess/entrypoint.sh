@@ -5,6 +5,7 @@
 #   play      Play the challenges (default). Needs LICHESS_BOT_TOKEN.
 #   upgrade   Convert the account to BOT (once, irreversible), then play. Needs LICHESS_BOT_TOKEN.
 #   test      Play a game offline against a mocked lichess.org, without a token.
+#   challenge Challenge a player or online bots, to watch a game of the running bot (arguments of challenge.py).
 #
 # The configuration is /snaky-config/config.yml (tools/lichess/config.yml): mount another file there to change it.
 set -e
@@ -30,6 +31,10 @@ case "${1:-play}" in
     ;;
   upgrade)
     exec python lichess-bot.py --config config.yml --disable_auto_logging -u
+    ;;
+  challenge)
+    shift
+    exec python /snaky-tools/challenge.py "$@"
     ;;
   test)
     # The test uses the mocked lichess.org of the tests of lichess-bot, so it runs inside its test_bot package
