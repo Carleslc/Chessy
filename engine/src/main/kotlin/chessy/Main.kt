@@ -60,7 +60,7 @@ Options:
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
-  --pgn <file>           Save the game played to this PGN file
+  --pgn <file>           Save the game played to this PGN file (added at the end if the file exists)
   --syzygy <path|off>    Folder of the Syzygy tablebases (default: tools/syzygy if downloaded), or off to play without them
   --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   --output <file>        Weights file written by tune (default: space.weights)
@@ -339,9 +339,9 @@ private fun play(arguments: Arguments) {
     val pgn = game.toPgn()
     println(pgn)
     pgnFile?.let {
-        it.absoluteFile.parentFile.mkdirs()
-        it.writeText(pgn)
-        println("Game saved to ${it.path}")
+        val added = it.exists() && it.length() > 0
+        Pgn.save(it, game)
+        println(if (added) "Game added to ${it.path}" else "Game saved to ${it.path}")
     }
 }
 

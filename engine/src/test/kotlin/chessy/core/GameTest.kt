@@ -159,4 +159,23 @@ class GameTest {
         assertTrue(read.chess960)
         assertEquals(game.position.toFen(), read.position.toFen())
     }
+
+    @Test
+    fun saveAddsGames() {
+        val file = kotlin.io.path.createTempFile(suffix = ".pgn").toFile()
+        try {
+            file.delete()
+            val first = Game().apply { play("e4"); play("e5") }
+            val second = Game().apply { play("d4"); play("Nf6") }
+            Pgn.save(file, first)
+            Pgn.save(file, second)
+            val games = Pgn.readAll(file.readText())
+            assertEquals(2, games.size)
+            assertEquals(listOf("e4", "e5"), games[0].sanMoves())
+            assertEquals(listOf("d4", "Nf6"), games[1].sanMoves())
+            assertTrue("\n\n[Event" in file.readText())
+        } finally {
+            file.delete()
+        }
+    }
 }

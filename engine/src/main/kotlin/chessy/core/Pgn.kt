@@ -45,6 +45,22 @@ object Pgn {
         return "$tags\n\n${wrap(tokens)}\n"
     }
 
+    /**
+     * Saves a [game] to a PGN [file]: a new file, or a new game at the end of an existing one, so a file can collect
+     * several games (separated by a blank line).
+     */
+    fun save(file: java.io.File, game: Game) {
+        file.absoluteFile.parentFile?.mkdirs()
+        val existing = if (file.exists()) file.readText() else ""
+        val separator = when {
+            existing.isBlank() -> ""
+            existing.endsWith("\n\n") -> ""
+            existing.endsWith("\n") -> "\n"
+            else -> "\n\n"
+        }
+        if (existing.isBlank()) file.writeText(write(game)) else file.appendText(separator + write(game))
+    }
+
     /** Reads the first game of a PGN text. */
     fun read(pgn: String): Game = readAll(pgn).firstOrNull() ?: throw IllegalArgumentException("No game found")
 

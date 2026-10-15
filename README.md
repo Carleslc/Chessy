@@ -241,7 +241,8 @@ build/install/chessy/bin/chessy play --chess960 random
 ```
 
 Chessy plays black by default (`--chessy white`, `both` or `none`), thinks `--time` seconds per move
-(and `--depth` limits the search; for greedy it is its fixed depth), and saves the game with `--pgn`.
+(and `--depth` limits the search; for greedy it is its fixed depth), and saves the game with `--pgn`
+(at the end of the file if it already exists, so a file can collect all the games against Chessy).
 It plays with its opening book (`--book off` to disable it, `--opening` to play one opening of the book) and, if they are
 downloaded in `tools/syzygy`, with the endgame tablebases (`--syzygy off` to disable them, or `--syzygy <folder>`).
 Both are shown when the game starts.
