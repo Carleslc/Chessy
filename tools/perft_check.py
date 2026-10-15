@@ -7,6 +7,7 @@ With --san, also compare the standard algebraic notation of the legal moves.
 
 python perft_check.py 3 --fen "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 python perft_check.py 3 --random 100 --san
+python perft_check.py 3 --random 100 --san --chess960
 '''
 
 import argparse
@@ -25,6 +26,7 @@ def set_args():
   parser.add_argument("--fen", "-f", help="position to check", default=STARTING_FEN)
   parser.add_argument("--random", "-r", help="check this number of random positions instead", type=int, default=0)
   parser.add_argument("--san", "-s", help="also compare the SAN of the legal moves", action='store_true')
+  parser.add_argument("--chess960", help="Chess960: random positions from random starting positions, castling as king takes rook", action='store_true')
   parser.add_argument("--engine", "-e", help="engine executable (build it with ./gradlew installDist)", default=str(DEFAULT_ENGINE))
   args = parser.parse_args()
 
@@ -38,8 +40,11 @@ def perft(board: Board, depth: int) -> int:
     board.pop()
   return nodes
 
+def board(fen: str) -> Board:
+  return Board(fen, chess960=args.chess960)
+
 def expected_divide(fen: str, depth: int) -> dict[str, int]:
-  board = Board(fen)
+  board = globals()['board'](fen)
   divide = {}
   for move in board.legal_moves:
     board.push(move)
@@ -48,7 +53,7 @@ def expected_divide(fen: str, depth: int) -> dict[str, int]:
   return divide
 
 def engine_divide(engine: str, fen: str, depth: int) -> dict[str, int]:
-  output = subprocess.run([engine, 'divide', str(depth), fen], capture_output=True, text=True, check=True).stdout
+  output = subprocess.run([engine, 'divide', str(depth), fen, '--chess960', str(args.chess960).lower()], capture_output=True, text=True, check=True).stdout
   divide = {}
   for line in output.splitlines():
     move, _, nodes = line.partition(': ')
@@ -68,9 +73,9 @@ def check(engine: str, fen: str, depth: int) -> bool:
   return False
 
 def check_san(engine: str, fen: str) -> bool:
-  board = Board(fen)
+  board = globals()['board'](fen)
   expected = {move.uci(): board.san(move) for move in board.legal_moves}
-  output = subprocess.run([engine, 'moves', fen], capture_output=True, text=True, check=True).stdout
+  output = subprocess.run([engine, 'moves', fen, '--chess960', str(args.chess960).lower()], capture_output=True, text=True, check=True).stdout
   actual = {}
   for line in output.splitlines()[1:]:
     san, _, uci = line.partition(' (')
@@ -84,7 +89,7 @@ def check_san(engine: str, fen: str) -> bool:
   return False
 
 def random_position(plies: int) -> str:
-  board = Board()
+  board = Board.from_chess960_pos(random.randint(0, 959)) if args.chess960 else Board()
   for _ in range(plies):
     moves = list(board.legal_moves)
     if not moves:

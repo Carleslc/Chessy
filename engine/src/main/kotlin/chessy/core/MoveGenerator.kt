@@ -100,31 +100,39 @@ object MoveGenerator {
         }
     }
 
-    /** The king cannot castle out of, through or into check, and the squares between king and rook must be empty. */
+    /**
+     * Castling, also in Chess960: the king goes to the g file (kingside) or c file (queenside) and its rook next to it,
+     * to the f or d file. Every square that king and rook cross must be empty (but for themselves), and the king
+     * cannot castle out of, through or into check. It is encoded as the king moving to the square of its rook.
+     */
     private fun generateCastling(position: Position, moves: MoveList, us: Color, occupied: Bitboard) {
-        val rights = position.castlingRights
-        if (rights and (Castling.kingside(us) or Castling.queenside(us)) == 0) {
-            return
-        }
+        val rights = position.castlingRights and (Castling.kingside(us) or Castling.queenside(us))
+        if (rights == 0) return
         val them = opposite(us)
-        // Castling squares of black are the ones of white on the 8th rank
-        fun relative(square: Square) = if (us == WHITE) square else flipRank(square)
+        val king = position.kingSquare(us)
 
-        val king = relative(E1)
-        if (position.isAttacked(king, them)) {
-            return
+        for (right in intArrayOf(Castling.kingside(us), Castling.queenside(us))) {
+            if (rights and right == 0) continue
+            val rook = position.castlingRook(right)
+            val kingside = right == Castling.kingside(us)
+            val kingTo = square(if (kingside) 6 else 2, rankOf(king))
+            val rookTo = square(if (kingside) 5 else 3, rankOf(king))
+            val castlers = bitboardOf(king) or bitboardOf(rook)
+            if ((rankSegment(king, kingTo) or rankSegment(rook, rookTo)) and castlers.inv() and occupied != EMPTY) continue
+            // Attacks through the squares of the king and the rook, which leave them
+            val others = occupied and castlers.inv()
+            var safe = true
+            rankSegment(king, kingTo).forEachSquare { square ->
+                if (position.attackersTo(square, others) and position.occupancy(them) != EMPTY) safe = false
+            }
+            if (safe) moves.add(Move(king, rook, if (kingside) Move.KING_CASTLE else Move.QUEEN_CASTLE))
         }
+    }
 
-        if (rights and Castling.kingside(us) != 0
-            && (bitboardOf(relative(F1)) or bitboardOf(relative(G1))) and occupied == EMPTY
-            && !position.isAttacked(relative(F1), them) && !position.isAttacked(relative(G1), them)) {
-            moves.add(Move(king, relative(G1), Move.KING_CASTLE))
-        }
-
-        if (rights and Castling.queenside(us) != 0
-            && (bitboardOf(relative(B1)) or bitboardOf(relative(C1)) or bitboardOf(relative(D1))) and occupied == EMPTY
-            && !position.isAttacked(relative(D1), them) && !position.isAttacked(relative(C1), them)) {
-            moves.add(Move(king, relative(C1), Move.QUEEN_CASTLE))
-        }
+    /** Squares of the rank of [a] from the file of [a] to the file of [b], both included. */
+    private fun rankSegment(a: Square, b: Square): Bitboard {
+        var segment = EMPTY
+        for (file in minOf(fileOf(a), fileOf(b))..maxOf(fileOf(a), fileOf(b))) segment = segment or bitboardOf(square(file, rankOf(a)))
+        return segment
     }
 }

@@ -6,6 +6,7 @@ package chessy.core
  * - Standard Algebraic Notation (SAN): `e4`, `Nf3`, `Ngf6`, `N4f6`, `Rxf3`, `Nf3+`, `O-O`, `O-O-O`, `exd6 e.p.`,
  *   `Qh1#`, `a8=Q`, `bxa8=N+`. It is the notation of PGN files.
  * - UCI (long algebraic notation): `e2e4`, `e1g1` (castling), `e7e8q` (promotion). It is the notation of the UCI protocol.
+ *   In Chess960 castling is written as the king taking its own rook (`e1h1`).
  */
 object Notation {
 
@@ -100,9 +101,15 @@ object Notation {
      */
     fun parseUci(position: Position, text: String): Move {
         val uci = text.trim().lowercase()
-        return MoveGenerator.legalMoves(position).toList().firstOrNull { it.toString() == uci }
+        val legalMoves = MoveGenerator.legalMoves(position).toList()
+        // Castling in the notation of the other mode is accepted too when it is not another move
+        return legalMoves.firstOrNull { it.toUci(position.chess960) == uci }
+            ?: legalMoves.firstOrNull { it.isCastling && it.toUci(!position.chess960) == uci }
             ?: throw IllegalArgumentException("Illegal move: $text")
     }
+
+    /** UCI notation of a [move] of the [position] (castling as the king taking its rook in Chess960). */
+    fun toUci(position: Position, move: Move): String = move.toUci(position.chess960)
 
     private val UCI_REGEX = Regex("^[a-h][1-8][a-h][1-8][nbrqNBRQ]?$")
 

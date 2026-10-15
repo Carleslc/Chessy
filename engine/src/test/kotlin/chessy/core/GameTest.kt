@@ -134,4 +134,29 @@ class GameTest {
         assertEquals("5K2/r5p1/4kp2/7p/8/6n1/8/8 w - - 16 84", finalPositions[0])
         assertEquals("7r/3B4/8/p5pp/4Qbk1/1P4B1/P4PKP/8 b - - 1 39", finalPositions.last())
     }
+
+    @Test
+    fun chess960StartingPositions() {
+        assertEquals(Position.STARTING_FEN, Position.chess960Fen(Position.CHESS960_STANDARD))
+        assertEquals("bbqnnrkr/pppppppp/8/8/8/8/PPPPPPPP/BBQNNRKR w KQkq - 0 1", Position.chess960Fen(0))
+        assertEquals("bqnbnrkr/pppppppp/8/8/8/8/PPPPPPPP/BQNBNRKR w KQkq - 0 1", Position.chess960Fen(1))
+        assertEquals("qbbnrnkr/pppppppp/8/8/8/8/PPPPPPPP/QBBNRNKR w KQkq - 0 1", Position.chess960Fen(100))
+        assertEquals("rbqknnbr/pppppppp/8/8/8/8/PPPPPPPP/RBQKNNBR w KQkq - 0 1", Position.chess960Fen(700))
+        assertEquals("rkrnnqbb/pppppppp/8/8/8/8/PPPPPPPP/RKRNNQBB w KQkq - 0 1", Position.chess960Fen(959))
+        // All different, and all with the king between the rooks
+        assertEquals(960, (0..959).map { Position.chess960Fen(it) }.toSet().size)
+    }
+
+    @Test
+    fun chess960Pgn() {
+        // Position 360: the king on d1 castles kingside to g1, and its rook stays on f1
+        val game = Game(Position.chess960Fen(360), chess960 = true)
+        for (move in listOf("g3", "g6", "Qg2", "Qg7", "f3", "f6", "Bf2", "Bf7", "O-O")) game.play(move)
+        assertEquals("nbrk1r1n/pppppbqp/5pp1/8/8/5PP1/PPPPPBQP/NBR2RKN b kq - 3 5", game.position.toFen())
+        val pgn = game.toPgn()
+        assertTrue("[Variant \"Chess960\"]" in pgn && "[FEN \"nbrkbrqn/" in pgn && "O-O" in pgn, pgn)
+        val read = Pgn.read(pgn)
+        assertTrue(read.chess960)
+        assertEquals(game.position.toFen(), read.position.toFen())
+    }
 }

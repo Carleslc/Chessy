@@ -19,7 +19,8 @@ object Pgn {
         }
         headers["Result"] = game.result
         headers.putAll(game.headers.filterKeys { it !in SEVEN_TAG_ROSTER })
-        if (game.startingFen != Position.STARTING_FEN) {
+        if (game.chess960) headers["Variant"] = "Chess960"
+        if (game.startingFen != Position.STARTING_FEN || game.chess960) {
             headers["SetUp"] = "1"
             headers["FEN"] = game.startingFen
         }
@@ -96,9 +97,10 @@ object Pgn {
                 headers[name] = value
             }
 
-            val game = Game(headers["FEN"] ?: Position.STARTING_FEN)
+            val chess960 = headers["Variant"]?.let { it.contains("960") || it.contains("fischer", ignoreCase = true) } ?: false
+            val game = Game(headers["FEN"] ?: Position.STARTING_FEN, chess960)
             for ((name, value) in headers) {
-                if (name !in setOf("Result", "SetUp", "FEN")) game.headers[name] = value
+                if (name !in setOf("Result", "SetUp", "FEN", "Variant")) game.headers[name] = value
             }
 
             while (true) {

@@ -35,10 +35,10 @@ enum class GameStatus(val isDraw: Boolean = false) {
  * A chess game: a starting position, the moves played and the PGN headers (tags).
  * See [Pgn] to export and import games.
  */
-class Game(val startingFen: String = Position.STARTING_FEN) {
+class Game(val startingFen: String = Position.STARTING_FEN, val chess960: Boolean = false) {
 
     /** Current position. Moves must be played with [play], not directly on the position. */
-    val position: Position = Position.fromFen(startingFen)
+    val position: Position = Position.fromFen(startingFen).apply { chess960 = this@Game.chess960 }
 
     private val moves = mutableListOf<Move>()
     private val sanMoves = mutableListOf<String>()

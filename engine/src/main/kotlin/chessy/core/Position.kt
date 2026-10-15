@@ -12,15 +12,8 @@ object Castling {
     fun kingside(color: Color) = if (color == WHITE) WHITE_KINGSIDE else BLACK_KINGSIDE
     fun queenside(color: Color) = if (color == WHITE) WHITE_QUEENSIDE else BLACK_QUEENSIDE
 
-    /** Rights kept when a piece moves from or to each square (moving the king or a rook, or capturing a rook). */
-    internal val keptRights = IntArray(64) { ALL }.apply {
-        this[E1] = ALL and (WHITE_KINGSIDE or WHITE_QUEENSIDE).inv()
-        this[H1] = ALL and WHITE_KINGSIDE.inv()
-        this[A1] = ALL and WHITE_QUEENSIDE.inv()
-        this[E8] = ALL and (BLACK_KINGSIDE or BLACK_QUEENSIDE).inv()
-        this[H8] = ALL and BLACK_KINGSIDE.inv()
-        this[A8] = ALL and BLACK_QUEENSIDE.inv()
-    }
+    /** Index (0 to 3) of a single castling right. */
+    fun index(right: Int): Int = Integer.numberOfTrailingZeros(right)
 }
 
 /**
@@ -46,6 +39,18 @@ class Position private constructor() {
     /** Bit flags of [Castling]. */
     var castlingRights: Int = Castling.NONE
         private set
+
+    /** Starting square of the rook of each castling right (by [Castling.index]): h1 and a1 (h8, a8) but in Chess960. */
+    private val castlingRooks = IntArray(4) { NO_SQUARE }
+
+    /** Castling rights kept when a piece moves from or to each square (moving the king or a castling rook, or capturing it). */
+    private val keptRights = IntArray(64) { Castling.ALL }
+
+    /**
+     * Chess960 (https://chessprogramming.org/Chess960): castling is written as the king taking its own rook in UCI,
+     * and the castling rights in FEN as files when the rook is not the outermost one (X-FEN). The rules are the same.
+     */
+    var chess960 = false
 
     /** Square where an en passant capture is possible, or [NO_SQUARE]. */
     var enPassantSquare: Square = NO_SQUARE
@@ -165,6 +170,9 @@ class Position private constructor() {
 
     private fun rooksAndQueens(color: Color) = pieces(color, ROOK) or pieces(color, QUEEN)
 
+    /** Starting square of the rook of a castling [right] (a single right, such as [Castling.WHITE_KINGSIDE]). */
+    fun castlingRook(right: Int): Square = castlingRooks[Castling.index(right)]
+
     // ---- Moves ----
 
     /** Plays a pseudo-legal move. It may leave the own king in check: see [leftKingInCheck]. */
@@ -174,7 +182,11 @@ class Position private constructor() {
         val piece = board[from]
         val us = sideToMove
         val them = opposite(us)
-        val captured = if (move.isEnPassant) piece(them, PAWN) else board[to]
+        val captured = when {
+            move.isEnPassant -> piece(them, PAWN)
+            move.isCastling -> NO_PIECE // The king moves to the square of its own rook
+            else -> board[to]
+        }
 
         history[historySize++].apply {
             this.move = move
@@ -196,7 +208,16 @@ class Position private constructor() {
             halfmoveClock = 0
         }
 
-        movePiece(from, to)
+        if (move.isCastling) {
+            // King and rook may swap squares or stay in place (Chess960): take both, then put both
+            val rook = board[to]
+            removePiece(from)
+            removePiece(to)
+            putPiece(move.castlingKingTo, piece)
+            putPiece(move.castlingRookTo, rook)
+        } else {
+            movePiece(from, to)
+        }
 
         if (typeOf(piece) == PAWN) {
             halfmoveClock = 0
@@ -211,12 +232,10 @@ class Position private constructor() {
                     key = key xor Zobrist.enPassant(skipped)
                 }
             }
-        } else if (move.isCastling) {
-            movePiece(castlingRookFrom(move), castlingRookTo(move))
         }
 
         key = key xor Zobrist.castling(castlingRights)
-        castlingRights = castlingRights and Castling.keptRights[from] and Castling.keptRights[to]
+        castlingRights = castlingRights and keptRights[from] and keptRights[to]
         key = key xor Zobrist.castling(castlingRights)
 
         if (us == BLACK) {
@@ -239,14 +258,20 @@ class Position private constructor() {
             fullmoveNumber--
         }
 
-        if (move.isPromotion) {
-            removePiece(to)
-            putPiece(to, piece(us, PAWN))
-        } else if (move.isCastling) {
-            movePiece(castlingRookTo(move), castlingRookFrom(move))
+        if (move.isCastling) {
+            val king = board[move.castlingKingTo]
+            val rook = board[move.castlingRookTo]
+            removePiece(move.castlingKingTo)
+            removePiece(move.castlingRookTo)
+            putPiece(from, king)
+            putPiece(to, rook)
+        } else {
+            if (move.isPromotion) {
+                removePiece(to)
+                putPiece(to, piece(us, PAWN))
+            }
+            movePiece(to, from)
         }
-
-        movePiece(to, from)
 
         if (state.captured != NO_PIECE) {
             putPiece(if (move.isEnPassant) enPassantCaptureSquare(to, us) else to, state.captured)
@@ -297,10 +322,6 @@ class Position private constructor() {
 
     /** Square of the pawn captured en passant by a pawn of [us] moving to [to]. */
     private fun enPassantCaptureSquare(to: Square, us: Color): Square = if (us == WHITE) to - 8 else to + 8
-
-    private fun castlingRookFrom(move: Move): Square = if (move.flags == Move.KING_CASTLE) move.to + 1 else move.to - 2
-
-    private fun castlingRookTo(move: Move): Square = if (move.flags == Move.KING_CASTLE) move.to - 1 else move.to + 1
 
     private fun putPiece(square: Square, piece: Piece) {
         val bit = bitboardOf(square)
@@ -367,10 +388,9 @@ class Position private constructor() {
         if (castlingRights == Castling.NONE) {
             append('-')
         } else {
-            if (castlingRights and Castling.WHITE_KINGSIDE != 0) append('K')
-            if (castlingRights and Castling.WHITE_QUEENSIDE != 0) append('Q')
-            if (castlingRights and Castling.BLACK_KINGSIDE != 0) append('k')
-            if (castlingRights and Castling.BLACK_QUEENSIDE != 0) append('q')
+            for (right in intArrayOf(Castling.WHITE_KINGSIDE, Castling.WHITE_QUEENSIDE, Castling.BLACK_KINGSIDE, Castling.BLACK_QUEENSIDE)) {
+                if (castlingRights and right != 0) append(castlingChar(right))
+            }
         }
         append(' ').append(if (enPassantSquare == NO_SQUARE) "-" else squareName(enPassantSquare))
         append(' ').append(halfmoveClock)
@@ -399,6 +419,9 @@ class Position private constructor() {
         board.copyInto(copy.board)
         copy.sideToMove = sideToMove
         copy.castlingRights = castlingRights
+        castlingRooks.copyInto(copy.castlingRooks)
+        keptRights.copyInto(copy.keptRights)
+        copy.chess960 = chess960
         copy.enPassantSquare = enPassantSquare
         copy.halfmoveClock = halfmoveClock
         copy.fullmoveNumber = fullmoveNumber
@@ -418,6 +441,36 @@ class Position private constructor() {
 
         fun startingPosition(): Position = fromFen(STARTING_FEN)
 
+        /** Number of the standard starting position among the Chess960 starting positions. */
+        const val CHESS960_STANDARD = 518
+
+        /**
+         * FEN of the Chess960 starting position [number] (0 to 959), in the numbering of Reinhard Scharnagl
+         * (https://chessprogramming.org/Chess960): the bishops on squares of different colors, then the queen, the knights,
+         * and the king between the rooks. Number 518 is the standard starting position.
+         */
+        fun chess960Fen(number: Int): String {
+            require(number in 0..959) { "Chess960 positions are numbered from 0 to 959" }
+            val pieces = CharArray(8) { ' ' }
+            var n = number
+            pieces[2 * (n % 4) + 1] = 'B' // Light-squared bishop on b, d, f or h
+            n /= 4
+            pieces[2 * (n % 4)] = 'B' // Dark-squared bishop on a, c, e or g
+            n /= 4
+            fun placeOnEmpty(index: Int, piece: Char) {
+                pieces[pieces.indices.filter { pieces[it] == ' ' }[index]] = piece
+            }
+            placeOnEmpty(n % 6, 'Q')
+            n /= 6
+            // The knights on two of the five empty squares (10 combinations), then rook, king and rook
+            val knights = listOf(0 to 1, 0 to 2, 0 to 3, 0 to 4, 1 to 2, 1 to 3, 1 to 4, 2 to 3, 2 to 4, 3 to 4)[n]
+            placeOnEmpty(knights.second, 'N')
+            placeOnEmpty(knights.first, 'N')
+            for (piece in "RKR") placeOnEmpty(0, piece)
+            val white = String(pieces)
+            return "${white.lowercase()}/pppppppp/8/8/8/8/PPPPPPPP/$white w KQkq - 0 1"
+        }
+
         /** Parses a FEN. Halfmove clock and fullmove number are optional. */
         fun fromFen(fen: String): Position = Position().apply { setFen(fen) }
 
@@ -436,6 +489,8 @@ class Position private constructor() {
         colorBitboards.fill(EMPTY)
         board.fill(NO_PIECE)
         castlingRights = Castling.NONE
+        castlingRooks.fill(NO_SQUARE)
+        keptRights.fill(Castling.ALL)
         enPassantSquare = NO_SQUARE
         historySize = 0
 
@@ -467,16 +522,10 @@ class Position private constructor() {
 
         if (fields[2] != "-") {
             for (char in fields[2]) {
-                castlingRights = castlingRights or when (char) {
-                    'K' -> Castling.WHITE_KINGSIDE
-                    'Q' -> Castling.WHITE_QUEENSIDE
-                    'k' -> Castling.BLACK_KINGSIDE
-                    'q' -> Castling.BLACK_QUEENSIDE
-                    else -> throw IllegalArgumentException("Invalid FEN (castling rights): $fen")
-                }
+                require(char.uppercaseChar() in "KQABCDEFGH") { "Invalid FEN (castling rights): $fen" }
+                addCastlingRight(char)
             }
         }
-        castlingRights = castlingRights and validCastlingRights()
 
         if (fields[3] != "-") {
             val square = parseSquare(fields[3])
@@ -495,17 +544,37 @@ class Position private constructor() {
         key = computeKey()
     }
 
-    /** Castling rights that are possible with the current placement of kings and rooks. */
-    private fun validCastlingRights(): Int {
-        var valid = Castling.NONE
-        if (board[E1] == piece(WHITE, KING)) {
-            if (board[H1] == piece(WHITE, ROOK)) valid = valid or Castling.WHITE_KINGSIDE
-            if (board[A1] == piece(WHITE, ROOK)) valid = valid or Castling.WHITE_QUEENSIDE
-        }
-        if (board[E8] == piece(BLACK, KING)) {
-            if (board[H8] == piece(BLACK, ROOK)) valid = valid or Castling.BLACK_KINGSIDE
-            if (board[A8] == piece(BLACK, ROOK)) valid = valid or Castling.BLACK_QUEENSIDE
-        }
-        return valid
+    /**
+     * Adds the castling right of a FEN letter: K or Q for the outermost rook on each side of the king (X-FEN),
+     * or the file of the rook (Shredder-FEN, for Chess960). Rights without their king and rook on the first rank are ignored.
+     */
+    private fun addCastlingRight(char: Char) {
+        val color = if (char.isUpperCase()) WHITE else BLACK
+        val rank = if (color == WHITE) 0 else 7
+        val king = kingSquare(color)
+        if (rankOf(king) != rank) return
+        val rook = piece(color, ROOK)
+        val rookFile = when (val letter = char.uppercaseChar()) {
+            'K' -> (7 downTo fileOf(king) + 1).firstOrNull { board[square(it, rank)] == rook }
+            'Q' -> (0 until fileOf(king)).firstOrNull { board[square(it, rank)] == rook }
+            else -> (letter - 'A').takeIf { board[square(it, rank)] == rook && it != fileOf(king) }
+        } ?: return
+        val right = if (rookFile > fileOf(king)) Castling.kingside(color) else Castling.queenside(color)
+        val rookSquare = square(rookFile, rank)
+        castlingRights = castlingRights or right
+        castlingRooks[Castling.index(right)] = rookSquare
+        keptRights[king] = keptRights[king] and (Castling.kingside(color) or Castling.queenside(color)).inv()
+        keptRights[rookSquare] = keptRights[rookSquare] and right.inv()
+    }
+
+    /** FEN letter of a castling right: K or Q (k, q) if its rook is the outermost one on that side, else its file. */
+    private fun castlingChar(right: Int): Char {
+        val rook = castlingRook(right)
+        val color = if (right == Castling.WHITE_KINGSIDE || right == Castling.WHITE_QUEENSIDE) WHITE else BLACK
+        val kingside = right == Castling.kingside(color)
+        val outer = if (kingside) (fileOf(rook) + 1..7) else (0 until fileOf(rook))
+        val outermost = outer.none { board[square(it, rankOf(rook))] == piece(color, ROOK) }
+        val letter = if (outermost) (if (kingside) 'K' else 'Q') else 'A' + fileOf(rook)
+        return if (color == WHITE) letter else letter.lowercaseChar()
     }
 }

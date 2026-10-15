@@ -78,9 +78,10 @@ data class SearchInfo(
     /** Permille of the transposition table in use, if any. */
     val hashfull: Int? = null,
 ) {
-    fun toUci(): String {
+    /** UCI `info` line (with [chess960], castling in the principal variation as the king taking its rook). */
+    fun toUci(chess960: Boolean = false): String {
         val nps = if (timeMillis > 0) nodes * 1000 / timeMillis else 0
-        val pv = principalVariation.joinToString(" ")
+        val pv = principalVariation.joinToString(" ") { it.toUci(chess960) }
         val hash = if (hashfull != null) " hashfull $hashfull" else ""
         return "info depth $depth seldepth $selectiveDepth score ${Score.toUci(score)} nodes $nodes nps $nps$hash time $timeMillis pv $pv"
     }
