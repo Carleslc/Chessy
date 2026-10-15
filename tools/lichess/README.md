@@ -80,8 +80,8 @@ The offline test plays against Chessy with the greedy search, because the image 
   and pondering (`ponder: true`: Chessy thinks on the opponent's time, in real-time games; not in correspondence games).
 - **Challenges**: one game at a time, standard chess and Chess960, from bullet to classical (1 to 60 minutes, increment up to 30 s),
   casual and rated, from humans and bots.
-- **Draws and resignation**: Chessy resigns after 5 moves below −10 pawns and offers or accepts draws
-  in dead equal endgames.
+- **Draws and resignation**: Chessy resigns after 10 moves below −30 pawns and offers or accepts draws
+  in dead equal endgames (score 0 for 10 moves, with 10 pieces or fewer).
 - **Time**: lichess-bot keeps 1 s for network delays (`move_overhead`) and Chessy 100 ms (`Move Overhead`):
   increase them if the bot loses on time.
 - The opening book and the Syzygy tablebases of Chessy (`OwnBook`, `SyzygyPath`). The books, tablebases and analysis

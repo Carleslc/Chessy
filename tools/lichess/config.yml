@@ -13,36 +13,39 @@ engine:
   ponder: true                      # Think on the opponent's time (UCI go ponder / ponderhit)
 
   polyglot:
-    enabled: false                  # Chessy plays its own openings
+    enabled: false                  # Polyglot books read by lichess-bot: off, Chessy plays its own book (OwnBook)
 
   draw_or_resign:
     resign_enabled: true            # Resign lost positions...
-    resign_score: -1000             # ...when the score is this low (centipawns)...
-    resign_for_egtb_minus_two: true
-    resign_moves: 5                 # ...for this number of moves in a row
+    resign_score: -3000             # ...when the score is this low (centipawns)...
+    resign_moves: 10                # ...for this number of moves in a row
+    resign_for_egtb_minus_two: false  # Resign when online_egtb says the game is lost (online_egtb is off)
     offer_draw_enabled: true        # Offer and accept draws in dead equal endgames
-    offer_draw_score: 0
-    offer_draw_for_egtb_zero: true
-    offer_draw_moves: 10
-    offer_draw_pieces: 10
+    offer_draw_score: 0             # ...when the score is within this margin (centipawns)...
+    offer_draw_moves: 10            # ...for this number of moves in a row...
+    offer_draw_pieces: 10           # ...with this number of pieces or fewer
+    offer_draw_for_egtb_zero: false # Offer draws when online_egtb says the game is drawn (online_egtb is off)
 
+  # Moves from online services, played by lichess-bot instead of asking Chessy: all off, so that Chessy plays every move
+  # with its own style (they would play the moves of databases and Stockfish). They work from any computer (web APIs).
   online_moves:
-    max_out_of_book_moves: 10
-    max_retries: 2
+    max_out_of_book_moves: 10       # Stop asking the online books after this number of positions without a move
+    max_retries: 2                  # Retries of each online request
     chessdb_book:
-      enabled: false
+      enabled: false                # chessdb.cn: a huge database of positions analyzed by engines
     lichess_cloud_analysis:
-      enabled: false                # Chessy always plays its own moves
+      enabled: false                # The analyses of Stockfish stored by Lichess (cloud evaluations)
     lichess_opening_explorer:
-      enabled: false
+      enabled: false                # The opening explorer of Lichess: games of masters or of Lichess players
     online_egtb:
-      enabled: false
+      enabled: false                # The tablebases of Lichess (up to 7 pieces) or chessdb; Chessy has its own up to 5 pieces
 
+  # Tablebases probed by lichess-bot itself before asking the engine: off, Chessy probes its own Syzygy tables (SyzygyPath)
   lichess_bot_tbs:
     syzygy:
       enabled: false
     gaviota:
-      enabled: false
+      enabled: false                # Gaviota: another format of tablebases, with distance to mate
 
   uci_options:
     Style: Space                    # Space (the constrictor, default), Full (strongest), Material or Greedy (weakest)
@@ -61,11 +64,12 @@ fake_think_time: false
 rate_limiting_delay: 0
 move_overhead: 1000                 # Milliseconds kept by lichess-bot for network delays, increase it if the bot loses on time
 
+# Correspondence games (days per move), not accepted (time_controls below)
 correspondence:
-  move_time: 60
-  checkin_period: 300
-  disconnect_time: 150
-  ponder: false
+  move_time: 60                     # Seconds to think per move
+  checkin_period: 300               # Seconds between checks for the moves of the opponent, after disconnecting
+  disconnect_time: 150              # Seconds without moves before disconnecting from the game
+  ponder: false                     # Do not think on the opponent's time (days)
 
 challenge:
   concurrency: 1                    # One game at a time
@@ -92,7 +96,7 @@ challenge:
 greeting:
   hello: "Hi! I'm {me}, a chess engine that likes space. Good luck!"
   goodbye: "Good game!"
-  hello_spectators: "I'm {me}, a constrictor: I gain space and squeeze my opponents. https://github.com/Carleslc/Chessy"
+  hello_spectators: "I'm {me}: I gain space and squeeze my opponents. https://github.com/Carleslc/Chessy"
   goodbye_spectators: "Thanks for watching!"
 
 matchmaking:
