@@ -108,8 +108,8 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
 |---|---|---|---|---|---|
 | **v0** (2018–2019, console only) | ~1500 | 87.5% vs 1320, 25% vs 1600 | 122/300 | 6735 | ~1750 |
 | **v1 Greedy** (depth 2) | ~900 | 7% vs 1320; v0 wins 97% | 35/300 | 5556 | 1406 |
-| **v1 Greedy** (depth 3) | ~1100 | 22% vs 1320 (50 games) | | | |
-| **v1 Greedy** (depth 4) | ~1120 | 24% vs 1320 (50 games) | | | |
+| **v1 Greedy** (depth 3) | ~1100 | 22% vs 1320 (50 games) | 91/300 | 5427 | 1368 |
+| **v1 Greedy** (depth 4) | ~1120 | 24% vs 1320 (50 games) | 84/300 | 6030 | 1547 |
 | **v1 Material** | ~2500–2600 | 54% vs 2400, 49.5% vs 2600 | 285/300 | 9631 | 2072 |
 | **v1 Space** (default) | ~2750 | 86% vs 2400, 73.5% vs 2600, 42.5% vs 2800, 17% vs 3000 | 285/300 | 10875 | 2296 |
 | **v1 Full** | ~2750 (+37 ± 16 vs Space) | 90% vs 2400, 76% vs 2600, 36.5% vs 2800, 14.5% vs 3000 | 283/300 | 10868 | 2258 |
@@ -125,7 +125,9 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   in 21 positions, usually playing another winning move (sometimes a faster mate). WAC measures finding the expected move,
   so it is useful to compare versions of Chessy, not to compare with Stockfish.
 - Greedy has no quiescence search, so it does not see the recapture of its last capture (horizon effect): depth 4 is barely
-  better than depth 3.
+  better than depth 3. Its results are not monotonic: odd depths end on its own move and see more captures (better in WAC),
+  even depths end on the reply of the opponent and are more careful (better in STS). Greedy searches a fixed depth,
+  so the time per position does not change its moves.
 
 STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
 
