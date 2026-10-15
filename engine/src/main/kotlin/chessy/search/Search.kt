@@ -77,13 +77,15 @@ data class SearchInfo(
     val principalVariation: List<Move>,
     /** Permille of the transposition table in use, if any. */
     val hashfull: Int? = null,
+    /** Positions found in the endgame tablebases. */
+    val tablebaseHits: Long = 0,
 ) {
     /** UCI `info` line (with [chess960], castling in the principal variation as the king taking its rook). */
     fun toUci(chess960: Boolean = false): String {
         val nps = if (timeMillis > 0) nodes * 1000 / timeMillis else 0
         val pv = principalVariation.joinToString(" ") { it.toUci(chess960) }
         val hash = if (hashfull != null) " hashfull $hashfull" else ""
-        return "info depth $depth seldepth $selectiveDepth score ${Score.toUci(score)} nodes $nodes nps $nps$hash time $timeMillis pv $pv"
+        return "info depth $depth seldepth $selectiveDepth score ${Score.toUci(score)} nodes $nodes nps $nps$hash tbhits $tablebaseHits time $timeMillis pv $pv"
     }
 }
 
@@ -95,6 +97,9 @@ object Score {
     const val MATE = 32_000
     const val INFINITE = 32_001
     const val DRAW = 0
+
+    /** Score of a position won according to the endgame tablebases (minus the plies to reach it), below the mates. */
+    const val TABLEBASE_WIN = 31_000
 
     /** Maximum plies of a search, so scores beyond `MATE - MAX_PLY` are mates. */
     const val MAX_PLY = 256

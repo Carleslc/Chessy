@@ -17,6 +17,7 @@ import chessy.core.StaticExchange
 import chessy.core.typeOf
 import chessy.eval.Evaluator
 import chessy.eval.MaterialEvaluator
+import chessy.syzygy.Syzygy
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -68,6 +69,20 @@ class AlphaBetaSearch(
      */
     var isHelper = false
     var depthOffset = 0
+
+    /**
+     * Syzygy endgame tablebases (https://chessprogramming.org/Syzygy_Bases): the search takes the result of the positions
+     * with few pieces after captures and pawn moves (WDL), and at the root only searches the moves that keep the best
+     * result, ranked by their distance to zero (DTZ) so that wins are converted before the fifty-move rule.
+     */
+    var tablebases: Syzygy? = null
+    /** Minimum remaining depth to probe the tablebases in the search. */
+    var tablebaseProbeDepth = 1
+    private var tablebaseHits = 0L
+    /** Root moves allowed by the tablebases, or null to search every move. */
+    private var tablebaseRootMoves: List<Move>? = null
+    /** Score of the root according to the tablebases, reported instead of the search score (but for mates). */
+    private var tablebaseRootScore: Int? = null
 
     /** Nodes searched in the current search (read by the parallel search to report the total). */
     val searchedNodes: Long get() = nodes
@@ -121,6 +136,7 @@ class AlphaBetaSearch(
         timeManager = TimeManager(limits, position.sideToMove, startTime)
         rootColor = position.sideToMove
         nodes = 0
+        tablebaseHits = 0
         selectiveDepth = 0
         aborted = false
         previousPv = IntArray(0)
@@ -128,8 +144,11 @@ class AlphaBetaSearch(
         killers.forEach { it.fill(Move.NONE.bits) }
         agingHistory()
 
-        val rootMoves = MoveGenerator.legalMoves(position).toList().filter { limits.searchMoves.isEmpty() || it in limits.searchMoves }
-        require(rootMoves.isNotEmpty()) { "No legal moves to search" }
+        val legalRootMoves = MoveGenerator.legalMoves(position).toList().filter { limits.searchMoves.isEmpty() || it in limits.searchMoves }
+        require(legalRootMoves.isNotEmpty()) { "No legal moves to search" }
+        tablebaseRootScore = null
+        tablebaseRootMoves = rankByTablebases(legalRootMoves)
+        val rootMoves = tablebaseRootMoves ?: legalRootMoves
 
         var result = SearchResult(rootMoves.first(), 0)
         val maxDepth = minOf(limits.depth ?: MAX_DEPTH, MAX_DEPTH)
@@ -138,15 +157,17 @@ class AlphaBetaSearch(
             canAbort = depth > 1
             selectiveDepth = 0
             rootDepth = depth + depthOffset
-            val score = aspirationSearch(rootDepth, result.score)
+            val searchScore = aspirationSearch(rootDepth, result.score)
             if (aborted) {
                 break // The previous iteration is the last complete one
             }
+            // The search only probes the tablebases after zeroing moves: the result of the root is exact
+            val score = tablebaseRootScore?.takeUnless { Score.isMate(searchScore) } ?: searchScore
 
             val line = (0 until pvLength[0]).map { Move(pv[0][it]) }
             previousPv = IntArray(line.size) { line[it].bits }
             result = SearchResult(line.first(), score, line.getOrNull(1) ?: Move.NONE)
-            listener(SearchInfo(depth, maxOf(depth, selectiveDepth), score, nodes, elapsed(), line, transpositionTable?.hashfull()))
+            listener(SearchInfo(depth, maxOf(depth, selectiveDepth), score, nodes, elapsed(), line, transpositionTable?.hashfull(), tablebaseHits))
 
             val pliesToMate = Score.MATE - Math.abs(score)
             when {
@@ -221,6 +242,22 @@ class AlphaBetaSearch(
             }
         }
 
+        // Endgame tablebases: after a capture or a pawn move (so the fifty-move counter is 0), the exact result
+        val tablebases = tablebases
+        if (tablebases != null && ply > 0 && depth >= tablebaseProbeDepth && position.halfmoveClock == 0 && tablebases.covers(position)) {
+            val wdl = tablebases.probeWdl(position)
+            if (wdl != null) {
+                tablebaseHits++
+                val score = when {
+                    wdl == Syzygy.WIN -> Score.TABLEBASE_WIN - ply
+                    wdl == Syzygy.LOSS -> -Score.TABLEBASE_WIN + ply
+                    else -> drawScore() + wdl // A cursed win or blessed loss is a draw by the fifty-move rule
+                }
+                transpositionTable?.store(position.key, Move.NONE, score, minOf(depth + TABLEBASE_DEPTH_BONUS, MAX_DEPTH), TranspositionTable.EXACT)
+                return score
+            }
+        }
+
         val inCheck = position.inCheck()
         val staticEval = if (inCheck) -Score.INFINITE else evaluate()
         val canPrune = !pvNode && !inCheck && !Score.isMate(alpha) && !Score.isMate(beta)
@@ -263,7 +300,7 @@ class AlphaBetaSearch(
 
         for (i in 0 until moves.size) {
             val move = nextMove(moves, ply, i)
-            if (ply == 0 && limits.searchMoves.isNotEmpty() && move !in limits.searchMoves) {
+            if (ply == 0 && ((limits.searchMoves.isNotEmpty() && move !in limits.searchMoves) || tablebaseRootMoves?.contains(move) == false)) {
                 continue
             }
 
@@ -417,6 +454,50 @@ class AlphaBetaSearch(
     /** Static evaluation, scaled down as the fifty-move counter grows (no progress: closer to a draw). */
     private fun evaluate(): Int = evaluator.evaluate(position) * (PROGRESS_SCALE - position.halfmoveClock) / PROGRESS_SCALE
 
+    /**
+     * Root moves that keep the best result according to the tablebases (null if the position is not in them):
+     * the wins with the shortest distance to zero (sure to be converted before the fifty-move rule), the draws,
+     * or the losses that resist longest.
+     */
+    private fun rankByTablebases(moves: List<Move>): List<Move>? {
+        val tablebases = tablebases ?: return null
+        if (!tablebases.covers(position)) return null
+        val halfmoves = position.halfmoveClock
+        val dtz = IntArray(moves.size)
+        val rank = IntArray(moves.size)
+        for ((i, move) in moves.withIndex()) {
+            position.makeMove(move)
+            // DTZ counting from the root position
+            var value = when {
+                position.halfmoveClock == 0 -> tablebases.probeWdl(position)?.let { tablebases.dtzBeforeZeroing(-it) }
+                position.repetitions() >= 1 -> 0
+                else -> tablebases.probeDtz(position)?.let { -it }?.let { if (it > 0) it + 1 else if (it < 0) it - 1 else 0 }
+            }
+            if (value == 2 && position.inCheck() && MoveGenerator.legalMoves(position).isEmpty()) value = 1 // Mate
+            position.unmakeMove(move)
+            dtz[i] = value ?: return null
+            // Wins within the fifty-move rule are certain, losses are equal unless a fifty-move draw is in sight
+            rank[i] = when {
+                value > 0 -> if (value + halfmoves <= 99) TABLEBASE_RANK else TABLEBASE_RANK - (value + halfmoves)
+                value < 0 -> if (-value * 2 + halfmoves < 100) -TABLEBASE_RANK else -TABLEBASE_RANK + (-value + halfmoves)
+                else -> 0
+            }
+        }
+        val best = rank.max()
+        val kept = moves.indices.filter { rank[it] == best }
+        val chosen = when {
+            best > 0 -> kept.minOf { dtz[it] }.let { shortest -> kept.filter { dtz[it] == shortest } }
+            best < 0 -> kept.minOf { dtz[it] }.let { longest -> kept.filter { dtz[it] == longest } }
+            else -> kept
+        }
+        tablebaseRootScore = when {
+            best > 0 && best == TABLEBASE_RANK -> Score.TABLEBASE_WIN - dtz[chosen.first()]
+            best < 0 && best == -TABLEBASE_RANK -> -Score.TABLEBASE_WIN - dtz[chosen.first()]
+            else -> drawScore() // A draw, or a win or loss that the fifty-move rule turns into a draw
+        }
+        return chosen.map { moves[it] }
+    }
+
     /** Knights, bishops, rooks and queens of [color]. */
     private fun pieceCount(color: Int): Int =
         popCount(position.pieces(color, KNIGHT) or position.pieces(color, BISHOP) or position.pieces(color, ROOK) or position.pieces(color, QUEEN))
@@ -559,6 +640,10 @@ class AlphaBetaSearch(
     companion object {
         const val MAX_PLY = 128
         const val MAX_DEPTH = 100
+
+        /** Depth stored in the transposition table for tablebase results (they are exact). */
+        private const val TABLEBASE_DEPTH_BONUS = 6
+        private const val TABLEBASE_RANK = 1000
 
         private const val NULL_MOVE_MIN_DEPTH = 3
         private const val NULL_MOVE_REDUCTION = 3

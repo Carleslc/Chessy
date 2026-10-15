@@ -16,6 +16,7 @@ import chessy.search.GreedySearch
 import chessy.search.Search
 import chessy.search.SearchLimits
 import chessy.search.Strength
+import chessy.syzygy.Syzygy
 import chessy.search.TranspositionTable
 import java.io.BufferedReader
 import java.io.File
@@ -75,8 +76,17 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val opening = ComboOption("Opening", default = ALL_OPENINGS, values = listOf(ALL_OPENINGS) + OpeningBook.openings)
     /** Chess960: castling is sent and received as the king taking its own rook. */
     private val chess960 = CheckOption("UCI_Chess960", default = false)
+    /** Folders of the Syzygy endgame tablebases, separated by the path separator (empty: no tablebases). */
+    private val syzygyPath = StringOption("SyzygyPath") { path ->
+        alphaBeta.tablebases = if (path.isBlank()) null else Syzygy(path).also {
+            require(!it.isEmpty) { "No Syzygy tables found in $path" }
+            output("info string Syzygy: ${it.size} tables up to ${it.maxPieces} pieces")
+        }
+    }
+    private val syzygyProbeDepth = SpinOption("SyzygyProbeDepth", default = 1, min = 1, max = 100) { alphaBeta.tablebaseProbeDepth = it }
     private val options = listOf<Option>(
-        style, hash, threads, moveOverhead, ponder, limitStrength, elo, ownBook, bookFile, opening, chess960, greedyDepth, weightsFile,
+        style, hash, threads, moveOverhead, ponder, limitStrength, elo, ownBook, bookFile, opening, chess960,
+        syzygyPath, syzygyProbeDepth, greedyDepth, weightsFile,
     ).associateBy { it.name.lowercase() }
 
     private val books = mutableMapOf<String, OpeningBook>()

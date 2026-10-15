@@ -2,6 +2,7 @@ package chessy.search
 
 import chessy.core.Position
 import chessy.eval.Evaluator
+import chessy.syzygy.Syzygy
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -37,6 +38,19 @@ class ParallelSearch(
             createWorkers()
         }
 
+    /** Syzygy tablebases of every thread (see [AlphaBetaSearch.tablebases]). */
+    var tablebases: Syzygy? = null
+        set(value) {
+            field = value
+            workers.forEach { it.tablebases = value }
+        }
+
+    var tablebaseProbeDepth: Int = 1
+        set(value) {
+            field = value
+            workers.forEach { it.tablebaseProbeDepth = value }
+        }
+
     /** Evaluator of the main thread. */
     val evaluator: Evaluator get() = workers[0].evaluator
 
@@ -51,6 +65,8 @@ class ParallelSearch(
             AlphaBetaSearch(evaluatorFactory(), transpositionTable).apply {
                 isHelper = index > 0
                 depthOffset = index % 2
+                tablebases = this@ParallelSearch.tablebases
+                tablebaseProbeDepth = this@ParallelSearch.tablebaseProbeDepth
             }
         }
         pool = if (threads > 1) {

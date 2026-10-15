@@ -21,6 +21,7 @@ import chessy.search.Score
 import chessy.search.Search
 import chessy.search.SearchLimits
 import chessy.search.Strength
+import chessy.syzygy.Syzygy
 import chessy.tune.TexelTuner
 import chessy.uci.Uci
 import java.io.File
@@ -42,6 +43,7 @@ Commands:
   bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
+  syzygy [fen]           Probe the Syzygy tablebases (--syzygy path): WDL and DTZ of the position, or of each FEN of the input
   weights                Weights of the Space style (or the Full style with --style full), in the format of a weights file
   tune <file>            Tune the weights of the Space style (or Full) with the positions of a training file (Texel's method)
 
@@ -59,6 +61,7 @@ Options:
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file
+  --syzygy <path>        Folder of the Syzygy tablebases (several separated by the path separator)
   --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   --output <file>        Weights file written by tune (default: space.weights)
   --positions <n>        Maximum number of positions of the training file to tune
@@ -155,7 +158,9 @@ private class Arguments(args: Array<String>) {
     val search: Search get() {
         val setting = setting
         return if (setting.isGreedy) GreedySearch(setting.greedyDepth)
-        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator(setting) })
+        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator(setting) }).apply {
+            tablebases = options["syzygy"]?.let(::Syzygy)
+        }
     }
 
     /** Limits of each move in play: --time seconds, --depth and the nodes of the [setting] (--elo). */
@@ -183,6 +188,7 @@ fun main(args: Array<String>) {
             "bench" -> bench(arguments.search, arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
             "play" -> play(arguments)
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
+            "syzygy" -> syzygy(arguments)
             "weights" -> print(arguments.weights.format())
             "tune" -> tune(arguments)
             else -> throw IllegalArgumentException("Unknown command: ${arguments.command}")
@@ -378,5 +384,18 @@ private fun evaluationForWhite(score: Int, sideToMove: Color): String {
         white > 0 -> "$pawns (White is better)"
         white < 0 -> "$pawns (Black is better)"
         else -> "$pawns (equal)"
+    }
+}
+
+/** WDL and DTZ of a FEN (or of each FEN of the standard input) in the Syzygy tablebases. */
+private fun syzygy(arguments: Arguments) {
+    val tablebases = Syzygy(arguments.options["syzygy"] ?: throw IllegalArgumentException("Missing --syzygy path"))
+    require(!tablebases.isEmpty) { "No Syzygy tables found" }
+    val fens = if (arguments.positional.size > 1) sequenceOf(arguments.positional.drop(1).joinToString(" "))
+        else generateSequence(::readLine).filter { it.isNotBlank() }
+    val position = Position.startingPosition()
+    for (fen in fens) {
+        position.setFen(fen)
+        println("$fen;${tablebases.probeWdl(position) ?: "-"};${tablebases.probeDtz(position) ?: "-"}")
     }
 }
