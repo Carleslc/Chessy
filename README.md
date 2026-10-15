@@ -41,6 +41,7 @@ Commands:
   bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Chessy in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
+  syzygy [fen]           Probe the Syzygy tablebases (--syzygy path): WDL and DTZ of the position, or of each FEN of the input
   weights                Weights of the Space style (or the Full style with --style full), in the format of a weights file
   tune <file>            Tune the weights of the Space style (or Full) with the positions of a training file (Texel's method)
 
@@ -49,10 +50,16 @@ Options:
   --style <name>         Playing style of eval, bench and play: space (default, the constrictor), full (the strongest),
                          material or greedy (the weakest)
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
+  --elo <elo>            Play at this Elo (900 to 2800, in steps of 100) instead of the full strength of the style
+  --book <on|off|file>   Opening book of play: the books of Chessy (default), none, or a Polyglot book file
+  --opening <name>       Play this opening of the books of Chessy: KingsIndian, Benoni, French, CaroKann, Sicilian,
+                         QueensGambit, RuyLopez or Pirc
+  --chess960 <n>         Chess960: starting position number (0 to 959), random, or true (with --fen, and in divide and moves)
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file
+  --syzygy <path>        Folder of the Syzygy tablebases (several separated by the path separator)
   --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   (and the options of tune: --output, --positions, --passes, --all, --freeze, --max-change)
 ```
@@ -70,8 +77,21 @@ ordering, safe check extension and Lazy SMP for several threads), and has four p
 - **Material**: material and piece-square tables, the baseline evaluation.
 - **Greedy**: a fixed-depth search counting only material (`Greedy Depth`, 2 by default), the weakest.
 
-Other UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Ponder` (think on the opponent's time), `Greedy Depth`
-and `Weights` (a weights file for Space or Full).
+And besides:
+
+- **Strength levels**: `UCI_LimitStrength` and `UCI_Elo` (`--elo` in the command line) play at an Elo from 900 to 2800,
+  in steps of 100 (see *Versions and styles*).
+- **Opening book** (`OwnBook`, off by default as rating lists require; on by default in `play`): Polyglot books of openings
+  where one side gains space (King's Indian, Benoni, French, Advance variations, closed Queen's Pawn, closed Ruy Lopez...),
+  built with [`tools/book.py`](tools/book.py). `Opening` plays only one of them (`--opening`), and `Book File` another book.
+- **Endgame tablebases**: `SyzygyPath` (`--syzygy`) with the [Syzygy tablebases](https://syzygy-tables.info/) of up to 5 pieces
+  (download them as explained in [tools](tools/README.md)): exact results of the endgames in the search, and perfect
+  conversion of won endgames before the fifty-move rule.
+- **Chess960**: `UCI_Chess960` (`--chess960` in the command line).
+- **Pondering**: `Ponder`, thinking on the opponent's time.
+
+Other UCI options: `Hash` (MB), `Threads`, `Move Overhead`, `Greedy Depth`, `SyzygyProbeDepth` and `Weights`
+(a weights file for Space or Full).
 
 `./gradlew distZip` packages the engine in `build/distributions/chessy-<version>.zip`, with the launchers `bin/chessy`
 (macOS, Linux) and `bin/chessy.bat` (Windows), to install it anywhere with Java 17+.
@@ -87,6 +107,8 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
 |---|---|---|---|---|---|
 | **v0** (2018–2019, console only) | ~1500 | 87.5% vs 1320, 25% vs 1600 | 122/300 | 6735 | ~1750 |
 | **v1 Greedy** (depth 2) | ~900 | 7% vs 1320; v0 wins 97% | 35/300 | 5556 | 1406 |
+| **v1 Greedy** (depth 3) | ~1100 | 22% vs 1320 (50 games) | | | |
+| **v1 Greedy** (depth 4) | ~1120 | 24% vs 1320 (50 games) | | | |
 | **v1 Material** | ~2500–2600 | 54% vs 2400, 49.5% vs 2600 | 285/300 | 9631 | 2072 |
 | **v1 Space** (default) | ~2750 | 86% vs 2400, 73.5% vs 2600, 42.5% vs 2800, 17% vs 3000 | 285/300 | 10875 | 2296 |
 | **v1 Full** | ~2750 (+37 ± 16 vs Space) | 90% vs 2400, 76% vs 2600, 36.5% vs 2800, 14.5% vs 3000 | 283/300 | 10868 | 2258 |
@@ -98,6 +120,27 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   1500 positional positions, points out of 15000 with `tools/sts.py`; STS Elo is the CCRL 40/4 estimate of
   [`sts_rating.py`](https://github.com/fsmosca/STS-Rating) (v0: from its score with the same formula).
   STS Elo underrates Chessy: it measures single positional moves, while Chessy gains its points in the search.
+- Greedy has no quiescence search, so it does not see the recapture of its last capture (horizon effect): depth 4 is barely
+  better than depth 3.
+
+### Strength levels (UCI_Elo)
+
+With `UCI_LimitStrength` and `UCI_Elo` (or `--elo` in `play`), Chessy plays at an Elo from 900 to 2800 in steps of 100.
+The lowest levels play the greedy search, the middle levels the Space style (or the style of the `Style` option)
+limited to a number of nodes per move, so it keeps every technique of its search (quiescence, extensions, reductions)
+and only sees less, and the top level plays Full without limit. The Elo of the limited search grows with the logarithm
+of the nodes: about **135 Elo per doubling** (50 games against Stockfish per point, 10+0.1):
+
+| Nodes per move | 64 | 256 | 1024 | 4096 | 16384 | 65536 | 262144 |
+|---|---|---|---|---|---|---|---|
+| Against Stockfish | 49% vs 1320 | 26% vs 1500 | 23% vs 1800 | 35% vs 2100 | 52% vs 2300 | 51% vs 2500 | 76% vs 2600 |
+| Elo | ~1310 | ~1320 | ~1590 | ~1990 | ~2310 | ~2510 | ~2800 |
+
+| UCI_Elo | 900 | 1000 | 1100 | 1200 | 1300 | 1500 | 1800 | 2000 | 2200 | 2500 | 2700 | 2800 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Plays | Greedy depth 2 | Greedy depth 2 | Greedy depth 3 | Greedy depth 4 | Space, 127 nodes | 356 nodes | 1.7k nodes | 4.6k nodes | 13k nodes | 60k nodes | 169k nodes | Full |
+
+The nodes are reached in a fraction of a second, so the levels play fast and do not depend on the time control.
 - WAC is from 1958 and some of its solutions are not the only winning move: Stockfish misses the expected move
   in 21 positions, usually playing another winning move (sometimes a faster mate). WAC measures finding the expected move,
   so it is useful to compare versions of Chessy, not to compare with Stockfish.
@@ -181,19 +224,29 @@ How to get a real CCRL rating is described in the [PRD](docs/PRD.md) (§9, CCRL)
 
 Chessy plays in the console with moves in SAN (`e4`, `Nf3`, `O-O`, `exd6`, `a8=Q`) or UCI (`e2e4`).
 This is also the way to play on an electronic board in two-player mode: play your move on the board, type it,
-and play the answer of Chessy on the board. Commands: `moves`, `undo`, `pgn`, `resign`, `draw`, `quit`.
+and play the answer of Chessy on the board. Commands: `moves`, `eval` (evaluation of the position, term by term),
+`undo`, `pgn`, `resign`, `draw`, `quit`.
 
 ```
 cd engine
 ./gradlew installDist
 build/install/chessy/bin/chessy play --style space --time 5 --pgn games/space.pgn
-build/install/chessy/bin/chessy play --style full --time 5 --chessy white
+build/install/chessy/bin/chessy play --style full --time 5 --chessy white --syzygy ../tools/syzygy
 build/install/chessy/bin/chessy play --style material --time 5
-build/install/chessy/bin/chessy play --style greedy --depth 2
+build/install/chessy/bin/chessy play --style greedy --depth 3
+build/install/chessy/bin/chessy play --elo 1600
+build/install/chessy/bin/chessy play --opening French --chessy white
+build/install/chessy/bin/chessy play --chess960 random
 ```
 
 Chessy plays black by default (`--chessy white`, `both` or `none`), thinks `--time` seconds per move
 (and `--depth` limits the search; for greedy it is its fixed depth), and saves the game with `--pgn`.
+It starts with its opening book (`--book off` to disable it, `--opening` to play one opening of the book) and,
+with `--syzygy`, it plays the endgames of up to 5 pieces perfectly.
+
+When it starts, Chessy shows its style and its estimated Elo, which also go to the PGN (`White`/`Black` and
+`WhiteElo`/`BlackElo` tags, `-` for the player). After each move it shows its evaluation in pawns from the point of view
+of White, like the analysis boards: `+2.40 (White is better)`, `-0.35 (Black is better)` or `mate in 3 for Black`.
 
 Chessy v0 (branch `v0`, Maven) also plays in the console, white by default:
 
@@ -209,7 +262,8 @@ v0 has no UCI, but [`tools/v0_uci.py`](tools/v0_uci.py) adapts it to play in che
 ### In a chess GUI
 
 Without a command, `chessy` speaks UCI: add `engine/build/install/chessy/bin/chessy` as an engine in any UCI GUI
-(Cute Chess, Arena, BanksiaGUI, En Croissant...) and choose the style in the engine options (`Style`).
+(Cute Chess, Arena, BanksiaGUI, En Croissant...) and choose the style in the engine options (`Style`), or an Elo
+(`UCI_LimitStrength` and `UCI_Elo`). Set `OwnBook` to use its opening book and `SyzygyPath` for the tablebases.
 
 ### On Lichess (and with an electronic board)
 
@@ -217,7 +271,8 @@ Chessy can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_
 challenge it from your account,
 from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
 and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
-so the bot plays the default style, Space. ChessConnect only connects boards to online sites, not to local engines,
+so the bot plays the default style, Space, with its opening book and the tablebases (set `UCI_LimitStrength` and
+`UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines,
 so playing on the board against a local Chessy needs the Lichess bot.
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.

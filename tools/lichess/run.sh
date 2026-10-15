@@ -24,7 +24,11 @@ fi
 
 # Build the engine and point the configuration to it
 (cd "$ROOT/engine" && ./gradlew -q installDist)
-sed "s|^  dir: .*|  dir: \"$ROOT/engine/build/install/chessy/bin/\"|" "$DIR/config.yml" > "$LICHESS_BOT_DIR/config.yml"
+# Tablebases if downloaded in tools/syzygy (see tools/README.md)
+SYZYGY=""
+if ls "$ROOT/tools/syzygy/"*.rtbw > /dev/null 2>&1; then SYZYGY="$ROOT/tools/syzygy"; fi
+sed -e "s|^  dir: .*|  dir: \"$ROOT/engine/build/install/chessy/bin/\"|" \
+    -e "s|^    SyzygyPath: .*|    SyzygyPath: \"$SYZYGY\"|" "$DIR/config.yml" > "$LICHESS_BOT_DIR/config.yml"
 
 cd "$LICHESS_BOT_DIR"
 if [ -d venv ]; then

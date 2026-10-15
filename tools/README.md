@@ -196,6 +196,37 @@ python analysis.py games/match.pgn --match 3 --output games/analysis.png
 python analysis.py games/match.pgn --terms Space Territory Restriction Mobility --style Space
 ```
 
+## Opening book
+
+`book.py` builds the Polyglot opening books of Chessy (`engine/src/main/resources/chessy/book/`) from the repertoire of
+[`openings/book.txt`](openings/book.txt): one line per variation (opening, weight, moves in SAN, at most 12 moves per side).
+The openings are those where one side gains space and the other prepares a freeing break (King's Indian, Benoni,
+French, Caro-Kann and Sicilian with an early e5, closed Queen's Pawn, closed Ruy Lopez, Pirc and Modern).
+It writes a book with every line (`book.bin`) and one per opening (UCI option `Opening`).
+`--check` analyzes every move of the lines with Stockfish and reports those that lose too much:
+
+```
+python book.py --check --depth 16
+```
+
+## Syzygy tablebases
+
+Chessy probes the [Syzygy tablebases](https://syzygy-tables.info/) (UCI option `SyzygyPath`, `--syzygy` in the command line).
+The tables of up to 5 pieces take 939 MiB (378 MiB of WDL tables, used in the search, and 561 MiB of DTZ tables,
+used at the root). Download them into `tools/syzygy` (ignored by git):
+
+```
+mkdir -p syzygy && cd syzygy
+curl -sL "https://syzygy-tables.info/download.txt?source=lichess&max-pieces=5" | xargs -P 4 -n 1 curl -sSfLO --retry 3
+```
+
+`syzygy_check.py` compares the probing of the engine (WDL and DTZ) with python-chess on random positions
+of every table (20000 positions, all equal):
+
+```
+python syzygy_check.py --positions 5000
+```
+
 ## Texel tuning
 
 Tune the weights of the Space evaluation with the results of games ([Texel's tuning method](https://www.chessprogramming.org/Texel%27s_Tuning_Method)).

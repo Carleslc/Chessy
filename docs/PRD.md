@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Versión | v1.0 (ver §8, Versiones) |
-| Estado | Fases 0 a 7 completadas (v1.0) · siguiente: mejoras v1.01… y el BOT en línea |
+| Versión | v1.01 (ver §8, Versiones) |
+| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza · siguiente: el BOT en línea |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -39,7 +39,7 @@ Sin descuidar lo necesario para jugar bien (táctica, material, seguridad del re
 
 - Competir con Stockfish o motores top (> 3000).
 - Jugar en Chess.com: su API pública es de solo lectura y su política de juego limpio prohíbe la asistencia de motores en partidas; **no existe una vía para bots propios**. Se usará Lichess.
-- Variantes (Chess960 queda como posible extensión futura).
+- Otras variantes (Chess960 sí está soportado desde v1.01).
 - GUI propia para jugar (se usan GUIs UCI existentes; el visor de `tools/` es para análisis).
 
 ## 3. Casos de uso
@@ -268,7 +268,7 @@ En CPU:
 
 - Empaquetado: `./gradlew installDist` → script `engine/build/install/chessy/bin/chessy` (UCI), y `./gradlew distZip` → `engine/build/distributions/chessy-<versión>.zip` con los lanzadores `bin/chessy` (macOS, Linux) y `bin/chessy.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
 - **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools).
-- Opcional: libro de aperturas (Polyglot) y tablas de finales Syzygy en fases avanzadas.
+- Libro de aperturas propio (Polyglot, `OwnBook`) y tablas de finales Syzygy (`SyzygyPath`), desde v1.01.
 
 ### Versiones
 
@@ -545,7 +545,20 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
   - **BOT en Lichess**: `tools/lichess/config.yml` al día con el formato actual de lichess-bot (*pondering*, abandono con −10 peones durante 5 jugadas, tablas en finales igualados, sin libro ni jugadas en línea, retos de bullet a clásicas, casuales y puntuables, de humanos y bots) y `tools/lichess/run.sh`, que compila el motor, copia la configuración con la ruta del motor y arranca lichess-bot (o convierte la cuenta en BOT con `--upgrade`). Comprobado sin conexión con el simulador de lichess.org de los tests de lichess-bot (`run.sh --test`, lichess-bot 2026.10.11.1): la configuración es válida y Chessy juega partidas completas a 60+2 contra Stockfish 2000 con *pondering* (`go ponder`, `ponderhit` y `stop`) sin problemas de tiempo. Falta crear la cuenta del BOT y su token, que son del usuario.
   - **Tablero electrónico**: el ChessUp 2 (directamente o con chessconnect) juega contra el BOT desde la cuenta de Lichess del usuario; chessconnect no conecta con motores locales.
   - Versión **v1.0** (tag `v1.0`).
-  - Quedan como mejoras futuras: libro de aperturas propio (lichess-bot ya admite libros Polyglot), tablas de finales Syzygy, Chess960 (para CCRL FRC), `native-image` y evaluadores alternativos.
+  - Quedaban como mejoras futuras el libro de aperturas, las tablas Syzygy y Chess960 (hechos en v1.01, abajo), `native-image` y evaluadores alternativos.
+
+### Mejoras antes del BOT en línea (v1.01)
+
+- **Referencias**: §14 con todas las páginas de chessprogramming.org que cita el código, por temas.
+- **`chessy play`**: muestra el estilo (con la profundidad de Greedy, o el Elo elegido) y su Elo estimado al empezar, y los guarda en el PGN (`White`/`Black` con el estilo, `WhiteElo`/`BlackElo` con el Elo estimado y `-` para la persona). La evaluación se muestra en peones desde el punto de vista de las blancas, como en los tableros de análisis (`+2.40 (White is better)`, `mate in 3 for Black`): antes era la puntuación de la búsqueda desde el punto de vista de Chessy (`cp -240`) y se confundía. Comando `eval` durante la partida.
+  - Ejemplo de la partida del usuario contra Greedy (profundidad 2): 12...Nxe4?? 13.Bxe4. Greedy no tiene búsqueda de quiescencia: tras cualquier jugada tranquila veía 13.Qxf6 (gana el caballo) sin ver la recaptura ...Qxf6, así que prefirió "salvar" el caballo con Nxe4, que pierde pieza por peón (−2,40 para Chessy) pero menos que el caballo que creía perder (efecto horizonte).
+- **Niveles de fuerza** (`UCI_LimitStrength`, `UCI_Elo` de 900 a 2800 en pasos de 100, `--elo`; clase `Strength`): Greedy a profundidad 2, 3 y 4 para los niveles bajos (~900, ~1100 y ~1120: sin quiescencia la profundidad 4 apenas mejora a la 3), el estilo elegido (Space por defecto) limitado a un número de nodos por jugada para los intermedios, conservando toda la búsqueda (quiescencia, extensiones, reducciones), y Full sin límite para 2800. Calibración con 50 partidas por punto contra Stockfish limitado: la fuerza crece **~135 Elo por cada duplicación de nodos** (64 nodos ~1310, 1024 ~1590, 4096 ~1990, 16384 ~2310, 65536 ~2510, 262144 ~2800).
+- **Libro de aperturas** (`OwnBook`, desactivado por defecto como piden las listas de rating; activado en `play` y en el BOT): libros Polyglot construidos con `tools/book.py` desde un repertorio de 63 líneas de aperturas de espacio (India de Rey, Benoni, Francesa, Caro-Kann y siciliana Alapin con e5, Gambito de Dama cerrado, Española cerrada, Pirc y Moderna; 12 jugadas por bando como máximo, como los libros de CCRL), comprobadas con Stockfish (se cortaron las líneas con jugadas que perdían más de 60 cp a profundidad 16). Un libro con todo y uno por apertura: la opción `Opening` fuerza una apertura (y el libro general cuando se agota), y `Book File` usa otro libro Polyglot. Las claves Polyglot se comprueban con los valores de la especificación.
+- **Chess960** (`UCI_Chess960`, `--chess960`, PGN con `Variant`): el enroque se codifica como el rey tomando su torre (la representación de Stockfish), que permite enroques en los que el rey o la torre no se mueven o se intercambian; derechos de enroque con la casilla de cada torre; FEN con KQkq, X-FEN y Shredder-FEN; las 960 posiciones iniciales por número de Scharnagl. Validado contra python-chess con perft y SAN en 150 posiciones aleatorias de Chess960 (`perft_check.py --chess960`); el perft estándar no cambia.
+- **Tablas Syzygy** (`SyzygyPath`, `--syzygy`; de 3 a 5 piezas, 939 MiB en `tools/syzygy`): implementación propia del formato (Huffman canónico, codificación de los índices, mapas de DTZ) y del algoritmo de sondeo de Ronald de Man (redistribuible sin restricciones), validada contra python-chess en **20.000 posiciones aleatorias sin ninguna diferencia** (`tools/syzygy_check.py`: victorias, tablas, derrotas, *cursed wins*, *blessed losses*, peones y captura al paso). En la búsqueda se usa el WDL tras capturas y jugadas de peón (como Stockfish), y en la raíz se buscan solo las jugadas que mantienen el mejor resultado ordenadas por DTZ, de modo que los finales ganados se convierten antes de la regla de 50 movimientos (por ejemplo, rey, alfil y caballo contra rey contra Stockfish: mate en 24 jugadas); la puntuación de la raíz es la de las tablas (0 en finales tablas como dos caballos contra rey). SPRT a 8+0,08: −3 ± 30 (300 partidas), neutro: a ese ritmo pocas partidas llegan a finales de 5 piezas, su valor está en jugarlos perfectamente.
+- **Evaluación**:
+  - El término de espacio es el *Space* / *Space area* clásico de Stockfish ([guía](https://hxim.github.io/Stockfish-Evaluation-Guide/)): casillas seguras de las columnas c–f en las filas 2–4 propias (sin peones propios ni atacadas por peones rivales), contando dos veces las que están detrás de los propios peones (hasta tres casillas) si no las ataca ninguna pieza rival; peso = piezas − 3 + mín(peones bloqueados, 9); bonus × peso² / 16, solo en el medio juego y con suficiente material. Diferencias: el porcentaje del estilo (`spacePercent`), el umbral de material ajustado por el *tuning* y un conteo más simple de los peones bloqueados. Territorio y Restricción son términos propios de Chessy, más allá del espacio de Stockfish.
+  - La evaluación es cónica (*tapered*): cada término tiene valor de medio juego y de final, interpolados con una fase continua de 0 a 24 según el material sin peones, así que no hay saltos entre fases. La única discontinuidad apreciable es el umbral de material del espacio (igual que en Stockfish): por debajo el término desaparece de golpe, aunque es pequeño (unos 10 cp, porque solo cuenta en el medio juego y la fase ya es media en el umbral; [Evaluation Discontinuity](https://chessprogramming.org/Evaluation_Discontinuity)). Se probó a desvanecerlo linealmente en el último cuarto del umbral: −20 ± 28 (300 partidas, sin demostrar que no empeore), probablemente porque los pesos se ajustaron con el umbral brusco; se mantiene el umbral, y queda para un próximo ajuste de pesos con la rampa.
 
 ## 11. Riesgos
 
