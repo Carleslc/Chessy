@@ -1,6 +1,7 @@
 package chessy.uci
 
 import chessy.Version
+import chessy.book.OpeningBook
 import chessy.core.Move
 import chessy.core.MoveGenerator
 import chessy.core.Notation
@@ -14,6 +15,7 @@ import chessy.search.Bench
 import chessy.search.GreedySearch
 import chessy.search.Search
 import chessy.search.SearchLimits
+import chessy.search.Strength
 import chessy.search.TranspositionTable
 import java.io.BufferedReader
 import java.io.File
@@ -59,20 +61,53 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private var evaluatorSettings: Pair<String, SpaceWeights?> = Evaluator.DEFAULT to null
     /** Whether the GUI lets the engine think on the opponent's time (`go ponder`): the engine only declares it. */
     private val ponder = CheckOption("Ponder", default = false)
-    private val options = listOf<Option>(style, hash, threads, moveOverhead, ponder, greedyDepth, weightsFile)
-        .associateBy { it.name.lowercase() }
+    /** Play at the Elo of UCI_Elo instead of the full strength of the style (see [Strength]). */
+    private val limitStrength = CheckOption("UCI_LimitStrength", default = false)
+    private val elo = SpinOption("UCI_Elo", default = 1500, min = Strength.MIN_ELO, max = Strength.MAX_ELO)
+    /** Play the moves of the opening book while the position is in it (off by default, as testers of rating lists require). */
+    private val ownBook = CheckOption("OwnBook", default = false)
+    /** Polyglot book to use instead of the books of Chessy (empty: the books of Chessy). */
+    private val bookFile = StringOption("Book File") { file ->
+        customBook = if (file.isBlank()) null else OpeningBook.load(File(file))
+    }
+    private var customBook: OpeningBook? = null
+    /** Only play this opening of the books of Chessy (and the whole book when it is over). */
+    private val opening = ComboOption("Opening", default = ALL_OPENINGS, values = listOf(ALL_OPENINGS) + OpeningBook.openings)
+    /** Chess960: castling is sent and received as the king taking its own rook. */
+    private val chess960 = CheckOption("UCI_Chess960", default = false)
+    private val options = listOf<Option>(
+        style, hash, threads, moveOverhead, ponder, limitStrength, elo, ownBook, bookFile, opening, chess960, greedyDepth, weightsFile,
+    ).associateBy { it.name.lowercase() }
+
+    private val books = mutableMapOf<String, OpeningBook>()
+
+    /** A move of the opening book for the [position] (if OwnBook): the chosen opening first, then the whole book. */
+    private fun bookMove(position: Position): Move? {
+        if (!ownBook.value) return null
+        customBook?.let { return it.pick(position) }
+        val names = if (opening.value == ALL_OPENINGS) listOf(ALL_BOOK) else listOf(opening.value, ALL_BOOK)
+        return names.firstNotNullOfOrNull { name -> books.getOrPut(name) { OpeningBook.resource(name) }.pick(position) }
+    }
 
     private val alphaBeta = ParallelSearch()
     private val greedy = GreedySearch()
 
-    /** The search selected with the Style option. */
-    private val search: Search get() =
-        if (style.value == GREEDY) greedy.apply { depth = greedyDepth.value }
-        else alphaBeta.apply { evaluator() }
+    /**
+     * How the engine plays: the Style option (with Greedy Depth), or with UCI_LimitStrength the setting for UCI_Elo,
+     * which uses the style for the levels it can reach by limiting its nodes (Space if the style is Greedy).
+     */
+    private val setting: Strength.Setting get() =
+        if (limitStrength.value) Strength.settingFor(elo.value, if (style.value == GREEDY) Evaluator.DEFAULT else style.value)
+        else Strength.Setting(style.value, greedyDepth.value)
 
-    /** The evaluator of the Style option (the greedy search only counts material). */
-    private fun evaluator(): Evaluator {
-        val name = if (style.value == GREEDY) "Material" else style.value
+    /** The search of the current [setting]. */
+    private fun search(setting: Strength.Setting = this.setting): Search =
+        if (setting.isGreedy) greedy.apply { depth = setting.greedyDepth }
+        else alphaBeta.apply { evaluator(setting) }
+
+    /** The evaluator of the current [setting] (the greedy search only counts material). */
+    private fun evaluator(setting: Strength.Setting = this.setting): Evaluator {
+        val name = if (setting.isGreedy) "Material" else setting.style
         val settings = name to customWeights
         if (settings != evaluatorSettings) {
             evaluatorSettings = settings
@@ -166,6 +201,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
             else -> throw IllegalArgumentException("Expected position startpos or position fen <fen>")
         }
         position = newPosition
+        position.chess960 = chess960.value
         for (uci in tokens.drop(movesIndex + 1)) {
             position.makeMove(Notation.parseUci(position, uci))
         }
@@ -178,21 +214,31 @@ class Uci(private val output: (String) -> Unit = ::send) {
             return
         }
 
-        val limits = parseLimits(tokens)
+        val setting = setting
+        // A limited strength plays a number of nodes per move
+        val limits = parseLimits(tokens).let { limits ->
+            setting.nodes?.let { nodes -> limits.copy(nodes = minOf(limits.nodes ?: nodes, nodes)) } ?: limits
+        }
         ponderhit = limits.ponderhit
         val searchPosition = position.copy()
-        val search = search
+        val search = search(setting)
         stop.set(false)
         val allowed = CountDownLatch(if (limits.infinite || limits.ponder) 1 else 0)
         bestMoveAllowed = allowed
+
+        // The book is read here, with the options of this moment (later commands may change them while the search starts)
+        val book = if (limits.infinite || limits.ponder || limits.searchMoves.isNotEmpty()) null else bookMove(searchPosition)
 
         searchTask = searchThread.submit {
             val legalMoves = MoveGenerator.legalMoves(searchPosition)
             var bestMove: Move? = null
             var ponderMove = Move.NONE
             try {
-                if (!legalMoves.isEmpty()) {
-                    val result = search.search(searchPosition, limits, stop) { info -> output(info.toUci()) }
+                if (book != null) {
+                    output("info string book move")
+                    bestMove = book
+                } else if (!legalMoves.isEmpty()) {
+                    val result = search.search(searchPosition, limits, stop) { info -> output(info.toUci(searchPosition.chess960)) }
                     bestMove = result.bestMove
                     ponderMove = result.ponderMove
                 }
@@ -205,8 +251,8 @@ class Uci(private val output: (String) -> Unit = ::send) {
             allowed.await()
             output(when {
                 bestMove == null -> "bestmove (none)"
-                ponderMove != Move.NONE -> "bestmove $bestMove ponder $ponderMove"
-                else -> "bestmove $bestMove"
+                ponderMove != Move.NONE -> "bestmove ${bestMove.toUci(searchPosition.chess960)} ponder ${ponderMove.toUci(searchPosition.chess960)}"
+                else -> "bestmove ${bestMove.toUci(searchPosition.chess960)}"
             })
         }
     }
@@ -273,7 +319,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private fun bench(depth: String?) {
         stopSearch()
         val plies = depth?.toIntOrNull() ?: Bench.DEFAULT_DEPTH
-        val result = Bench.run(search, plies, output)
+        val result = Bench.run(search(), plies, output)
         output("Nodes: ${result.nodes}")
         output("Time: ${result.millis} ms")
         output("NPS: ${result.nodesPerSecond}")
@@ -346,7 +392,9 @@ class Uci(private val output: (String) -> Unit = ::send) {
     }
 
     companion object {
-        private const val GREEDY = "Greedy"
+        private const val GREEDY = Strength.GREEDY
+        private const val ALL_OPENINGS = "All"
+        private const val ALL_BOOK = "book"
 
         /** Value of an empty string option in UCI. */
         private const val EMPTY = "<empty>"

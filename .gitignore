@@ -21,3 +21,6 @@ config.json
 
 # Engine snapshots for tests
 engines/
+
+# Syzygy endgame tablebases (downloaded, see tools/README.md)
+syzygy/

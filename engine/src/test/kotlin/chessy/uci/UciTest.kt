@@ -3,6 +3,7 @@ package chessy.uci
 import chessy.core.MoveGenerator
 import chessy.core.Notation
 import chessy.core.Position
+import chessy.search.Strength
 import java.util.Collections
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -176,6 +177,53 @@ class UciTest {
         assertTrue(bestMove(send("go depth 4")) != "d1d5")
         assertTrue(send("eval").single().startsWith("Full evaluation"))
         assertTrue(send("setoption name Style value Foo").single().startsWith("info string Error"))
+    }
+
+    @Test
+    fun ownBook() {
+        assertTrue("option name OwnBook type check default false" in send("uci"))
+        // Without book the engine searches
+        assertTrue(send("position startpos", "go depth 1").none { it == "info string book move" })
+        send("setoption name OwnBook value true", "setoption name Opening value French")
+        val first = send("position startpos", "go wtime 1000 btime 1000")
+        assertTrue("info string book move" in first)
+        assertEquals("e2e4", bestMove(first))
+        assertEquals("e7e6", bestMove(send("position startpos moves e2e4", "go wtime 1000 btime 1000")))
+        // Out of the book (and of the French), the engine searches
+        assertTrue("info string book move" !in send("position startpos moves h2h4 a7a5", "go depth 2"))
+        send("setoption name OwnBook value false", "setoption name Opening value All")
+    }
+
+    @Test
+    fun chess960() {
+        send("setoption name UCI_Chess960 value true")
+        // In Chess960 castling is the king taking its rook: O-O is d1f1 here (the rook stays on f1) and O-O-O d1c1 (they swap)
+        val fen = "nbrkbrqn/pppppppp/8/8/8/8/PPPPPPPP/NBRKBRQN w FCfc - 0 1"
+        val moves = "g2g3 g7g6 g1g2 g8g7 f2f3 f7f6 e1f2 e8f7"
+        send("position fen $fen moves $moves")
+        val legal = send("moves").single().split(" ")
+        assertTrue("O-O" in legal && "O-O-O" in legal, legal.toString())
+        send("position fen $fen moves $moves d1f1")
+        assertTrue(send("d").single().contains("FEN: nbrk1r1n/pppppbqp/5pp1/8/8/5PP1/PPPPPBQP/NBR2RKN b kq - 3 5"), send("d").toString())
+        // The engine sends castling in the same notation
+        assertTrue(send("position fen nbrkbrqn/pppppppp/8/8/8/8/PPPPPPPP/NBRKBRQN w FCfc - 0 1", "go depth 3").last().startsWith("bestmove"))
+        send("setoption name UCI_Chess960 value false")
+    }
+
+    @Test
+    fun limitStrength() {
+        val lines = send("uci")
+        assertTrue("option name UCI_LimitStrength type check default false" in lines)
+        assertTrue("option name UCI_Elo type spin default 1500 min 900 max 2800" in lines)
+        // At 1500 Elo the search stops after a few hundred nodes
+        send("setoption name UCI_LimitStrength value true", "setoption name UCI_Elo value 1500")
+        val info = send("position startpos", "go wtime 60000 btime 60000").last { it.startsWith("info depth") }
+        val nodes = info.split(" ").let { it[it.indexOf("nodes") + 1].toLong() }
+        assertTrue(nodes <= Strength.settingFor(1500).nodes!! * 2, info)
+        // At 900 Elo it plays the greedy search
+        send("setoption name UCI_Elo value 900")
+        assertTrue(send("eval").single().startsWith("Material evaluation"))
+        send("setoption name UCI_LimitStrength value false")
     }
 
     @Test

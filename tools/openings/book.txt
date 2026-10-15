@@ -1,0 +1,86 @@
+# Opening repertoire of Chessy for its own book (built with book.py into Polyglot books).
+# Openings where one side gains space and the other prepares a freeing break: King's Indian, Benoni, French,
+# Advance variations and closed Queen's Pawn positions, plus answers to the other main openings.
+# Lines have at most 12 moves per side (the limit of CCRL books), in SAN without move numbers.
+#
+# <opening> | <weight> | <moves>
+# The opening is the group of the line (UCI option Opening), and the weight its relative frequency.
+
+# King's Indian: Black gives White the center and strikes back with ...e5 and ...f5
+KingsIndian | 4 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Ne1 Nd7 Be3 f5 f3 f4 Bf2 g5
+KingsIndian | 3 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 b4 Nh5 Re1 f5 Ng5 Nf6 f3 Kh8
+KingsIndian | 2 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 d5 a5 Bg5 h6 Bh4 Na6 Nd2 Qe8 O-O Nh7 a3 Bd7
+KingsIndian | 1 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 Nf3 O-O Be2 e5 dxe5 dxe5 Qxd8 Rxd8 Bg5 Re8 Nd5 Nxd5 cxd5 c6 Bc4 cxd5
+KingsIndian | 2 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f3 O-O Be3 e5 Nge2 c6 Qd2 Nbd7 d5 cxd5 cxd5 a6 g4 h5 h3
+KingsIndian | 2 | d4 Nf6 c4 g6 Nc3 Bg7 e4 d6 f4 O-O Nf3 c5 d5 e6 Be2 exd5 cxd5 Bg4 O-O Nbd7 h3 Bxf3 Bxf3 Re8
+KingsIndian | 2 | d4 Nf6 c4 g6 Nf3 Bg7 g3 O-O Bg2 d6 O-O Nc6 Nc3 a6 d5 Na5 Nd2 c5 Qc2 Rb8 b3 b5 Bb2 bxc4
+KingsIndian | 1 | d4 Nf6 Bf4 g6 e3 Bg7 Nf3 d6 h3 O-O Be2 Nbd7 O-O Qe8 c4 e5 Bh2 Qe7 Nc3 c6
+KingsIndian | 1 | d4 Nf6 Nf3 g6 Bg5 Bg7 Nbd2 O-O e3 d6 c3 Nbd7 Be2 e5 O-O h6 Bh4 Qe8
+KingsIndian | 2 | c4 Nf6 Nc3 g6 e4 d6 d4 Bg7 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Ne1 Nd7 Nd3 f5 Bd2 Nf6 f3 f4
+KingsIndian | 1 | c4 Nf6 Nc3 g6 g3 Bg7 Bg2 O-O Nf3 d6 O-O e5 d3 Nc6 Rb1 a5 a3 h6 b4 axb4 axb4 Be6 b5 Ne7
+KingsIndian | 1 | Nf3 Nf6 g3 g6 Bg2 Bg7 O-O O-O d3 d6 e4 e5 Nc3 Nc6 a4 Nd4
+KingsIndian | 1 | Nf3 Nf6 c4 g6 Nc3 Bg7 e4 d6 d4 O-O Be2 e5 O-O Nc6 d5 Ne7 Ne1 Nd7 Be3 f5 f3 f4 Bf2 g5
+KingsIndian | 1 | d4 g6 c4 Bg7 Nc3 d6 e4 Nf6 Nf3 O-O Be2 e5 O-O Nc6 d5 Ne7 Ne1 Nd7 Be3 f5 f3 f4 Bf2 g5
+KingsIndian | 1 | d4 Nf6 Nc3 g6 e4 d6 f4 Bg7 Nf3 O-O Bd3 Na6 O-O c5 d5 Rb8 Kh1 Nc7 a4 a6
+
+# Benoni: Black accepts less space for queenside play and a later break
+Benoni | 3 | d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 Nf3 Bg7 Be2 O-O O-O Re8 Nd2 Na6 f3 Nc7 a4 b6
+Benoni | 2 | d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 e4 g6 f4 Bg7 Bb5+ Nfd7 a4 O-O Nf3 Na6 O-O Nb4 Re1 a6
+Benoni | 2 | d4 Nf6 c4 c5 d5 e6 Nc3 exd5 cxd5 d6 Nf3 g6 g3 Bg7 Bg2 O-O O-O Re8 Nd2 a6 a4 Nbd7 h3 Rb8
+Benoni | 1 | d4 Nf6 Nf3 c5 d5 e6 c4 exd5 cxd5 d6 Nc3 g6 e4 Bg7 Be2 O-O O-O Re8 Nd2 Na6 f3 Nc7 a4 b6
+Benoni | 1 | d4 Nf6 c4 c5 d5 b5 cxb5 a6 bxa6 g6 Nc3 Bxa6 Nf3 d6 e4 Bxf1 Kxf1 Bg7 g3 O-O Kg2 Nbd7
+
+# French: Black lets White advance in the center and attacks the chain with ...c5 and ...f6
+French | 3 | e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3 Ne7 Qg4 Qc7 Qxg7 Rg8 Qxh7 cxd4 Ne2 Nbc6 f4 dxc3 Qd3 d4
+French | 2 | e4 e6 d4 d5 Nc3 Bb4 e5 c5 a3 Bxc3+ bxc3 Ne7 Nf3 Qa5 Bd2 Nbc6 Be2 Bd7 O-O c4 a4 f6 Re1 O-O
+French | 3 | e4 e6 d4 d5 Nc3 Nf6 e5 Nfd7 f4 c5 Nf3 Nc6 Be3 cxd4 Nxd4 Bc5 Qd2 O-O O-O-O a6 h4 Nxd4 Bxd4 b5
+French | 2 | e4 e6 d4 d5 Nd2 Nf6 e5 Nfd7 Bd3 c5 c3 Nc6 Ne2 cxd4 cxd4 f6 exf6 Nxf6 Nf3 Bd6 O-O Qc7 Nc3
+French | 4 | e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 a3 c4 Nbd2 Na5 Rb1 Bd7 Be2 Ne7 O-O Nf5
+French | 2 | e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 Bd3 cxd4 cxd4 Bd7 O-O Nxd4 Nxd4 Qxd4 Nc3 a6 Qe2 Ne7 Kh1
+French | 2 | e4 e6 d4 d5 e5 c5 c3 Nc6 Nf3 Qb6 Be2 cxd4 cxd4 Nh6 Nc3 Nf5 Na4 Qa5+ Bd2 Bb4 Bc3 b5 a3 Bxc3+
+French | 1 | e4 e6 d4 d5 exd5 exd5 Nf3 Nf6 Bd3 Bd6 O-O O-O Bg5 Bg4 Nbd2 Nbd7 c3 c6 Qc2 Qc7 Rfe1 Rfe8
+French | 1 | e4 e6 d3 d5 Nd2 Nf6 Ngf3 c5 g3 Nc6 Bg2 Be7 O-O O-O Re1 b5 e5 Nd7 Nf1 a5 h4 b4
+French | 1 | e4 e6 Nf3 d5 Nc3 Nf6 e5 Nfd7 d4 c5 dxc5 Nc6 Bf4 Bxc5 Bd3 f6 exf6 Nxf6 O-O O-O
+French | 1 | e4 e6 Qe2 c5 Nf3 Nc6 g3 d5 d3 Be7 Bg2 Nf6 O-O O-O e5 Nd7 c4 d4
+French | 1 | e4 e6 c4 d5 exd5 exd5 cxd5 Nf6 Bb5+ Nbd7 Nc3 Be7 Nf3 O-O O-O Nb6
+
+# Caro-Kann Advance: White takes space with e5
+CaroKann | 3 | e4 c6 d4 d5 e5 Bf5 Nf3 e6 Be2 c5 Be3 cxd4 Nxd4 Ne7 c4 Nbc6
+CaroKann | 2 | e4 c6 d4 d5 e5 Bf5 Nf3 e6 Be2 Nd7 O-O h6 Nbd2 Ne7 Nb3 g5 Ne1 Bg7 f4 gxf4 Bxf4 Bg6
+CaroKann | 1 | e4 c6 d4 d5 e5 c5 dxc5 e6 Be3 Nd7 Bb5 a6 Bxd7+ Bxd7 Nf3 Ne7 c3 Nf5
+CaroKann | 1 | e4 c6 d4 d5 e5 Bf5 h4 h5 c4 e6 Nc3 Ne7 Nge2 dxc4 Ng3 Bg6
+
+# Sicilian Alapin: White prepares d4 and gains space with e5
+Sicilian | 3 | e4 c5 c3 Nf6 e5 Nd5 d4 cxd4 Nf3 Nc6 cxd4 d6 Bc4 Nb6 Bb5 dxe5 Nxe5 Bd7 Bxc6 Bxc6 Nxc6 bxc6 O-O e6
+Sicilian | 2 | e4 c5 c3 d5 exd5 Qxd5 d4 Nf6 Nf3 Bg4 Be2 e6 O-O Nc6 Be3 cxd4 cxd4 Be7 Nc3 Qa5 h3 Bh5
+Sicilian | 2 | e4 c5 c3 e6 d4 d5 e5 Nc6 Nf3 Qb6 a3 c4 Nbd2 Na5 Rb1 Bd7 Be2 Ne7 O-O Nf5
+Sicilian | 2 | e4 c5 c3 Nc6 d4 d5 exd5 Qxd5 Nf3 cxd4 cxd4 e5 Nc3 Bb4 Bd2 Bxc3 Bxc3 e4 Ne5 Nxe5 dxe5 Ne7
+Sicilian | 1 | e4 c5 c3 d6 d4 Nf6 Bd3 Nc6 Ne2 cxd4 cxd4 e5 d5
+
+# Closed Queen's Pawn: White keeps a space advantage in the center
+QueensGambit | 4 | d4 d5 c4 e6 Nc3 Nf6 Bg5 Be7 e3 O-O Nf3 h6 Bh4 b6 Be2 Bb7 Bxf6 Bxf6 cxd5 exd5 b4 c5 bxc5 bxc5
+QueensGambit | 2 | d4 d5 c4 e6 Nc3 Nf6 cxd5 exd5 Bg5 c6 Qc2 Be7 e3 Nbd7 Bd3 O-O Nge2 Re8 O-O Nf8 f3
+QueensGambit | 2 | d4 d5 c4 c6 Nf3 Nf6 Nc3 dxc4 a4 Bf5 e3 e6 Bxc4 Bb4 O-O Nbd7 Qe2 Bg6 e4 O-O e5 Nd5 Nxd5 cxd5
+QueensGambit | 2 | d4 d5 c4 c6 Nf3 Nf6 Nc3 e6 e3 Nbd7 Qc2 Bd6 Bd3 O-O O-O dxc4 Bxc4 b5 Bd3 Bb7 a3 a6
+QueensGambit | 1 | d4 d5 c4 dxc4 Nf3 Nf6 e3 e6 Bxc4 c5 O-O a6 dxc5 Qxd1 Rxd1 Bxc5 Kf1 b5 Be2 Bb7 Nbd2 Nbd7 Nb3 Be7
+QueensGambit | 2 | d4 Nf6 c4 e6 Nc3 Bb4 e3 O-O Bd3 d5 Nf3 c5 O-O Nc6 a3 Bxc3 bxc3 dxc4 Bxc4 Qc7 Bd3 e5 Qc2 Re8
+QueensGambit | 1 | d4 Nf6 c4 e6 Nf3 b6 g3 Ba6 b3 Bb4+ Bd2 Be7 Bg2 c6 Bc3 d5 Ne5 Nfd7 Nxd7 Nxd7 Nd2 O-O O-O Rc8
+QueensGambit | 1 | d4 Nf6 c4 e6 g3 d5 Bg2 Be7 Nf3 O-O O-O dxc4 Qc2 a6 Qxc4 b5 Qc2 Bb7 Bd2 Be4 Qc1 Bb7
+QueensGambit | 1 | d4 Nf6 c4 g6 Nc3 d5 cxd5 Nxd5 e4 Nxc3 bxc3 Bg7 Nf3 c5 Be3 Qa5 Qd2 O-O Rc1 cxd4 cxd4 Qxd2+ Kxd2 Rd8
+QueensGambit | 1 | d4 f5 g3 Nf6 Bg2 e6 Nf3 d5 O-O Bd6 c4 c6 b3 Qe7 Ne5 O-O Bb2 b6 Nd2 Bb7
+QueensGambit | 1 | d4 e6 c4 Bb4+ Bd2 Bxd2+ Qxd2 d5 Nc3 Nf6 Nf3 O-O e3 Nbd7 Bd3 c6 O-O dxc4 Bxc4 e5
+
+# Closed Ruy Lopez: slow maneuvering behind a pawn chain
+RuyLopez | 4 | e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Na5 Bc2 c5 d4 Qc7 Nbd2 cxd4
+RuyLopez | 3 | e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6 O-O Be7 Re1 b5 Bb3 d6 c3 O-O h3 Nb8 d4 Nbd7 Nbd2 Bb7 Bc2 Re8
+RuyLopez | 2 | e4 e5 Nf3 Nc6 Bb5 Nf6 O-O Nxe4 d4 Nd6 Bxc6 dxc6 dxe5 Nf5 Qxd8+ Kxd8 Nc3 Ke8 h3 h5 Bf4 Be7 Rad1 Be6
+RuyLopez | 1 | e4 e5 Nf3 Nc6 Bb5 Bc5 c3 Nf6 O-O O-O d4 Bb6 Re1 d6 h3 exd4 cxd4 Ne7
+RuyLopez | 1 | e4 e5 Nf3 Nc6 Bb5 Nd4 Nxd4 exd4 O-O c6 Bc4 Nf6 Re1 d6 c3 Be7 cxd4
+RuyLopez | 2 | e4 e5 Nf3 Nf6 Nxe5 d6 Nf3 Nxe4 d4 d5 Bd3 Nc6 O-O Be7 c4 Nb4 Be2 O-O Nc3 Bf5 a3 Nxc3 bxc3 Nc6
+RuyLopez | 1 | e4 e5 Nf3 d6 d4 Nf6 Nc3 Nbd7 Bc4 Be7 O-O O-O Re1 c6 a4 b6
+
+# Pirc, Modern, Scandinavian and Alekhine: White builds a big center
+Pirc | 2 | e4 d6 d4 Nf6 Nc3 g6 f4 Bg7 Nf3 O-O Bd3 Na6 O-O c5 d5 Rb8 Kh1 Nc7 a4 a6
+Pirc | 1 | e4 g6 d4 Bg7 Nc3 d6 Be3 a6 Qd2 Nd7
+Pirc | 2 | e4 d5 exd5 Qxd5 Nc3 Qa5 d4 Nf6 Nf3 c6 Bc4 Bf5 Bd2 e6 Qe2 Bb4 O-O-O Nbd7 a3 Bxc3 Bxc3 Qc7
+Pirc | 1 | e4 Nf6 e5 Nd5 d4 d6 Nf3 dxe5 Nxe5 c6 Be2 Bf5 O-O Nd7 Nf3 e6 c4 N5f6 Nc3 Be7

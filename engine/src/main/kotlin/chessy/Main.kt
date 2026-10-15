@@ -1,8 +1,10 @@
 package chessy
 
+import chessy.book.OpeningBook
 import chessy.core.BLACK
 import chessy.core.Color
 import chessy.core.Game
+import chessy.core.Move
 import chessy.core.MoveGenerator
 import chessy.core.Notation
 import chessy.core.Perft
@@ -18,6 +20,7 @@ import chessy.search.GreedySearch
 import chessy.search.Score
 import chessy.search.Search
 import chessy.search.SearchLimits
+import chessy.search.Strength
 import chessy.tune.TexelTuner
 import chessy.uci.Uci
 import java.io.File
@@ -47,6 +50,11 @@ Options:
   --style <name>         Playing style of eval, bench and play: space (default, the constrictor), full (the strongest),
                          material or greedy (the weakest)
   --depth <n>            Maximum depth of the search in play (fixed depth for greedy, default: 2)
+  --elo <elo>            Play at this Elo (900 to 2800, in steps of 100) instead of the full strength of the style
+  --book <on|off|file>   Opening book of play: the books of Chessy (default), none, or a Polyglot book file
+  --opening <name>       Play this opening of the books of Chessy: KingsIndian, Benoni, French, CaroKann, Sicilian,
+                         QueensGambit, RuyLopez or Pirc
+  --chess960 <n>         Chess960: starting position number (0 to 959), random, or true (with --fen, and in divide and moves)
   --time <s>             Seconds to think per move in play (default: 3)
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
@@ -83,17 +91,59 @@ private class Arguments(args: Array<String>) {
 
     /** The FEN is the rest of the positional arguments from [index], so it can be passed with or without quotes. */
     fun position(index: Int): Position =
-        if (positional.size > index) Position.fromFen(positional.drop(index).joinToString(" ")) else Position.startingPosition()
+        (if (positional.size > index) Position.fromFen(positional.drop(index).joinToString(" ")) else Position.startingPosition())
+            .apply { chess960 = isChess960 }
+
+    /** --chess960 true, a number or random: Chess960, with castling in UCI as the king taking its rook. */
+    val isChess960: Boolean get() = options["chess960"]?.let { it != "false" } ?: false
+
+    /** Starting position of play: --fen, or the Chess960 position of --chess960 (a number from 0 to 959 or random). */
+    val startingFen: String get() {
+        options["fen"]?.let { return it }
+        return when (val chess960 = options["chess960"]) {
+            null, "false", "true" -> Position.STARTING_FEN
+            "random" -> Position.chess960Fen(kotlin.random.Random.nextInt(960))
+            else -> Position.chess960Fen(chess960.toIntOrNull() ?: throw IllegalArgumentException("--chess960 must be true, random or a number from 0 to 959"))
+        }
+    }
+
+    /** Opening book of play: the books of Chessy (--opening to play only one), a Polyglot --book file, or none with --book off. */
+    val book: ((Position) -> Move?)? get() {
+        val option = options["book"] ?: "on"
+        if (option == "off" || option == "false") return null
+        if (option != "on" && option != "true") return OpeningBook.load(File(option))::pick
+        val all = OpeningBook.resource("book")
+        val opening = options["opening"]?.let { name ->
+            val found = OpeningBook.openings.firstOrNull { it.equals(name, ignoreCase = true) }
+                ?: throw IllegalArgumentException("Unknown opening: $name (${OpeningBook.openings.joinToString()})")
+            OpeningBook.resource(found)
+        }
+        return { position -> opening?.pick(position) ?: all.pick(position) }
+    }
 
     val threads: Int get() = options["threads"]?.toIntOrNull()?.takeIf { it > 0 } ?: Runtime.getRuntime().availableProcessors()
 
-    val style: String get() = options["style"]?.lowercase() ?: Evaluator.DEFAULT.lowercase()
+    /** The --style, with its name (Space, Full, Material or Greedy). */
+    val style: String get() {
+        val name = options["style"] ?: return Evaluator.DEFAULT
+        return (Evaluator.all.keys + Strength.GREEDY).firstOrNull { it.equals(name, ignoreCase = true) }
+            ?: throw IllegalArgumentException("Unknown style: $name (space, full, material or greedy)")
+    }
 
-    private val isGreedy: Boolean get() = style == "greedy"
+    private val isGreedy: Boolean get() = style == Strength.GREEDY
+
+    /** How Chessy plays: the --style (with --depth for greedy), or the setting of --elo (with the --style, Space by default). */
+    val setting: Strength.Setting get() = when (val elo = intOption("elo")) {
+        null -> Strength.Setting(style, intOption("depth") ?: 2)
+        else -> Strength.settingFor(elo, if (isGreedy) Evaluator.DEFAULT else style)
+    }
 
     /** Evaluator of the --style (the greedy search only counts material), with the --weights file if any. */
-    val evaluator: Evaluator get() =
-        if (isGreedy) Evaluator.named("Material") else Evaluator.named(style, options["weights"]?.let { SpaceWeights.load(File(it)) })
+    val evaluator: Evaluator get() = evaluator(Strength.Setting(style))
+
+    /** Evaluator of a [setting] (the greedy search only counts material), with the --weights file if any. */
+    fun evaluator(setting: Strength.Setting): Evaluator =
+        if (setting.isGreedy) Evaluator.named("Material") else Evaluator.named(setting.style, options["weights"]?.let { SpaceWeights.load(File(it)) })
 
     /** Weights of the Space or Full style: --weights file or the tuned weights of the style. */
     val weights: SpaceWeights get() =
@@ -101,15 +151,18 @@ private class Arguments(args: Array<String>) {
 
     fun intOption(name: String): Int? = options[name]?.let { it.toIntOrNull() ?: throw IllegalArgumentException("--$name must be a number") }
 
-    /** Search of the --style, with --threads and --depth. */
-    val search: Search get() =
-        if (isGreedy) GreedySearch(intOption("depth") ?: 2)
-        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator })
+    /** Search of the [setting], with --threads. */
+    val search: Search get() {
+        val setting = setting
+        return if (setting.isGreedy) GreedySearch(setting.greedyDepth)
+        else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator(setting) })
+    }
 
-    /** Limits of each move in play: --time seconds and --depth. */
+    /** Limits of each move in play: --time seconds, --depth and the nodes of the [setting] (--elo). */
     val limits: SearchLimits get() = SearchLimits(
         moveTime = ((options["time"]?.toDoubleOrNull() ?: 3.0) * 1000).toLong(),
-        depth = if (isGreedy) null else intOption("depth"),
+        depth = if (isGreedy || options["elo"] != null) null else intOption("depth"),
+        nodes = setting.nodes,
     )
 }
 
@@ -128,10 +181,7 @@ fun main(args: Array<String>) {
             "moves" -> moves(arguments.position(1))
             "eval" -> println(arguments.evaluator.explain(arguments.position(1)))
             "bench" -> bench(arguments.search, arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
-            "play" -> play(
-                arguments.options["fen"] ?: Position.STARTING_FEN, chessyColors(arguments.options["chessy"]),
-                arguments.search, arguments.limits, arguments.options["pgn"]?.let(::File)
-            )
+            "play" -> play(arguments)
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))
             "weights" -> print(arguments.weights.format())
             "tune" -> tune(arguments)
@@ -154,7 +204,7 @@ private fun perft(depth: Int, position: Position, threads: Int) {
 private fun divide(depth: Int, position: Position, threads: Int) {
     val start = System.nanoTime()
     val results = if (threads > 1) Perft.parallelDivide(position, depth, threads) else Perft(position).divide(depth)
-    for ((move, nodes) in results.sortedBy { it.first.toString() }) {
+    for ((move, nodes) in results.map { (move, nodes) -> Notation.toUci(position, move) to nodes }.sortedBy { it.first }) {
         println("$move: $nodes")
     }
     println()
@@ -174,7 +224,7 @@ private fun moves(position: Position) {
     val moves = MoveGenerator.legalMoves(position).toList()
     println("${moves.size} legal moves")
     for (move in moves) {
-        println("${Notation.toSan(position, move)} ($move)")
+        println("${Notation.toSan(position, move)} (${Notation.toUci(position, move)})")
     }
 }
 
@@ -195,22 +245,45 @@ private fun bench(search: Search, depth: Int) {
 }
 
 /** Console game against Chessy (or between humans, or Chessy against itself). */
-private fun play(fen: String, chessy: Set<Color>, search: Search, limits: SearchLimits, pgnFile: File?) {
-    val game = Game(fen)
+private fun play(arguments: Arguments) {
+    val chessy = chessyColors(arguments.options["chessy"])
+    val setting = arguments.setting
+    val search = arguments.search
+    val limits = arguments.limits
+    val pgnFile = arguments.options["pgn"]?.let(::File)
+    val elo = arguments.intOption("elo")?.let(Strength::roundElo) ?: Strength.estimatedElo(setting)
+    val chessyName = "${Version.name} ($setting)"
+
+    val book = arguments.book
+    val game = Game(arguments.startingFen, arguments.isChess960)
     game.headers["Event"] = "Chessy game"
     game.headers["Site"] = "Chessy (v${Version.number})"
     game.headers["Date"] = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd"))
-    game.headers["White"] = if (WHITE in chessy) Version.name else "Player"
-    game.headers["Black"] = if (BLACK in chessy) Version.name else "Player"
+    game.headers["White"] = if (WHITE in chessy) chessyName else "Player"
+    game.headers["Black"] = if (BLACK in chessy) chessyName else "Player"
+    // Estimated Elo of Chessy, "-" for the player (unknown)
+    game.headers["WhiteElo"] = if (WHITE in chessy) "$elo" else "-"
+    game.headers["BlackElo"] = if (BLACK in chessy) "$elo" else "-"
 
-    println("Moves in SAN (e4, Nf3, O-O, exd6, a8=Q) or UCI (e2e4). Commands: moves, undo, pgn, resign, draw, quit.")
+    println("$chessyName, estimated Elo $elo (Stockfish scale, see the README)")
+    println("Opening book: ${if (book == null) "off" else arguments.options["opening"] ?: arguments.options["book"]?.takeIf { it != "on" } ?: "on"}" +
+        if (game.chess960) ", Chess960" else "")
+    println("Moves in SAN (e4, Nf3, O-O, exd6, a8=Q) or UCI (e2e4). Commands: moves, eval, undo, pgn, resign, draw, quit.")
+    println("Evaluations are in pawns from the point of view of White: positive is better for White, negative for Black.")
     while (!game.status.isOver) {
         println()
         println(game.position)
         val side = if (game.position.sideToMove == WHITE) "White" else "Black"
         if (game.position.sideToMove in chessy) {
+            val bookMove = book?.invoke(game.position)
+            if (bookMove != null) {
+                println("$side (Chessy) plays ${Notation.toSan(game.position, bookMove)} (book)")
+                game.play(bookMove)
+                continue
+            }
             val result = search.search(game.position, limits, AtomicBoolean())
-            println("$side (Chessy) plays ${Notation.toSan(game.position, result.bestMove)} (${Score.toUci(result.score)})")
+            val evaluation = evaluationForWhite(result.score, game.position.sideToMove)
+            println("$side (Chessy) plays ${Notation.toSan(game.position, result.bestMove)}, evaluation $evaluation")
             game.play(result.bestMove)
             continue
         }
@@ -220,6 +293,10 @@ private fun play(fen: String, chessy: Set<Color>, search: Search, limits: Search
             "" -> continue
             "quit", "exit" -> break
             "moves" -> moves(game.position)
+            "eval" -> {
+                // Static evaluation of the position, term by term (the greedy search only counts material)
+                println(arguments.evaluator(setting).explain(game.position))
+            }
             "undo" -> {
                 // Take back the last move of the player, and the reply of Chessy
                 game.undo()
@@ -283,5 +360,23 @@ private fun tune(arguments: Arguments) {
         println("Saved $output")
     } finally {
         tuner.close()
+    }
+}
+
+/**
+ * A search [score] (from the point of view of the [sideToMove]) for people: in pawns from the point of view of White,
+ * such as "+0.35 (White is better)", "-2.40 (Black is better)" or "mate in 3 for Black".
+ */
+private fun evaluationForWhite(score: Int, sideToMove: Color): String {
+    val white = if (sideToMove == WHITE) score else -score
+    if (Score.isMate(white)) {
+        val moves = (Score.MATE - Math.abs(white) + 1) / 2
+        return "mate in $moves for ${if (white > 0) "White" else "Black"}"
+    }
+    val pawns = String.format(java.util.Locale.ROOT, "%+.2f", white / 100.0)
+    return when {
+        white > 0 -> "$pawns (White is better)"
+        white < 0 -> "$pawns (Black is better)"
+        else -> "$pawns (equal)"
     }
 }
