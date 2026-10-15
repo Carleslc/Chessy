@@ -76,8 +76,11 @@ class Uci(private val output: (String) -> Unit = ::send) {
     private val opening = ComboOption("Opening", default = ALL_OPENINGS, values = listOf(ALL_OPENINGS) + OpeningBook.openings)
     /** Chess960: castling is sent and received as the king taking its own rook. */
     private val chess960 = CheckOption("UCI_Chess960", default = false)
-    /** Folders of the Syzygy endgame tablebases, separated by the path separator (empty: no tablebases). */
-    private val syzygyPath = StringOption("SyzygyPath") { path ->
+    /**
+     * Folders of the Syzygy endgame tablebases, separated by the path separator (empty: no tablebases).
+     * By default the tables downloaded in tools/syzygy, if any.
+     */
+    private val syzygyPath = StringOption("SyzygyPath", default = Syzygy.defaultPath() ?: "") { path ->
         alphaBeta.tablebases = if (path.isBlank()) null else Syzygy(path).also {
             require(!it.isEmpty) { "No Syzygy tables found in $path" }
             output("info string Syzygy: ${it.size} tables up to ${it.maxPieces} pieces")
@@ -99,7 +102,9 @@ class Uci(private val output: (String) -> Unit = ::send) {
         return names.firstNotNullOfOrNull { name -> books.getOrPut(name) { OpeningBook.resource(name) }.pick(position) }
     }
 
-    private val alphaBeta = ParallelSearch()
+    private val alphaBeta = ParallelSearch().apply {
+        tablebases = Syzygy.defaultPath()?.let(::Syzygy)
+    }
     private val greedy = GreedySearch()
 
     /**
@@ -388,7 +393,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
     }
 
     /** Text option, such as a file name (empty by default). */
-    private class StringOption(override val name: String, val onChange: (String) -> Unit) : Option {
+    private class StringOption(override val name: String, val default: String = "", val onChange: (String) -> Unit) : Option {
         override fun set(text: String) {
             val value = if (text == EMPTY) "" else text
             try {
@@ -398,7 +403,7 @@ class Uci(private val output: (String) -> Unit = ::send) {
             }
         }
 
-        override fun toUci() = "option name $name type string default $EMPTY"
+        override fun toUci() = "option name $name type string default ${default.ifEmpty { EMPTY }}"
     }
 
     companion object {

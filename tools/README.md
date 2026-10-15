@@ -211,7 +211,8 @@ python book.py --check --depth 16
 
 ## Syzygy tablebases
 
-Chessy probes the [Syzygy tablebases](https://syzygy-tables.info/) (UCI option `SyzygyPath`, `--syzygy` in the command line).
+Chessy probes the [Syzygy tablebases](https://syzygy-tables.info/), by default the ones of `tools/syzygy` if they are downloaded
+(UCI option `SyzygyPath`, `--syzygy` in the command line).
 The tables of up to 5 pieces take 939 MiB (378 MiB of WDL tables, used in the search, and 561 MiB of DTZ tables,
 used at the root). Download them into `tools/syzygy` (ignored by git):
 

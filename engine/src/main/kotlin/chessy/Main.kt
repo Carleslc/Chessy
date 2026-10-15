@@ -61,7 +61,7 @@ Options:
   --fen <fen>            Starting position of play (between quotes)
   --chessy <color>       Pieces played by Chessy in play: white, black (default), both or none
   --pgn <file>           Save the game played to this PGN file
-  --syzygy <path>        Folder of the Syzygy tablebases (several separated by the path separator)
+  --syzygy <path|off>    Folder of the Syzygy tablebases (default: tools/syzygy if downloaded), or off to play without them
   --weights <file>       Weights file of the Space or Full style (default: the tuned weights), also the starting point of tune
   --output <file>        Weights file written by tune (default: space.weights)
   --positions <n>        Maximum number of positions of the training file to tune
@@ -159,7 +159,12 @@ private class Arguments(args: Array<String>) {
         val setting = setting
         return if (setting.isGreedy) GreedySearch(setting.greedyDepth)
         else ParallelSearch(threads = intOption("threads") ?: 1, evaluatorFactory = { evaluator(setting) }).apply {
-            tablebases = options["syzygy"]?.let(::Syzygy)
+            // The tables downloaded in tools/syzygy by default, --syzygy off to play without them
+            tablebases = when (val path = options["syzygy"]) {
+                "off", "false" -> null
+                null -> Syzygy.defaultPath()?.let(::Syzygy)
+                else -> Syzygy(path)
+            }
         }
     }
 
@@ -272,7 +277,9 @@ private fun play(arguments: Arguments) {
     game.headers["BlackElo"] = if (BLACK in chessy) "$elo" else "-"
 
     println("$chessyName, estimated Elo $elo (Stockfish scale, see the README)")
+    val tablebases = (search as? ParallelSearch)?.tablebases
     println("Opening book: ${if (book == null) "off" else arguments.options["opening"] ?: arguments.options["book"]?.takeIf { it != "on" } ?: "on"}" +
+        ", endgame tablebases: ${if (tablebases == null) "off" else "${tablebases.size} tables up to ${tablebases.maxPieces} pieces"}" +
         if (game.chess960) ", Chess960" else "")
     println("Moves in SAN (e4, Nf3, O-O, exd6, a8=Q) or UCI (e2e4). Commands: moves, eval, undo, pgn, resign, draw, quit.")
     println("Evaluations are in pawns from the point of view of White: positive is better for White, negative for Black.")
@@ -389,7 +396,7 @@ private fun evaluationForWhite(score: Int, sideToMove: Color): String {
 
 /** WDL and DTZ of a FEN (or of each FEN of the standard input) in the Syzygy tablebases. */
 private fun syzygy(arguments: Arguments) {
-    val tablebases = Syzygy(arguments.options["syzygy"] ?: throw IllegalArgumentException("Missing --syzygy path"))
+    val tablebases = Syzygy(arguments.options["syzygy"] ?: Syzygy.defaultPath() ?: throw IllegalArgumentException("Missing --syzygy path"))
     require(!tablebases.isEmpty) { "No Syzygy tables found" }
     val fens = if (arguments.positional.size > 1) sequenceOf(arguments.positional.drop(1).joinToString(" "))
         else generateSequence(::readLine).filter { it.isNotBlank() }

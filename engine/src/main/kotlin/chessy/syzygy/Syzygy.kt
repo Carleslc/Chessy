@@ -612,6 +612,29 @@ class Syzygy(paths: String) {
         const val CURSED_WIN = 1
         const val WIN = 2
 
+        /**
+         * Folder of the tablebases found by default: `tools/syzygy` (or `syzygy`) with tables, looking up from the folder
+         * where the engine is installed (such as `engine/build/install/chessy/lib` in the repository) and from the
+         * current folder. Null if there is none (they are downloaded apart, see tools/README.md).
+         */
+        fun defaultPath(): String? {
+            val starts = listOfNotNull(
+                runCatching { File(Syzygy::class.java.protectionDomain.codeSource.location.toURI()) }.getOrNull(),
+                File("").absoluteFile,
+            )
+            for (start in starts) {
+                var folder: File? = start
+                repeat(8) {
+                    val current = folder ?: return@repeat
+                    for (candidate in listOf(File(current, "tools/syzygy"), File(current, "syzygy"))) {
+                        if (candidate.listFiles { file -> file.extension == "rtbw" }?.isNotEmpty() == true) return candidate.path
+                    }
+                    folder = current.parentFile
+                }
+            }
+            return null
+        }
+
         private const val MAX_PIECES = 7
         private const val SPARSE_ENTRY_SIZE = 6
 

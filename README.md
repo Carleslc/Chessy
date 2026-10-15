@@ -84,9 +84,10 @@ And besides:
 - **Opening book** (`OwnBook`, off by default as rating lists require; on by default in `play`): Polyglot books of openings
   where one side gains space (King's Indian, Benoni, French, Advance variations, closed Queen's Pawn, closed Ruy Lopez...),
   built with [`tools/book.py`](tools/book.py). `Opening` plays only one of them (`--opening`), and `Book File` another book.
-- **Endgame tablebases**: `SyzygyPath` (`--syzygy`) with the [Syzygy tablebases](https://syzygy-tables.info/) of up to 5 pieces
-  (download them as explained in [tools](tools/README.md)): exact results of the endgames in the search, and perfect
-  conversion of won endgames before the fifty-move rule.
+- **Endgame tablebases**: the [Syzygy tablebases](https://syzygy-tables.info/) of up to 5 pieces (download them into
+  `tools/syzygy` as explained in [tools](tools/README.md)): exact results of the endgames in the search, and perfect
+  conversion of won endgames before the fifty-move rule. When they are downloaded they are used by default, in `play`
+  and in UCI (`SyzygyPath` is `tools/syzygy` by default); `--syzygy off` or an empty `SyzygyPath` play without them.
 - **Chess960**: `UCI_Chess960` (`--chess960` in the command line).
 - **Pondering**: `Ponder`, thinking on the opponent's time.
 
@@ -120,30 +121,11 @@ where Chessy would be ~100 Elo higher (see the CCRL estimate below, measured at 
   1500 positional positions, points out of 15000 with `tools/sts.py`; STS Elo is the CCRL 40/4 estimate of
   [`sts_rating.py`](https://github.com/fsmosca/STS-Rating) (v0: from its score with the same formula).
   STS Elo underrates Chessy: it measures single positional moves, while Chessy gains its points in the search.
-- Greedy has no quiescence search, so it does not see the recapture of its last capture (horizon effect): depth 4 is barely
-  better than depth 3.
-
-### Strength levels (UCI_Elo)
-
-With `UCI_LimitStrength` and `UCI_Elo` (or `--elo` in `play`), Chessy plays at an Elo from 900 to 2800 in steps of 100.
-The lowest levels play the greedy search, the middle levels the Space style (or the style of the `Style` option)
-limited to a number of nodes per move, so it keeps every technique of its search (quiescence, extensions, reductions)
-and only sees less, and the top level plays Full without limit. The Elo of the limited search grows with the logarithm
-of the nodes: about **135 Elo per doubling** (50 games against Stockfish per point, 10+0.1):
-
-| Nodes per move | 64 | 256 | 1024 | 4096 | 16384 | 65536 | 262144 |
-|---|---|---|---|---|---|---|---|
-| Against Stockfish | 49% vs 1320 | 26% vs 1500 | 23% vs 1800 | 35% vs 2100 | 52% vs 2300 | 51% vs 2500 | 76% vs 2600 |
-| Elo | ~1310 | ~1320 | ~1590 | ~1990 | ~2310 | ~2510 | ~2800 |
-
-| UCI_Elo | 900 | 1000 | 1100 | 1200 | 1300 | 1500 | 1800 | 2000 | 2200 | 2500 | 2700 | 2800 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| Plays | Greedy depth 2 | Greedy depth 2 | Greedy depth 3 | Greedy depth 4 | Space, 127 nodes | 356 nodes | 1.7k nodes | 4.6k nodes | 13k nodes | 60k nodes | 169k nodes | Full |
-
-The nodes are reached in a fraction of a second, so the levels play fast and do not depend on the time control.
 - WAC is from 1958 and some of its solutions are not the only winning move: Stockfish misses the expected move
   in 21 positions, usually playing another winning move (sometimes a faster mate). WAC measures finding the expected move,
   so it is useful to compare versions of Chessy, not to compare with Stockfish.
+- Greedy has no quiescence search, so it does not see the recapture of its last capture (horizon effect): depth 4 is barely
+  better than depth 3.
 
 STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
 
@@ -194,6 +176,25 @@ Style metrics (`tools/style.py`, after the opening, against Stockfish at a simil
 - Against Stockfish 2800, Stockfish restricts Chessy more (Chessy keeps 22.3 moves, Stockfish 24.7),
   but Chessy still gains more space; against 2600 the restriction is even.
 
+### Strength levels (UCI_Elo)
+
+With `UCI_LimitStrength` and `UCI_Elo` (or `--elo` in `play`), Chessy plays at an Elo from 900 to 2800 in steps of 100.
+The lowest levels play the greedy search, the middle levels the Space style (or the style of the `Style` option)
+limited to a number of nodes per move, so it keeps every technique of its search (quiescence, extensions, reductions)
+and only sees less, and the top level plays Full without limit. The Elo of the limited search grows with the logarithm
+of the nodes: about **135 Elo per doubling** (50 games against Stockfish per point, 10+0.1):
+
+| Nodes per move | 64 | 256 | 1024 | 4096 | 16384 | 65536 | 262144 |
+|---|---|---|---|---|---|---|---|
+| Against Stockfish | 49% vs 1320 | 26% vs 1500 | 23% vs 1800 | 35% vs 2100 | 52% vs 2300 | 51% vs 2500 | 76% vs 2600 |
+| Elo | ~1310 | ~1320 | ~1590 | ~1990 | ~2310 | ~2510 | ~2800 |
+
+| UCI_Elo | 900 | 1000 | 1100 | 1200 | 1300 | 1500 | 1800 | 2000 | 2200 | 2500 | 2700 | 2800 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Plays | Greedy depth 2 | Greedy depth 2 | Greedy depth 3 | Greedy depth 4 | Space, 127 nodes | 356 nodes | 1.7k nodes | 4.6k nodes | 13k nodes | 60k nodes | 169k nodes | Full |
+
+The nodes are reached in a fraction of a second, so the levels play fast and do not depend on the time control.
+
 ### CCRL estimate
 
 The `UCI_Elo` of Stockfish is fitted to games against versions of the Stash engine with known CCRL Blitz ratings,
@@ -214,7 +215,7 @@ few games at 2+1 (±70 Elo for both styles together), this machine is faster tha
   v0 (~1500) around rank 780 and Greedy (~900) near the bottom, around rank 870.
 - **CCRL 40/2 FRC** (Chess960, 151 engines): the same engines are 20–50 Elo lower there than in Blitz, so Space and Full
   would be ~2770–2820, around rank 105–110 (Colossus 2026b 2795, Tornado 8.0 2805, Loop for Chess960 2749).
-  Chessy does not play Chess960 yet (castling rules and the `UCI_Chess960` option are needed to enter this list).
+  Chessy plays Chess960 since v1.01 (`UCI_Chess960`), so it could enter this list.
 
 How to get a real CCRL rating is described in the [PRD](docs/PRD.md) (§9, CCRL).
 
@@ -231,7 +232,7 @@ and play the answer of Chessy on the board. Commands: `moves`, `eval` (evaluatio
 cd engine
 ./gradlew installDist
 build/install/chessy/bin/chessy play --style space --time 5 --pgn games/space.pgn
-build/install/chessy/bin/chessy play --style full --time 5 --chessy white --syzygy ../tools/syzygy
+build/install/chessy/bin/chessy play --style full --time 5 --chessy white
 build/install/chessy/bin/chessy play --style material --time 5
 build/install/chessy/bin/chessy play --style greedy --depth 3
 build/install/chessy/bin/chessy play --elo 1600
@@ -241,8 +242,9 @@ build/install/chessy/bin/chessy play --chess960 random
 
 Chessy plays black by default (`--chessy white`, `both` or `none`), thinks `--time` seconds per move
 (and `--depth` limits the search; for greedy it is its fixed depth), and saves the game with `--pgn`.
-It starts with its opening book (`--book off` to disable it, `--opening` to play one opening of the book) and,
-with `--syzygy`, it plays the endgames of up to 5 pieces perfectly.
+It plays with its opening book (`--book off` to disable it, `--opening` to play one opening of the book) and, if they are
+downloaded in `tools/syzygy`, with the endgame tablebases (`--syzygy off` to disable them, or `--syzygy <folder>`).
+Both are shown when the game starts.
 
 When it starts, Chessy shows its style and its estimated Elo, which also go to the PGN (`White`/`Black` and
 `WhiteElo`/`BlackElo` tags, `-` for the player). After each move it shows its evaluation in pawns from the point of view
@@ -263,7 +265,8 @@ v0 has no UCI, but [`tools/v0_uci.py`](tools/v0_uci.py) adapts it to play in che
 
 Without a command, `chessy` speaks UCI: add `engine/build/install/chessy/bin/chessy` as an engine in any UCI GUI
 (Cute Chess, Arena, BanksiaGUI, En Croissant...) and choose the style in the engine options (`Style`), or an Elo
-(`UCI_LimitStrength` and `UCI_Elo`). Set `OwnBook` to use its opening book and `SyzygyPath` for the tablebases.
+(`UCI_LimitStrength` and `UCI_Elo`). Set `OwnBook` to use its opening book (off by default in UCI, as the rating lists
+require); the tablebases of `tools/syzygy` are used by default (`SyzygyPath`).
 
 ### On Lichess (and with an electronic board)
 
