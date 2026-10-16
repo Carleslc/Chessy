@@ -33,6 +33,8 @@ RUN pip install --no-cache-dir --requirement /lichess-bot/requirements.txt "pyte
 COPY --from=engine /snaky/engine/build/install/snaky /snaky
 COPY tools/lichess/config.yml /snaky-config/config.yml
 COPY tools/lichess/test_offline.py tools/lichess/challenge.py tools/lichess/entrypoint.sh /snaky-tools/
+# lichess-bot with the chat commands of Snaky (!explain)
+COPY tools/lichess/snaky_bot.py /lichess-bot/snaky_bot.py
 RUN chmod +x /snaky-tools/entrypoint.sh \
     && useradd --create-home --shell /usr/sbin/nologin bot \
     && chown -R bot /lichess-bot

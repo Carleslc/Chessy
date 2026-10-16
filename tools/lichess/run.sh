@@ -29,6 +29,8 @@ SYZYGY=""
 if ls "$ROOT/tools/syzygy/"*.rtbw > /dev/null 2>&1; then SYZYGY="$ROOT/tools/syzygy"; fi
 sed -e "s|^  dir: .*|  dir: \"$ROOT/engine/build/install/snaky/bin/\"|" \
     -e "s|^    SyzygyPath: .*|    SyzygyPath: \"$SYZYGY\"|" "$DIR/config.yml" > "$LICHESS_BOT_DIR/config.yml"
+# lichess-bot with the chat commands of Snaky (!explain)
+cp "$DIR/snaky_bot.py" "$LICHESS_BOT_DIR/snaky_bot.py"
 
 cd "$LICHESS_BOT_DIR"
 if [ -d venv ]; then
@@ -42,6 +44,6 @@ if [ "$1" = "--test" ]; then
   exit
 fi
 if [ "$1" = "--upgrade" ]; then
-  exec python lichess-bot.py --config config.yml -u
+  exec python snaky_bot.py --config config.yml -u
 fi
-exec python lichess-bot.py --config config.yml
+exec python snaky_bot.py --config config.yml

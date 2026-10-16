@@ -106,6 +106,18 @@ class EvalTrace(val evaluator: String, val phase: Int, val sideToMove: Int) {
     /** Total from the point of view of the side to move, as [Evaluator.evaluate]. */
     val score: Int get() = if (sideToMove == WHITE) total else -total
 
+    /**
+     * The evaluation in one line, for a chat: the total and the terms that are not zero, from the largest,
+     * in pawns from the point of view of white, such as `Full +0.45: Material +1.00, Mobility +0.32, King safety -0.40`.
+     */
+    fun line(): String = buildString {
+        append(evaluator).append(' ').append(pawns(total))
+        val parts = terms.map { it.name to (it.white - it.black).taper(phase) }.filter { it.second != 0 }.sortedByDescending { Math.abs(it.second) }
+        if (parts.isNotEmpty()) append(": ").append(parts.joinToString(", ") { (name, value) -> "$name ${pawns(value)}" })
+    }
+
+    private fun pawns(centipawns: Int) = String.format(java.util.Locale.ROOT, "%+.2f", centipawns / 100.0)
+
     override fun toString(): String = buildString {
         appendLine("$evaluator evaluation (phase $phase/${GamePhase.MIDDLEGAME}, centipawns from the point of view of white)")
         appendLine()

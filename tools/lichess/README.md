@@ -93,6 +93,18 @@ The offline test plays against Snaky with the greedy search, because the image h
 To run another style (Space, the constrictor, Material or Greedy), change `Style` in `config.yml`; each style needs its own BOT account
 to run at the same time.
 
+## Chat commands
+
+The bot runs lichess-bot through [`snaky_bot.py`](snaky_bot.py), which adds the commands of Snaky to the chat (`!help`):
+
+- `!eval`: the score of the search of Snaky and its principal variation (lichess-bot).
+- `!explain`, `!explain 23`, `!explain 23b`: the static evaluation of Snaky (without searching) term by term, now or after
+  the move 23 of white or black, such as `After 4...Nf6 (static Full) -1.04: Mobility -0.68, Piece squares -0.40, ...`
+  (in pawns from the point of view of white). Like `!eval`, only for the spectators (and the bot), not for the opponent.
+- `!name` and `!queue` (lichess-bot): the engine and the queue of challenges.
+
+`!wait` of lichess-bot (an extra minute before the first move, before the game is aborted) is disabled.
+
 ## Challenge to watch a game
 
 The bot only plays the challenges it receives (`matchmaking` is off), but it can also challenge when you want to watch

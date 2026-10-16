@@ -40,7 +40,7 @@ Commands:
   divide <depth> [fen]   Perft for each legal move of the position
   d [fen]                Display the position
   moves [fen]            Legal moves of the position, in SAN and UCI notation
-  eval [fen]             Evaluation of the position, term by term
+  eval [fen]             Evaluation of the position, term by term (--format line: in one line, in pawns)
   bench [depth]          Search fixed positions to a fixed depth (default: 12), to measure the speed
   play                   Play a game against Snaky in the console (moves in SAN or UCI notation)
   pgn <file>             Read the games of a PGN file and write them again (validates the moves)
@@ -200,7 +200,7 @@ fun main(args: Array<String>) {
             "divide" -> divide(arguments.depth, arguments.position(2), arguments.threads)
             "d" -> println(arguments.position(1))
             "moves" -> moves(arguments.position(1))
-            "eval" -> println(arguments.evaluator.explain(arguments.position(1)))
+            "eval" -> arguments.evaluator.explain(arguments.position(1)).let { println(if (arguments.options["format"] == "line") it.line() else it) }
             "bench" -> bench(arguments.search(play = false), arguments.positional.getOrNull(1)?.toIntOrNull() ?: Bench.DEFAULT_DEPTH)
             "play" -> play(arguments)
             "pgn" -> pgn(File(arguments.positional.getOrNull(1) ?: throw IllegalArgumentException("Missing PGN file")))

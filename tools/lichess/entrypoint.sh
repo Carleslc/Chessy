@@ -27,10 +27,10 @@ fi
 
 case "${1:-play}" in
   play)
-    exec python lichess-bot.py --config config.yml --disable_auto_logging
+    exec python snaky_bot.py --config config.yml --disable_auto_logging
     ;;
   upgrade)
-    exec python lichess-bot.py --config config.yml --disable_auto_logging -u
+    exec python snaky_bot.py --config config.yml --disable_auto_logging -u
     ;;
   challenge)
     shift
