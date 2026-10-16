@@ -29,6 +29,14 @@ class TimeManagerTest {
     }
 
     @Test
+    fun littleTime() {
+        // 3.7 s and 2 s of increment: the increment would allow 1.6 s per move, but the hard limit keeps two thirds of the clock
+        val time = TimeManager(SearchLimits(blackTime = 3760, blackIncrement = 2000, moveOverhead = 100), BLACK)
+        assertEquals(1220, time.hardLimit)
+        assertEquals(1220, time.softLimit)
+    }
+
+    @Test
     fun usesTheClockOfTheSideToMove() {
         val time = TimeManager(SearchLimits(whiteTime = 60_000, blackTime = 3000, moveOverhead = 0), BLACK)
         assertEquals(100, time.softLimit)

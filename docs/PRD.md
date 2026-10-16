@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Versión | v1.02 (ver §8, Versiones) |
-| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza, BOT en Lichess (Snaky-Bot), v1.02 con términos de finales y Full reajustado |
+| Versión | v1.03 (ver §8, Versiones) |
+| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza, BOT en Lichess (Snaky-Bot), v1.02 con términos de finales y Full reajustado, v1.03 sin pérdidas por tiempo con poco reloj |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -597,6 +597,16 @@ Con 300 partidas (±30 Elo) ningún cambio era medible, y las posiciones de los 
 Contra Stockfish 2800 (1 hilo, 64 MB, libro y tablas, 100 partidas a 10+0,1): Space v1.02 46,5 % y Full v1.02 45 % (v1.01: 42,5 % los dos).
 
 Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`, y el tiempo por estabilidad en la rama local `experiment/time-stability`.
+
+### v1.03: tiempo con poco reloj y finales de las tablas online
+
+Revisión de dos partidas del BOT:
+
+- **Pérdida por tiempo en un final de tablas** (PeachFruit, 3+2, a 2 jugadas de la regla de los 50 movimientos): con 4–6 s en el reloj, el límite duro llegaba al 75 % del tiempo disponible, y una jugada de 3,5 s con 4,8 s en el reloj (otra partida del BOT a la vez se repartía el procesador) dejó el reloj sin margen. Ahora el límite duro es como mucho un tercio del tiempo disponible (salvo cuando quedan una o dos jugadas para el control de tiempo) y el blando no lo supera: con poco reloj las jugadas son más rápidas y el incremento lo recupera (como el modo pánico de Oxydan, que reserva un margen para la red y juega muy rápido con menos de 2 s). Contra v1.02 (1000 partidas, 8+0,08): **+1,0 ± 17,7**, sin regresión, y **13 derrotas por tiempo frente a 46**.
+- **67...Kg7?? perdiendo el caballo** (Odiodin_ansf, final perdido de 7 piezas): no lo jugó Snaky sino la tabla online de Lichess, que en posiciones perdidas da la defensa más larga por DTZ (distancia hasta la siguiente captura o jugada de peón), que entrega material sin resistencia porque contra un juego perfecto todo pierde. `snaky_bot.py` usa ahora la tabla online solo en finales ganados (la jugada perfecta); en los finales de tablas Snaky elige entre las jugadas que mantienen las tablas, y los perdidos los juega Snaky, que conserva el material.
+- Las dos partidas a la vez venían de un reto de `challenge.py` aceptado mientras el BOT ya jugaba: ahora el reto se cancela si el BOT empieza otra partida mientras espera la respuesta.
+
+Del resto de la gestión del tiempo de Oxydan (porcentajes del reloj por fase: 4 % en la apertura, 6 % en el medio juego, 5 % en el final, más el 75–80 % del incremento), Snaky ya reparte un 3,3 % del reloj más el 75 % del incremento; gastar menos (reloj entre 40 jugadas) dio −12,8 ± 29, y más tiempo cuando cambia la mejor jugada, −28.
 
 ## 11. Riesgos
 

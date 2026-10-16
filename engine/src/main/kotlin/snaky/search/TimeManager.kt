@@ -39,8 +39,13 @@ class TimeManager(limits: SearchLimits, sideToMove: Color, private val searchSta
                 // Keep a reserve for the communication delays, and spread the remaining time over the next moves
                 val available = maxOf(1, clock - limits.moveOverhead)
                 val movesToGo = limits.movesToGo?.coerceIn(1, DEFAULT_MOVES_TO_GO) ?: DEFAULT_MOVES_TO_GO
-                softLimit = maxOf(1, minOf(available / movesToGo + increment * 3 / 4, available / 2))
-                hardLimit = maxOf(softLimit, minOf(softLimit * 4, available * 3 / 4))
+                val soft = maxOf(1, minOf(available / movesToGo + increment * 3 / 4, available / 2))
+                // The hard limit keeps two thirds of the clock (unless the time control ends in a move or two): with
+                // little time the moves get faster and the increment refills the clock, so a slow move (a busy machine,
+                // the network) does not lose on time
+                val maxHard = if (movesToGo <= 2) available * 3 / 4 else available / 3
+                hardLimit = maxOf(1, minOf(soft * 4, maxHard))
+                softLimit = minOf(soft, hardLimit)
             }
             else -> {
                 softLimit = null
