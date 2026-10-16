@@ -152,6 +152,8 @@ class AlphaBetaSearch(
 
         var result = SearchResult(rootMoves.first(), 0)
         val maxDepth = minOf(limits.depth ?: MAX_DEPTH, MAX_DEPTH)
+        var stableIterations = 0
+        var scoreDrop = 0
 
         for (depth in 1..maxDepth) {
             canAbort = depth > 1
@@ -166,6 +168,8 @@ class AlphaBetaSearch(
 
             val line = (0 until pvLength[0]).map { Move(pv[0][it]) }
             previousPv = IntArray(line.size) { line[it].bits }
+            scoreDrop = if (depth > 1) result.score - score else 0
+            stableIterations = if (line.first() == result.bestMove) stableIterations + 1 else 0
             result = SearchResult(line.first(), score, line.getOrNull(1) ?: Move.NONE)
             listener(SearchInfo(depth, maxOf(depth, selectiveDepth), score, nodes, elapsed(), line, transpositionTable?.hashfull(), tablebaseHits))
 
@@ -175,7 +179,7 @@ class AlphaBetaSearch(
                 Score.isMate(score) && depth >= pliesToMate -> break // Every reply was searched: the mate is proven
                 limits.mate != null && score >= Score.mateIn(limits.mate * 2 - 1) -> break
                 rootMoves.size == 1 && timeManager.hasLimit -> break // Do not waste time with a forced move
-                !timeManager.canStartIteration(elapsed()) -> break
+                !timeManager.canStartIteration(elapsed(), TimeManager.factor(stableIterations, scoreDrop)) -> break
             }
         }
 

@@ -53,11 +53,12 @@ class TimeManager(limits: SearchLimits, sideToMove: Color, private val searchSta
 
     /**
      * Whether to start another iteration: each iteration takes longer than all the previous ones together.
-     * [elapsed] is the time since the start of the search.
+     * [elapsed] is the time since the start of the search. The soft limit is scaled by the [factor] of the search
+     * (see [TimeManager.factor]), up to the hard limit.
      */
-    fun canStartIteration(elapsed: Long): Boolean {
+    fun canStartIteration(elapsed: Long, factor: Double = 1.0): Boolean {
         val used = timeUsed(elapsed) ?: return true
-        return softLimit == null || used < softLimit * NEW_ITERATION_FRACTION
+        return softLimit == null || used < minOf(softLimit * factor, hardLimit!!.toDouble()) * NEW_ITERATION_FRACTION
     }
 
     fun mustAbort(elapsed: Long): Boolean {
@@ -75,6 +76,21 @@ class TimeManager(limits: SearchLimits, sideToMove: Color, private val searchSta
     companion object {
         /** Expected number of remaining moves when the time control does not tell it. */
         const val DEFAULT_MOVES_TO_GO = 30
+
+        /**
+         * Factor of the soft limit by the stability of the search: less time when the best move is the same for several
+         * iterations (an easy decision), a little more when it changes, and more when the score drops by more than
+         * 30 centipawns (the position is getting worse).
+         */
+        fun factor(stableIterations: Int, scoreDrop: Int): Double {
+            val stability = when {
+                stableIterations == 0 -> 1.15
+                stableIterations >= 5 -> 0.6
+                stableIterations >= 3 -> 0.8
+                else -> 1.0
+            }
+            return stability * if (scoreDrop > 30) 1.3 else 1.0
+        }
 
         /** Do not start a new iteration after this fraction of the soft limit. */
         const val NEW_ITERATION_FRACTION = 0.6
