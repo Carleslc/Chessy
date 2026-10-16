@@ -2,153 +2,153 @@
 # Tapered weights have a middlegame (mg) and an endgame (eg) value.
 
 pieceValues.pawn.mg = 100
-pieceValues.pawn.eg = 104
-pieceValues.knight.mg = 637
-pieceValues.knight.eg = 283
-pieceValues.bishop.mg = 677
-pieceValues.bishop.eg = 318
-pieceValues.rook.mg = 886
-pieceValues.rook.eg = 585
-pieceValues.queen.mg = 2294
-pieceValues.queen.eg = 769
+pieceValues.pawn.eg = 113
+pieceValues.knight.mg = 577
+pieceValues.knight.eg = 514
+pieceValues.bishop.mg = 621
+pieceValues.bishop.eg = 525
+pieceValues.rook.mg = 686
+pieceValues.rook.eg = 985
+pieceValues.queen.mg = 1526
+pieceValues.queen.eg = 1857
 
 piecePstPercent = 82
-mobilityPercent = 120
+mobilityPercent = 138
 
-mobilityScale.knight.mg = 21
+mobilityScale.knight.mg = 12
 mobilityScale.knight.eg = 8
-mobilityScale.bishop.mg = 19
+mobilityScale.bishop.mg = 20
 mobilityScale.bishop.eg = 10
-mobilityScale.rook.mg = 22
-mobilityScale.rook.eg = 9
-mobilityScale.queen.mg = 20
-mobilityScale.queen.eg = 0
+mobilityScale.rook.mg = 20
+mobilityScale.rook.eg = 20
+mobilityScale.queen.mg = 18
+mobilityScale.queen.eg = 17
 
-trappedMobility = 0
+trappedMobility = 1
 
 trapped.knight.mg = 0
-trapped.knight.eg = -337
+trapped.knight.eg = -97
 trapped.bishop.mg = 0
 trapped.bishop.eg = 0
-trapped.queen.mg = -30
+trapped.queen.mg = -12
 trapped.queen.eg = -30
 
-worstPiecePercent = 179
-spacePercent = 42
+worstPiecePercent = 135
+spacePercent = 0
 spaceMaterialThreshold = 3868
 
-territory.mg = 11
-territory.eg = 0
+territory.mg = 0
+territory.eg = 7
 
-kingZoneControl.mg = 38
+kingZoneControl.mg = 75
 kingZoneControl.eg = 0
 
-restriction.mg = 6
+restriction.mg = 1
 restriction.eg = 0
 
-knightOutpost.mg = 56
-knightOutpost.eg = 42
+knightOutpost.mg = 57
+knightOutpost.eg = 30
 
-bishopOutpost.mg = 57
+bishopOutpost.mg = 43
 bishopOutpost.eg = 0
 
-rookOpenFile.mg = 72
-rookOpenFile.eg = 0
+rookOpenFile.mg = 49
+rookOpenFile.eg = 9
 
-rookSemiOpenFile.mg = 24
-rookSemiOpenFile.eg = 21
+rookSemiOpenFile.mg = 29
+rookSemiOpenFile.eg = 4
 
-rookOnSeventh.mg = 31
-rookOnSeventh.eg = 11
+rookOnSeventh.mg = 0
+rookOnSeventh.eg = 21
 
 rookBehindPassed.mg = 0
-rookBehindPassed.eg = 29
+rookBehindPassed.eg = 44
 
-doubledPawn.mg = -2
-doubledPawn.eg = -17
+doubledPawn.mg = -6
+doubledPawn.eg = -10
 
-isolatedPawn.mg = -20
-isolatedPawn.eg = -7
+isolatedPawn.mg = -12
+isolatedPawn.eg = -11
 
-connectedPawn.rank2.mg = 14
-connectedPawn.rank2.eg = 4
-connectedPawn.rank3.mg = 14
-connectedPawn.rank3.eg = 10
-connectedPawn.rank4.mg = 14
-connectedPawn.rank4.eg = 1
-connectedPawn.rank5.mg = 16
-connectedPawn.rank5.eg = 1
-connectedPawn.rank6.mg = 58
-connectedPawn.rank6.eg = 10
-connectedPawn.rank7.mg = 301
-connectedPawn.rank7.eg = 13
+connectedPawn.rank2.mg = 4
+connectedPawn.rank2.eg = 8
+connectedPawn.rank3.mg = 13
+connectedPawn.rank3.eg = 14
+connectedPawn.rank4.mg = 8
+connectedPawn.rank4.eg = 19
+connectedPawn.rank5.mg = 0
+connectedPawn.rank5.eg = 0
+connectedPawn.rank6.mg = 51
+connectedPawn.rank6.eg = 36
+connectedPawn.rank7.mg = 27
+connectedPawn.rank7.eg = 31
 
 passedPawn.rank2.mg = 0
-passedPawn.rank2.eg = 56
+passedPawn.rank2.eg = 45
 passedPawn.rank3.mg = 0
-passedPawn.rank3.eg = 36
+passedPawn.rank3.eg = 23
 passedPawn.rank4.mg = 0
-passedPawn.rank4.eg = 44
-passedPawn.rank5.mg = 48
-passedPawn.rank5.eg = 56
-passedPawn.rank6.mg = 122
-passedPawn.rank6.eg = 98
-passedPawn.rank7.mg = 329
-passedPawn.rank7.eg = 81
+passedPawn.rank4.eg = 45
+passedPawn.rank5.mg = 14
+passedPawn.rank5.eg = 75
+passedPawn.rank6.mg = 26
+passedPawn.rank6.eg = 129
+passedPawn.rank7.mg = 1
+passedPawn.rank7.eg = 145
 
-passedEnemyKingDistance = 15
-passedOwnKingDistance = 8
+passedEnemyKingDistance = 13
+passedOwnKingDistance = 6
 
-overextendedPawn.mg = 0
-overextendedPawn.eg = -17
+overextendedPawn.mg = -4
+overextendedPawn.eg = -6
 
-hole.mg = -3
-hole.eg = 0
+hole.mg = 0
+hole.eg = -7
 
-threatByPawn.mg = 73
-threatByPawn.eg = 31
+threatByPawn.mg = 55
+threatByPawn.eg = 60
 
-threatByMinor.mg = 93
-threatByMinor.eg = 24
+threatByMinor.mg = 86
+threatByMinor.eg = 31
 
-threatByRook.mg = 107
-threatByRook.eg = 16
+threatByRook.mg = 145
+threatByRook.eg = 12
 
-hangingPiece.mg = 16
-hangingPiece.eg = 18
+hangingPiece.mg = 19
+hangingPiece.eg = 23
 
-hangingPawn.mg = 18
-hangingPawn.eg = 49
+hangingPawn.mg = 7
+hangingPawn.eg = 69
 
-kingDanger = 8
+kingDanger = 9
 kingDangerMinUnits = 2
-maxKingDanger = 159
+maxKingDanger = 415
 
-pawnShield.mg = 29
+pawnShield.mg = 16
 pawnShield.eg = 0
 
-openFileNearKing.mg = -13
+openFileNearKing.mg = -26
 openFileNearKing.eg = 0
 
-bishopPair.mg = 45
-bishopPair.eg = 87
+bishopPair.mg = 0
+bishopPair.eg = 122
 
-tempo.mg = 24
-tempo.eg = 3
+tempo.mg = 21
+tempo.eg = 7
 
-complexity.passed = 6
-complexity.pawns = 8
-complexity.outflanking = 5
-complexity.bothFlanks = 31
-complexity.infiltration = 22
-complexity.pawnEndgame = 82
-complexity.unwinnable = -15
-complexity.base = -68
+complexity.passed = 9
+complexity.pawns = 4
+complexity.outflanking = 4
+complexity.bothFlanks = 54
+complexity.infiltration = 4
+complexity.pawnEndgame = 125
+complexity.unwinnable = -64
+complexity.base = -54
 
 scale.oppositeBishops = 0
-scale.oppositeBishopsPassed = 11
-scale.rookEndgame = 61
-scale.base = 12
-scale.perPawn = 32
+scale.oppositeBishopsPassed = 5
+scale.rookEndgame = 55
+scale.base = 10
+scale.perPawn = 30
 
 contempt = 15

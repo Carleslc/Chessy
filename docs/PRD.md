@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Versión | v1.01 (ver §8, Versiones) |
-| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza · siguiente: el BOT en línea |
+| Versión | v1.02 (ver §8, Versiones) |
+| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza, BOT en Lichess (Snaky-Bot), v1.02 con términos de finales y Full reajustado |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -563,7 +563,7 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
   - El término de espacio es el *Space* / *Space area* clásico de Stockfish ([guía](https://hxim.github.io/Stockfish-Evaluation-Guide/)): casillas seguras de las columnas c–f en las filas 2–4 propias (sin peones propios ni atacadas por peones rivales), contando dos veces las que están detrás de los propios peones (hasta tres casillas) si no las ataca ninguna pieza rival; peso = piezas − 3 + mín(peones bloqueados, 9); bonus × peso² / 16, solo en el medio juego y con suficiente material. Diferencias: el porcentaje del estilo (`spacePercent`), el umbral de material ajustado por el *tuning* y un conteo más simple de los peones bloqueados. Territorio y Restricción son términos propios de Snaky, más allá del espacio de Stockfish.
   - La evaluación es cónica (*tapered*): cada término tiene valor de medio juego y de final, interpolados con una fase continua de 0 a 24 según el material sin peones, así que no hay saltos entre fases. La única discontinuidad apreciable es el umbral de material del espacio (igual que en Stockfish): por debajo el término desaparece de golpe, aunque es pequeño (unos 10 cp, porque solo cuenta en el medio juego y la fase ya es media en el umbral; [Evaluation Discontinuity](https://chessprogramming.org/Evaluation_Discontinuity)). Se probó a desvanecerlo linealmente en el último cuarto del umbral: −20 ± 28 (300 partidas, sin demostrar que no empeore), probablemente porque los pesos se ajustaron con el umbral brusco; se mantiene el umbral, y queda para un próximo ajuste de pesos con la rampa.
 
-### Intento de v1.02: revisión de las partidas en Lichess
+### v1.02: revisión de las partidas en Lichess, finales y Full reajustado
 
 Revisión con Stockfish (`tools/review.py`, profundidad 18) de las 10 primeras partidas de Snaky-Bot contra bots a 3+2 (2272–2793; 3 victorias, 2 tablas, 5 derrotas), en las posiciones sin decidir (±5 peones):
 
@@ -579,7 +579,24 @@ Cambios probados contra v1.01 (300 partidas por test, 8+0,08, que tiene la misma
 | Reloj repartido entre 40 jugadas en lugar de 30 | −12,8 ± 29 |
 | Tiempo por estabilidad de la jugada (×0,8 / ×0,6 si la mejor jugada se repite 3 / 5 iteraciones, ×1,15 si cambia, ×1,3 si la puntuación cae más de 30 cp; la versión de la Fase 4 daba ×1,4 al cambiar) | −1 ± 29 |
 
-Ningún cambio mejora de forma medible con 300 partidas (±30 Elo), así que no hay v1.02: se mantiene v1.01. Las posiciones de los errores (`games/lichess/mistakes.epd`) tampoco se resuelven con los términos de finales (1 de 15, igual que v1.01): son sobre todo del medio juego. Los términos de finales quedan en la rama local `experiment/endgame-terms` para probarlos con más partidas. Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`.
+Con 300 partidas (±30 Elo) ningún cambio era medible, y las posiciones de los errores (`games/lichess/mistakes.epd`) tampoco se resolvían con los términos de finales (1 de 15, igual que v1.01): son sobre todo del medio juego. Se repitieron con **1000 partidas** (±17):
+
+| Cambio (contra v1.01, 8+0,08) | Resultado | Decisión |
+|---|---|---|
+| Términos de finales (Space) | **+9,4 ± 16,4** (1000 partidas, LOS 87 %) | ✅ aceptado (sin regresión, probablemente positivo) |
+| Tiempo por estabilidad | **−27,9 ± 19,6** (636 partidas, H0) | ❌ rechazado: dar más tiempo cuando cambia la mejor jugada deja menos para el resto de la partida |
+| Full reajustado (abajo) | **+22,3 ± 17,4** (1000 partidas) | ✅ aceptado |
+| Space reajustado con los pesos del estilo fijos | **−27,7 ± 21,2** (730 partidas, H0) | ❌ rechazado |
+
+**Nuevos datos de Texel**: las 1,7 M posiciones de *self-play* más 352.000 posiciones de 3790 partidas reales contra motores (los matches contra Stockfish desde 2000, sin Greedy, v0 ni los niveles de pocos nodos, y las partidas de Snaky-Bot en Lichess), contadas dos veces: 2,4 M posiciones (`games/texel3.txt`).
+
+**Full reajustado**: todos los pesos, también los del estilo y los de finales, salvo el *contempt* y el peón de medio juego (la unidad), con los signos restringidos; 17 pasadas (error 0,0968 → 0,0932). Cambian sobre todo los valores de las piezas: los de final suben (dama 769 → 1857, torre 585 → 985, caballo 283 → 514, alfil 318 → 525: antes eran demasiado bajos) y los de medio juego bajan (dama 2294 → 1526, torre 886 → 686); los peones pasados de 6ª y 7ª pierden su bonus de medio juego, la seguridad del rey pesa más (`maxKingDanger` 159 → 415) y el término de espacio desaparece (`spacePercent` 42 → 0). Estilo en sus partidas contra el Full de v1.01: deja menos jugadas al rival (23,6 frente a 25,1), más victorias yendo por detrás en material (13 % frente a 8 %), mismo territorio y piezas atrapadas, pero sin espacio (−0,5 frente a +0,6): sigue siendo constrictor por la restricción de la movilidad, no por el espacio.
+
+**Space**: el mismo reajuste con los pesos del estilo fijos (espacio, territorio, restricción, movilidad) empeora (−28): los pesos del estilo quedan desproporcionados frente a los nuevos valores de las piezas, que Full sí pudo compensar. Space v1.02 lleva los pesos de v1.01 más los términos de finales ajustados; su estilo apenas cambia (en sus partidas contra v1.01: 23,0 jugadas del rival frente a 22,7, algo menos de territorio).
+
+Contra Stockfish 2800 (1 hilo, 64 MB, libro y tablas, 100 partidas a 10+0,1): Space v1.02 46,5 % y Full v1.02 45 % (v1.01: 42,5 % los dos).
+
+Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`, y el tiempo por estabilidad en la rama local `experiment/time-stability`.
 
 ## 11. Riesgos
 

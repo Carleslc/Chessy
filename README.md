@@ -148,6 +148,15 @@ initial position so that the book plays the opening (v1.0: balanced openings), 1
 - Against limited Stockfish the book plays only ~2.5 moves per game: Stockfish varies its replies (93% of the games
   have different first 8 plies) and soon leaves the repertoire. The tablebases are reached in 20–45% of the games.
 
+v1.02 adds endgame knowledge to the evaluation (a rook behind a passed pawn, the *winnable* term and the scale factors
+of Stockfish classical: opposite-colored bishops, rook endgames with pawns on one flank, few pawns) and retunes every
+weight of Full with 2.4 M positions, including 352,000 of real games against engines (Stockfish and the Lichess bots).
+Against v1.01 (1000 games at 8+0.08): Space **+9 ± 16**, Full **+22 ± 17**. Against Stockfish 2800 (1 thread, 100 games):
+Space 46.5% and Full 45% (v1.01: 42.5%). The new Full restricts the opponent more (23.6 moves left against 25.1)
+and wins more games behind in material, but no longer plays for space; Space keeps its style.
+Retuning Space with its style weights fixed was worse (−28), and so was giving more time when the best move changes (−28).
+See the [PRD](docs/PRD.md) (§10, v1.02).
+
 STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
 
 | Theme | v0 | Greedy | Material | Space | Full | Stockfish 19 |
