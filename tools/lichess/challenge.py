@@ -4,7 +4,8 @@
 '''
 Challenge a player or a bot with the BOT account of Snaky, when you want to watch a game: lichess-bot (running with
 run.sh or Docker) plays it like any other game. The challenge waits until it is accepted or declined, and with --bot
-it challenges online bots with a rating close to Snaky until one accepts. Bots can play 100 games a day against bots.
+it challenges online bots with a rating close to Snaky until one accepts (Ctrl+C cancels the challenge).
+Bots can play 100 games a day against bots.
 
 python challenge.py Maia1 --tc 3+2
 python challenge.py someone --days 3 --color white
@@ -16,6 +17,7 @@ The token is read from LICHESS_BOT_TOKEN, or from the .env file of this folder.
 '''
 
 import argparse
+import contextlib
 import json
 import os
 import random
@@ -113,10 +115,19 @@ def challenge(username: str, wait: float) -> str | None:
           break
     except TimeoutError:
       pass
-  if challenge_id:
-    request('POST', f'/api/challenge/{challenge_id}/cancel').close()
+    except KeyboardInterrupt:
+      # Ctrl+C cancels the challenge (without its ID, it expires when the connection is closed)
+      cancel(challenge_id)
+      print(f'  {username}: canceled')
+      raise
+  cancel(challenge_id)
   print(f'  {username}: no answer in {wait:.0f} s, canceled')
   return None
+
+def cancel(challenge_id: str | None):
+  if challenge_id:
+    with contextlib.suppress(urllib.error.URLError):
+      request('POST', f'/api/challenge/{challenge_id}/cancel').close()
 
 def online_bots(me: dict) -> list[str]:
   '''Online bots that play the speed and variant, with a rating within the range, in random order.'''
@@ -154,10 +165,13 @@ if __name__ == "__main__":
     print('\n'.join(opponents))
     sys.exit()
   wait = args.wait or (15 if args.bot else 60)
-  for opponent in opponents:
-    game_id = challenge(opponent, wait)
-    if game_id:
-      print(f'Watch the game: {API}/{game_id}')
-      break
-  else:
-    sys.exit('No challenge was accepted')
+  try:
+    for opponent in opponents:
+      game_id = challenge(opponent, wait)
+      if game_id:
+        print(f'Watch the game: {API}/{game_id}')
+        break
+    else:
+      sys.exit('No challenge was accepted')
+  except KeyboardInterrupt:
+    sys.exit('Challenge canceled')
