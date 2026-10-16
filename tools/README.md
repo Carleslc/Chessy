@@ -111,7 +111,11 @@ which plays games until it can decide with the given confidence. Save a copy of 
 ROUNDS=750 ./sprt.sh new base   # at most 1500 games
 # Two styles of the same version
 NEW_NAME=full NEW_ARGS=option.Style=Full BASE_NAME=space BASE_ARGS=option.Style=Space ./sprt.sh new new
+# From balanced endgames, to test changes of the endgame play
+OPENINGS=$PWD/openings/endgames.epd ./sprt.sh new base
 ```
+
+The engines play with one thread (`option.Threads=1`), as many games run at the same time.
 
 `engines/` (ignored by git) keeps one snapshot per phase of the [PRD](../docs/PRD.md) to compare versions:
 `phase3` (first alpha-beta, Material), `phase4` (advanced search, Material), `phase5` (Space evaluation)
@@ -138,6 +142,13 @@ Generate an opening book of balanced positions (random plies evaluated by Stockf
 
 ```
 python openings.py --count 500 --output openings/balanced.epd
+```
+
+And balanced endgames (rooks, minor pieces, pawns, queens, rook and minor) from the positions of a Texel training file,
+to test the endgame play (`openings/endgames.epd`, 200 positions):
+
+```
+python endgames.py games/texel2.txt --count 200 --output openings/endgames.epd
 ```
 
 ## Test suites
@@ -196,6 +207,20 @@ python analysis.py games/match.pgn --match 3 --output games/analysis.png
 python analysis.py games/match.pgn --terms Space Territory Restriction Mobility --style Space
 ```
 
+## Review
+
+Find the weak points of Snaky in real games: `review.py` compares each move of a player with the best move of Stockfish
+and shows the average loss by phase of the game (opening, middlegame, kind of endgame), by time left on the clock
+and for checks, and the mistakes with their position (an EPD file with the best move, to test them with `epd.py`):
+
+```
+curl -A "Snaky" "https://lichess.org/api/games/user/Snaky-Bot?clocks=true" -o games/lichess/snaky-bot.pgn
+python review.py games/lichess/snaky-bot.pgn --player Snaky-Bot --epd games/lichess/mistakes.epd
+python epd.py games/lichess/mistakes.epd --movetime 3
+```
+
+The export of Lichess needs a user agent (`-A`) other than the default of curl.
+
 ## Opening book
 
 `book.py` builds the Polyglot opening books of Snaky (`engine/src/main/resources/snaky/book/`) from the repertoire of
@@ -244,6 +269,7 @@ python texel.py games/texel-selfplay.pgn --output games/texel.txt
 ```
 
 The weights of the style (space, territory, restriction and mobility) are not tuned unless `--all true` is given.
+`--freeze` keeps some weights and `--only` tunes only some (for example the weights of a new term: `--only rookOnSeventh`).
 Test a weights file with the UCI option `Weights` (for example `option.Weights=/path/space.weights` in fastchess)
 before copying it to `engine/src/main/resources/snaky/eval/space.weights`, the default weights of the engine.
 

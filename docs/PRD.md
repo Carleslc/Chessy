@@ -563,6 +563,24 @@ Cada fase termina con sus criterios de aceptación cumplidos y fusionada en `mas
   - El término de espacio es el *Space* / *Space area* clásico de Stockfish ([guía](https://hxim.github.io/Stockfish-Evaluation-Guide/)): casillas seguras de las columnas c–f en las filas 2–4 propias (sin peones propios ni atacadas por peones rivales), contando dos veces las que están detrás de los propios peones (hasta tres casillas) si no las ataca ninguna pieza rival; peso = piezas − 3 + mín(peones bloqueados, 9); bonus × peso² / 16, solo en el medio juego y con suficiente material. Diferencias: el porcentaje del estilo (`spacePercent`), el umbral de material ajustado por el *tuning* y un conteo más simple de los peones bloqueados. Territorio y Restricción son términos propios de Snaky, más allá del espacio de Stockfish.
   - La evaluación es cónica (*tapered*): cada término tiene valor de medio juego y de final, interpolados con una fase continua de 0 a 24 según el material sin peones, así que no hay saltos entre fases. La única discontinuidad apreciable es el umbral de material del espacio (igual que en Stockfish): por debajo el término desaparece de golpe, aunque es pequeño (unos 10 cp, porque solo cuenta en el medio juego y la fase ya es media en el umbral; [Evaluation Discontinuity](https://chessprogramming.org/Evaluation_Discontinuity)). Se probó a desvanecerlo linealmente en el último cuarto del umbral: −20 ± 28 (300 partidas, sin demostrar que no empeore), probablemente porque los pesos se ajustaron con el umbral brusco; se mantiene el umbral, y queda para un próximo ajuste de pesos con la rampa.
 
+### Intento de v1.02: revisión de las partidas en Lichess
+
+Revisión con Stockfish (`tools/review.py`, profundidad 18) de las 10 primeras partidas de Snaky-Bot contra bots a 3+2 (2272–2793; 3 victorias, 2 tablas, 5 derrotas), en las posiciones sin decidir (±5 peones):
+
+- **Apertura** (12 primeras jugadas, con el libro): 6 cp de pérdida media y ningún error (≥ 100 cp). **Medio juego**: 20 cp de media y 9 de los 15 errores. **Finales**: 7–19 cp según el tipo, 6 errores.
+- **Jaques**: 9 cp de media frente a 13 del resto: no hay preferencia por los jaques. 45.Re4+ contra SleepMindEngine no era un jaque absurdo, sino tres jugadas que Snaky valoraba igual (−1,1) y Stockfish no (Ra4 −0,36, Re4+ −1,31, f4 −1,96): falta conocimiento de finales de torres (el peón pasado de a3 y la actividad de la torre).
+- **Reloj**: 11 cp de media con más de un minuto, 22–31 cp con 10–60 s. Snaky gasta más que los rivales entre las jugadas 10 y 29 (7,8 frente a 6,0 s por jugada) y llega a la jugada 40 con la mitad de reloj (29 frente a 62 s).
+
+Cambios probados contra v1.01 (300 partidas por test, 8+0,08, que tiene la misma proporción incremento / tiempo base que 3+2):
+
+| Cambio | Resultado |
+|---|---|
+| Finales: torre detrás del peón pasado, término *winnable* de Stockfish clásico (complejidad: peones pasados, peones, rey que desborda, peones en los dos flancos, infiltración, finales de peones) y factores de escala (alfiles de distinto color, finales de torres con un peón de más en un flanco, pocos peones), ajustados con Texel (`tune --only`; error 0,08316 → 0,08201) | Desde finales equilibrados (`tools/openings/endgames.epd`): +3,5 ± 13 (82 % de tablas). Desde aperturas equilibradas: −12,8 ± 31 |
+| Reloj repartido entre 40 jugadas en lugar de 30 | −12,8 ± 29 |
+| Tiempo por estabilidad de la jugada (×0,8 / ×0,6 si la mejor jugada se repite 3 / 5 iteraciones, ×1,15 si cambia, ×1,3 si la puntuación cae más de 30 cp; la versión de la Fase 4 daba ×1,4 al cambiar) | −1 ± 29 |
+
+Ningún cambio mejora de forma medible con 300 partidas (±30 Elo), así que no hay v1.02: se mantiene v1.01. Las posiciones de los errores (`games/lichess/mistakes.epd`) tampoco se resuelven con los términos de finales (1 de 15, igual que v1.01): son sobre todo del medio juego. Los términos de finales quedan en la rama local `experiment/endgame-terms` para probarlos con más partidas. Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`.
+
 ## 11. Riesgos
 
 | Riesgo | Mitigación |

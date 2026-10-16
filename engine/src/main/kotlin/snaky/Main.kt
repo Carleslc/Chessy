@@ -71,6 +71,7 @@ Options:
   --passes <n>           Maximum number of passes over the weights to tune (default: 100)
   --all <true|false>     Tune also the weights of the style (space, territory, restriction, mobility), not tuned by default
   --freeze <names>       Weights not tuned, separated by commas (a name without dot freezes the whole group, e.g. pieceValues)
+  --only <names>         Tune only these weights, separated by commas (a name without dot tunes the whole group, e.g. scale)
   --max-change <cp>      Each tuned weight stays within its start value ± max(cp, |start value|)"""
 
 /** Command line arguments: positional arguments and `--name value` options. */
@@ -375,9 +376,11 @@ private fun tune(arguments: Arguments) {
     val positions = TexelTuner.read(file, arguments.intOption("positions") ?: Int.MAX_VALUE)
     val tuneStyle = arguments.options["all"]?.toBoolean() ?: false
     val frozen = arguments.options["freeze"]?.split(',')?.map { it.trim() }.orEmpty()
+    val only = arguments.options["only"]?.split(',')?.map { it.trim() }
     val names = SpaceWeights.PARAMETERS.map { it.name }
         .filter { tuneStyle || it !in SpaceWeights.STYLE }
         .filter { name -> frozen.none { name == it || name.startsWith("$it.") } }
+        .filter { name -> only == null || only.any { name == it || name.startsWith("$it.") } }
     val tuner = TexelTuner(positions, arguments.threads)
     try {
         val start = arguments.weights

@@ -8,7 +8,8 @@
 # <new> and <base> are snapshots in engines/ (see snapshot.sh) or engine commands.
 # Extra fastchess arguments can be given in the FASTCHESS_ARGS environment variable,
 # for example FASTCHESS_ARGS="option.Threads=4" applies to both engines (1 thread by default, as many games run at once).
-# The maximum number of rounds (2 games each) is given by the ROUNDS environment variable (default: 10000).
+# The maximum number of rounds (2 games each) is given by the ROUNDS environment variable (default: 10000),
+# and the openings by OPENINGS (default: openings/balanced.epd; openings/endgames.epd to test the endgames).
 # Options of each engine: NEW_ARGS and BASE_ARGS, with names NEW_NAME and BASE_NAME (to compare styles of the same version):
 # NEW_NAME=space NEW_ARGS=option.Style=Space BASE_NAME=material BASE_ARGS=option.Style=Material ./sprt.sh phase5 phase5
 set -e
@@ -30,7 +31,7 @@ fastchess \
   -engine cmd="$(engine "$NEW")" name="${NEW_NAME:-$NEW}" $NEW_ARGS \
   -engine cmd="$(engine "$BASE")" name="${BASE_NAME:-$BASE}" $BASE_ARGS \
   -each tc="$TC" option.Threads=1 $FASTCHESS_ARGS \
-  -openings file="$DIR/openings/balanced.epd" format=epd order=random \
+  -openings file="${OPENINGS:-$DIR/openings/balanced.epd}" format=epd order=random \
   -repeat -rounds "${ROUNDS:-10000}" -concurrency "$CONCURRENCY" \
   -sprt elo0="$ELO0" elo1="$ELO1" alpha=0.05 beta=0.1 \
   -pgnout file="$DIR/games/sprt-${NEW_NAME:-$NEW}-vs-${BASE_NAME:-$BASE}.pgn" \
