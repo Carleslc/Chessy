@@ -29,6 +29,18 @@ class TimeManagerTest {
     }
 
     @Test
+    fun stability() {
+        val time = TimeManager(SearchLimits(whiteTime = 60_000, blackTime = 1000, whiteIncrement = 1000, moveOverhead = 100), WHITE)
+        // A stable best move stops earlier, a changing best move or a falling score searches longer
+        assertTrue(TimeManager.factor(stableIterations = 5, scoreDrop = 0) < 1.0)
+        assertTrue(TimeManager.factor(stableIterations = 0, scoreDrop = 50) > TimeManager.factor(stableIterations = 0, scoreDrop = 0))
+        assertTrue(time.canStartIteration(1500, TimeManager.factor(stableIterations = 0, scoreDrop = 50)))
+        assertFalse(time.canStartIteration(1500, TimeManager.factor(stableIterations = 5, scoreDrop = 0)))
+        // Never beyond the hard limit
+        assertFalse(time.canStartIteration(2746 * 4, 100.0))
+    }
+
+    @Test
     fun usesTheClockOfTheSideToMove() {
         val time = TimeManager(SearchLimits(whiteTime = 60_000, blackTime = 3000, moveOverhead = 0), BLACK)
         assertEquals(100, time.softLimit)
