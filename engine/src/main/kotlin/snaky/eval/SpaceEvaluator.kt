@@ -28,6 +28,11 @@ import snaky.core.rankOf
 import snaky.core.relativeRank
 import snaky.core.squareName
 
+/** Squares of the light-squared bishops (b1, a2...). */
+private const val LIGHT_SQUARES: Bitboard = 0x55AA55AA55AA55AAL
+private val QUEEN_SIDE: Bitboard = fileMask(0) or fileMask(1) or fileMask(2) or fileMask(3)
+private val KING_SIDE: Bitboard = QUEEN_SIDE.inv()
+
 /**
  * "Constrictor" evaluation: space, square control and mobility first.
  *
@@ -62,6 +67,7 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override 
         KING_SAFETY("King safety"),
         BISHOP_PAIR("Bishop pair"),
         TEMPO("Tempo"),
+        WINNABLE("Winnable endgame"),
     }
 
     // Scores of each term and color: index term.ordinal * 2 + color
@@ -73,6 +79,7 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override 
     private val attacked = LongArray(2)
     private val attackedTwice = LongArray(2)
     private val mobilityArea = LongArray(2)
+    private val passedPawns = IntArray(2)
 
     /** Dynamic value of each piece, only collected by [explain]. */
     private var pieceValues: MutableList<EvalTrace.PieceValue>? = null
@@ -136,6 +143,64 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override 
             if (popCount(position.pieces(color, BISHOP)) >= 2) add(Term.BISHOP_PAIR, color, weights.bishopPair)
         }
         add(Term.TEMPO, position.sideToMove, weights.tempo)
+        evaluateWinnable(position)
+    }
+
+    /**
+     * Winnable endgames (Stockfish classical `winnable` and scale factors): the endgame score of the side ahead is
+     * corrected by the complexity of the position (passed pawns, pawns, outflanking kings, pawns on both flanks,
+     * infiltration, pawn endgames) and scaled down in endgames that are hard to win (opposite-colored bishops,
+     * a rook endgame with a pawn more on a single flank, few pawns). Shown as a correction of the side ahead.
+     */
+    private fun evaluateWinnable(position: Position) {
+        var eg = 0
+        for (i in endgame.indices step 2) eg += endgame[i] - endgame[i + 1]
+        if (eg == 0) return
+        val strong = if (eg > 0) WHITE else BLACK
+        val pawns = position.pieces(WHITE, PAWN) or position.pieces(BLACK, PAWN)
+        val whiteKing = position.kingSquare(WHITE)
+        val blackKing = position.kingSquare(BLACK)
+        val bothFlanks = (pawns and QUEEN_SIDE) != EMPTY && (pawns and KING_SIDE) != EMPTY
+        val outflanking = Math.abs(fileOf(whiteKing) - fileOf(blackKing)) - Math.abs(rankOf(whiteKing) - rankOf(blackKing))
+        val almostUnwinnable = outflanking < 0 && !bothFlanks
+        val infiltration = rankOf(whiteKing) > 3 || rankOf(blackKing) < 4
+        val pawnEndgame = (position.occupied and pawns.inv() and (bitboardOf(whiteKing) or bitboardOf(blackKing)).inv()) == EMPTY
+        val complexity = weights.complexityPassed * (passedPawns[WHITE] + passedPawns[BLACK]) +
+            weights.complexityPawns * popCount(pawns) +
+            weights.complexityOutflanking * outflanking +
+            (if (bothFlanks) weights.complexityBothFlanks else 0) +
+            (if (infiltration) weights.complexityInfiltration else 0) +
+            (if (pawnEndgame) weights.complexityPawnEndgame else 0) +
+            (if (almostUnwinnable) weights.complexityUnwinnable else 0) +
+            weights.complexityBase
+        val sign = if (eg > 0) 1 else -1
+        val corrected = eg + sign * maxOf(complexity, -Math.abs(eg))
+        val scaled = corrected * scaleFactor(position, strong) / 64
+        add(Term.WINNABLE, strong, 0, (scaled - eg) * sign)
+    }
+
+    /** Scale factor of the endgame score of the [strong] side, in 64ths: lower in endgames that are hard to win. */
+    private fun scaleFactor(position: Position, strong: Color): Int {
+        val weak = opposite(strong)
+        val strongPawns = position.pieces(strong, PAWN)
+        val weakPawns = position.pieces(weak, PAWN)
+        val strongBishops = position.pieces(strong, BISHOP)
+        val weakBishops = position.pieces(weak, BISHOP)
+        val knightsAndQueens = position.pieces(WHITE, KNIGHT) or position.pieces(BLACK, KNIGHT) or position.pieces(WHITE, QUEEN) or position.pieces(BLACK, QUEEN)
+        val rooks = position.pieces(WHITE, ROOK) or position.pieces(BLACK, ROOK)
+        if (popCount(strongBishops) == 1 && popCount(weakBishops) == 1 &&
+            ((strongBishops and LIGHT_SQUARES) == EMPTY) != ((weakBishops and LIGHT_SQUARES) == EMPTY)) {
+            return if ((knightsAndQueens or rooks) == EMPTY) weights.scaleOppositeBishops + weights.scaleOppositeBishopsPassed * passedPawns[strong]
+                else minOf(64, 22 + 3 * popCount(position.occupancy(strong)))
+        }
+        if ((knightsAndQueens or strongBishops or weakBishops) == EMPTY &&
+            popCount(position.pieces(strong, ROOK)) == 1 && popCount(position.pieces(weak, ROOK)) == 1 &&
+            popCount(strongPawns) - popCount(weakPawns) <= 1 &&
+            ((strongPawns and QUEEN_SIDE) == EMPTY) != ((strongPawns and KING_SIDE) == EMPTY) &&
+            (Attacks.kingAttacks(position.kingSquare(weak)) and weakPawns) != EMPTY) {
+            return weights.scaleRookEndgame
+        }
+        return minOf(64, weights.scaleBase + weights.scalePerPawn * popCount(strongPawns))
     }
 
     private fun computeKingAndPawnAttacks(position: Position) {
@@ -252,6 +317,7 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override 
         val ownKing = position.kingSquare(color)
         val enemyKing = position.kingSquare(them)
 
+        passedPawns[color] = 0
         pawns.forEachSquare { square ->
             val file = fileOf(square)
             val rank = relativeRank(color, square)
@@ -276,6 +342,13 @@ class SpaceEvaluator(val weights: SpaceWeights = SpaceWeights.DEFAULT, override 
                     bonus += TaperedScore(0, kings)
                 }
                 add(Term.PASSED_PAWNS, color, bonus)
+                passedPawns[color]++
+                // Rooks behind the passed pawn (Tarrasch's rule): the own rook escorts it, the enemy rook stops it from behind
+                ((position.pieces(color, ROOK) or position.pieces(them, ROOK)) and EvalMasks.FORWARD_FILE[them][square]).forEachSquare { rook ->
+                    if (square in Attacks.rookAttacks(rook, position.occupied)) {
+                        add(Term.ROOKS, if (rook in position.pieces(color, ROOK)) color else them, weights.rookBehindPassed)
+                    }
+                }
             } else if (rank >= 4 && !supported && !phalanx) {
                 // Overextension: an advanced pawn without support is a target, not space
                 add(Term.WEAKNESSES, color, weights.overextendedPawn)

@@ -1,4 +1,4 @@
-# Weights of the Snaky "Constrictor" evaluation (Style Space), in centipawns.
+# Weights of the Snaky "Constrictor" evaluation (styles Space and Full), in centipawns.
 # Tapered weights have a middlegame (mg) and an endgame (eg) value.
 
 pieceValues.pawn.mg = 100
@@ -60,6 +60,9 @@ rookSemiOpenFile.eg = 21
 
 rookOnSeventh.mg = 31
 rookOnSeventh.eg = 11
+
+rookBehindPassed.mg = 0
+rookBehindPassed.eg = 29
 
 doubledPawn.mg = -2
 doubledPawn.eg = -17
@@ -132,5 +135,20 @@ bishopPair.eg = 87
 
 tempo.mg = 24
 tempo.eg = 3
+
+complexity.passed = 6
+complexity.pawns = 8
+complexity.outflanking = 5
+complexity.bothFlanks = 31
+complexity.infiltration = 22
+complexity.pawnEndgame = 82
+complexity.unwinnable = -15
+complexity.base = -68
+
+scale.oppositeBishops = 0
+scale.oppositeBishopsPassed = 11
+scale.rookEndgame = 61
+scale.base = 12
+scale.perPawn = 32
 
 contempt = 15

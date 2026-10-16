@@ -39,6 +39,8 @@ data class SpaceWeights(
     val rookOpenFile: TaperedScore = TaperedScore(35, 15),
     val rookSemiOpenFile: TaperedScore = TaperedScore(15, 8),
     val rookOnSeventh: TaperedScore = TaperedScore(20, 30),
+    /** Rook behind a passed pawn on its file, own (it escorts the pawn) or enemy (it stops it from behind): Tarrasch's rule. */
+    val rookBehindPassed: TaperedScore = TaperedScore(5, 25),
     val doubledPawn: TaperedScore = TaperedScore(-10, -25),
     val isolatedPawn: TaperedScore = TaperedScore(-10, -15),
     /** By relative rank (0 = first rank). */
@@ -70,6 +72,31 @@ data class SpaceWeights(
     val openFileNearKing: TaperedScore = TaperedScore(-15, 0),
     val bishopPair: TaperedScore = TaperedScore(30, 50),
     val tempo: TaperedScore = TaperedScore(12, 6),
+    /**
+     * Winnable endgames (Stockfish classical `winnable`): the complexity of the position is added to the endgame score
+     * of the side ahead (a negative complexity reduces its advantage, at most to zero). It grows with the passed pawns, the
+     * pawns, the outflanking of the kings, pawns on both flanks, a king in the half of the opponent and pawn endgames,
+     * and it drops when the kings face each other with pawns on a single flank (almost unwinnable).
+     */
+    val complexityPassed: Int = 4,
+    val complexityPawns: Int = 6,
+    val complexityOutflanking: Int = 4,
+    val complexityBothFlanks: Int = 10,
+    val complexityInfiltration: Int = 12,
+    val complexityPawnEndgame: Int = 25,
+    val complexityUnwinnable: Int = -21,
+    val complexityBase: Int = -53,
+    /**
+     * Scale factors of the endgame score of the side ahead, in 64ths (64 = not scaled), for endgames hard to win:
+     * opposite-colored bishops (only the bishops, plus [scaleOppositeBishopsPassed] for each passed pawn of the side
+     * ahead), a rook endgame with one pawn more on a single flank and the defending king next to its pawns,
+     * and few pawns of the side ahead ([scaleBase] plus [scalePerPawn] for each pawn).
+     */
+    val scaleOppositeBishops: Int = 18,
+    val scaleOppositeBishopsPassed: Int = 4,
+    val scaleRookEndgame: Int = 36,
+    val scaleBase: Int = 36,
+    val scalePerPawn: Int = 7,
     /** Penalty of a draw for the engine, in centipawns: a constrictor does not let the opponent off the hook. */
     val contempt: Int = 15,
 ) {
@@ -174,6 +201,7 @@ data class SpaceWeights(
             tapered("rookOpenFile", { it.rookOpenFile }, BONUS) { copy(rookOpenFile = it) },
             tapered("rookSemiOpenFile", { it.rookSemiOpenFile }, BONUS) { copy(rookSemiOpenFile = it) },
             tapered("rookOnSeventh", { it.rookOnSeventh }, BONUS) { copy(rookOnSeventh = it) },
+            tapered("rookBehindPassed", { it.rookBehindPassed }, BONUS) { copy(rookBehindPassed = it) },
             tapered("doubledPawn", { it.doubledPawn }, PENALTY) { copy(doubledPawn = it) },
             tapered("isolatedPawn", { it.isolatedPawn }, PENALTY) { copy(isolatedPawn = it) },
             taperedArray("connectedPawn", PAWN_RANKS, { it.connectedPawn }, BONUS) { copy(connectedPawn = it) },
@@ -194,6 +222,19 @@ data class SpaceWeights(
             tapered("openFileNearKing", { it.openFileNearKing }, PENALTY) { copy(openFileNearKing = it) },
             tapered("bishopPair", { it.bishopPair }, BONUS) { copy(bishopPair = it) },
             tapered("tempo", { it.tempo }, BONUS) { copy(tempo = it) },
+            scalar("complexity.passed", { it.complexityPassed }, 0..100) { copy(complexityPassed = it) },
+            scalar("complexity.pawns", { it.complexityPawns }, 0..100) { copy(complexityPawns = it) },
+            scalar("complexity.outflanking", { it.complexityOutflanking }, 0..100) { copy(complexityOutflanking = it) },
+            scalar("complexity.bothFlanks", { it.complexityBothFlanks }, 0..200) { copy(complexityBothFlanks = it) },
+            scalar("complexity.infiltration", { it.complexityInfiltration }, 0..200) { copy(complexityInfiltration = it) },
+            scalar("complexity.pawnEndgame", { it.complexityPawnEndgame }, 0..200) { copy(complexityPawnEndgame = it) },
+            scalar("complexity.unwinnable", { it.complexityUnwinnable }, -200..0) { copy(complexityUnwinnable = it) },
+            scalar("complexity.base", { it.complexityBase }, -500..0) { copy(complexityBase = it) },
+            scalar("scale.oppositeBishops", { it.scaleOppositeBishops }, 0..64) { copy(scaleOppositeBishops = it) },
+            scalar("scale.oppositeBishopsPassed", { it.scaleOppositeBishopsPassed }, 0..32) { copy(scaleOppositeBishopsPassed = it) },
+            scalar("scale.rookEndgame", { it.scaleRookEndgame }, 0..64) { copy(scaleRookEndgame = it) },
+            scalar("scale.base", { it.scaleBase }, 0..64) { copy(scaleBase = it) },
+            scalar("scale.perPawn", { it.scalePerPawn }, 0..32) { copy(scalePerPawn = it) },
             scalar("contempt", { it.contempt }, -200..200) { copy(contempt = it) },
         ).flatten()
 
