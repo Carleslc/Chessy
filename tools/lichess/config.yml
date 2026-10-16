@@ -17,17 +17,18 @@ engine:
 
   draw_or_resign:
     resign_enabled: true            # Resign lost positions...
-    resign_score: -3000             # ...when the score is this low (centipawns)...
-    resign_moves: 10                # ...for this number of moves in a row
-    resign_for_egtb_minus_two: false  # Resign when online_egtb says the game is lost (online_egtb is off)
+    resign_score: -3000             # ...when the score is this low (centipawns; a queen is ~2300 in the middlegame, ~800 in endgames)...
+    resign_moves: 5                 # ...for this number of moves in a row
+    resign_for_egtb_minus_two: false  # Do not resign when online_egtb says the game is lost: the opponent may still err
     offer_draw_enabled: true        # Offer and accept draws in dead equal endgames
     offer_draw_score: 0             # ...when the score is within this margin (centipawns)...
     offer_draw_moves: 10            # ...for this number of moves in a row...
     offer_draw_pieces: 10           # ...with this number of pieces or fewer
-    offer_draw_for_egtb_zero: false # Offer draws when online_egtb says the game is drawn (online_egtb is off)
+    offer_draw_for_egtb_zero: false # Do not offer draws when online_egtb says the game is drawn: the opponent may still err
 
-  # Moves from online services, played by lichess-bot instead of asking Snaky: all off, so that Snaky plays every move
-  # with its own style (they would play the moves of databases and Stockfish). They work from any computer (web APIs).
+  # Moves from online services, played by lichess-bot instead of asking Snaky: off, so that Snaky plays every move with its
+  # own style (they would play the moves of databases and Stockfish), except the online tablebases, which only play
+  # endgames of up to 7 pieces perfectly. They work from any computer (web APIs).
   online_moves:
     max_out_of_book_moves: 10       # Stop asking the online books after this number of positions without a move
     max_retries: 2                  # Retries of each online request
@@ -38,7 +39,11 @@ engine:
     lichess_opening_explorer:
       enabled: false                # The opening explorer of Lichess: games of masters or of Lichess players
     online_egtb:
-      enabled: false                # The tablebases of Lichess (up to 7 pieces) or chessdb; Snaky has its own up to 5 pieces
+      enabled: true                 # The tablebases of Lichess, with perfect moves up to 7 pieces (Snaky has its own up to 5)
+      min_time: 20                  # Seconds left on the clock to ask them (with less, Snaky plays with its own tables)
+      max_pieces: 7
+      source: "lichess"
+      move_quality: "best"          # The best move of the tablebase (the fastest win, or the longest defense)
 
   # Tablebases probed by lichess-bot itself before asking the engine: off, Snaky probes its own Syzygy tables (SyzygyPath)
   lichess_bot_tbs:
