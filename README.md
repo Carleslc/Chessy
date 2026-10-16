@@ -337,5 +337,11 @@ Games are saved in PGN, so they can be opened with the viewer (`python tools/gam
 
 ## License
 
-Snaky is free software, released under the [GNU General Public License v3.0](LICENSE) (GPLv3): you can use, study,
-modify and share it, and the versions you distribute must keep the same license and include their source code.
+Copyright (C) 2018-2026 Carleslc. Snaky is free software, released under the
+[GNU General Public License v3.0](LICENSE) (GPLv3): you can use, study, modify and share it, and the versions you
+distribute must keep the same license and include their source code.
+
+As an additional term of the GPLv3 (section 7(b)), copies and modified versions must keep the attribution to its author,
+"Snaky by Carleslc (https://github.com/Carleslc/Snaky)", in their notices and documentation and as the author of the
+engine (the UCI `id author`), and modified versions must state that they were modified. See [NOTICE](NOTICE),
+which also credits the third-party work that Snaky uses or adapts (Stockfish, Syzygy, PolyGlot, lichess-bot...).

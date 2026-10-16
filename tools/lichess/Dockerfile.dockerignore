@@ -1,7 +1,9 @@
-# The image only needs the engine and the files of the bot: tablebases, games, snapshots and builds stay out
+# The image only needs the engine, its license and the files of the bot: tablebases, games, snapshots and builds stay out
 *
 !engine/
 !tools/lichess/
+!LICENSE
+!NOTICE
 engine/build/
 engine/.gradle/
 engine/.kotlin/

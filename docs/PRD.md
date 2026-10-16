@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Versión | v1.03 (ver §8, Versiones) |
-| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza, BOT en Lichess (Snaky-Bot), v1.02 con términos de finales y Full reajustado, v1.03 sin pérdidas por tiempo con poco reloj |
+| Versión | v1.02 (ver §8, Versiones) |
+| Estado | Fases 0 a 7 completadas, v1.01 con libro, Syzygy, Chess960 y niveles de fuerza, BOT en Lichess (Snaky-Bot), v1.02 con términos de finales, Full reajustado y sin pérdidas por tiempo con poco reloj |
 | Lenguaje del motor | Kotlin (JVM 17+) en `engine/` |
 | Herramientas | Python 3 en `tools/` |
 | Protocolo | UCI |
@@ -598,7 +598,7 @@ Contra Stockfish 2800 (1 hilo, 64 MB, libro y tablas, 100 partidas a 10+0,1): Sp
 
 Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`, y el tiempo por estabilidad en la rama local `experiment/time-stability`.
 
-### v1.03: tiempo con poco reloj y finales de las tablas online
+### v1.02 (actualización): tiempo con poco reloj y finales de las tablas online
 
 Revisión de dos partidas del BOT:
 

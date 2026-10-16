@@ -8,6 +8,7 @@
 FROM eclipse-temurin:17-jdk AS engine
 WORKDIR /snaky
 COPY engine/ engine/
+COPY LICENSE NOTICE ./
 RUN cd engine && ./gradlew --no-daemon --quiet installDist
 
 # lichess-bot, at a version tested with Snaky (its versions are dates, without git tags)

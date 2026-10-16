@@ -23,6 +23,15 @@ application {
     applicationDefaultJvmArgs = listOf("-Xss16m")
 }
 
+// The license and its notice go with the engine (installDist, distZip)
+distributions {
+    main {
+        contents {
+            from(rootDir.resolve("../LICENSE"), rootDir.resolve("../NOTICE"))
+        }
+    }
+}
+
 tasks.processResources {
     // The engine reads its version from this resource
     inputs.property("version", project.version)
