@@ -86,7 +86,10 @@ The offline test plays against Snaky with the greedy search, because the image h
 - **Time**: lichess-bot keeps 1 s for network delays (`move_overhead`) and Snaky 100 ms (`Move Overhead`):
   increase them if the bot loses on time.
 - The opening book and the Syzygy tablebases of Snaky (`OwnBook`, `SyzygyPath`, up to 5 pieces), and the online tablebases
-  of Lichess (`online_egtb`), which play endgames of up to 7 pieces perfectly (with at least 20 s on the clock).
+  of Lichess (`online_egtb`) in endgames of up to 7 pieces with at least 10 s on the clock: they play won endgames
+  perfectly, in drawn endgames Snaky chooses among the drawing moves, and lost endgames are played by Snaky
+  ([`snaky_bot.py`](snaky_bot.py)): the longest defense of the tablebase gives away material without resistance,
+  as every move loses against perfect play, while Snaky keeps it and makes the win harder.
   The other books and analysis of lichess-bot (`polyglot`, `online_moves`, `lichess_bot_tbs`) are disabled:
   Snaky plays every other move. Snaky does not resign or offer draws because of the online tablebases, as the opponent may still err.
 
@@ -121,7 +124,8 @@ python challenge.py --bot --tc 3+2 --list                # only list the bots it
 
 It prints the link of the game to watch it. With Docker (on a server), run it in a new container of the image:
 `docker compose -f tools/lichess/compose.yaml run --rm bot challenge --bot --tc 3+2`.
-It does not challenge while Snaky is playing (`--force` to do it anyway). While the rating of Snaky is provisional
+It does not challenge while Snaky is playing, and it cancels the challenge if Snaky starts another game while it waits
+(`--force` to do it anyway): two games at the same time share the processor and can lose on time. While the rating of Snaky is provisional
 (its first games), `--bot` looks for bots from 2200 to 2800. Bots can play 100 games a day against other bots
 (unlimited against humans).
 

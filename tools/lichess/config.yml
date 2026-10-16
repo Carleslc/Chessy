@@ -27,8 +27,9 @@ engine:
     offer_draw_for_egtb_zero: false # Do not offer draws when online_egtb says the game is drawn: the opponent may still err
 
   # Moves from online services, played by lichess-bot instead of asking Snaky: off, so that Snaky plays every move with its
-  # own style (they would play the moves of databases and Stockfish), except the online tablebases, which only play
-  # endgames of up to 7 pieces perfectly. They work from any computer (web APIs).
+  # own style (they would play the moves of databases and Stockfish), except the online tablebases in endgames of up to
+  # 7 pieces: won endgames perfectly, drawn endgames among the drawing moves, and lost endgames are played by Snaky
+  # (snaky_bot.py). They work from any computer (web APIs).
   online_moves:
     max_out_of_book_moves: 10       # Stop asking the online books after this number of positions without a move
     max_retries: 2                  # Retries of each online request
@@ -43,7 +44,7 @@ engine:
       min_time: 10                  # Seconds left on the clock to ask them (with less, Snaky plays with its own tables)
       max_pieces: 7
       source: "lichess"
-      move_quality: "best"          # The best move of the tablebase (the fastest win, or the longest defense)
+      move_quality: "best"          # The fastest win (snaky_bot.py: Snaky chooses among the drawing moves, and defends lost endgames)
 
   # Tablebases probed by lichess-bot itself before asking the engine: off, Snaky probes its own Syzygy tables (SyzygyPath)
   lichess_bot_tbs:

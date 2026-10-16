@@ -8,6 +8,9 @@ Commands (!help): !name, !eval and !queue of lichess-bot, without !wait (it dela
 minute before the first move), and !explain [move]: the static evaluation of Snaky term by term (snaky eval, without
 searching, unlike !eval), for the current position or after a move (!explain 23 after the move 23 of white,
 !explain 23b after the move 23 of black). Like !eval, only for the spectators: the opponent does not get it.
+
+The online tablebases (online_egtb) only play won endgames, and in drawn endgames they leave Snaky the choice among
+the drawing moves (see snaky_egtb_move).
 """
 import os
 import subprocess
@@ -18,7 +21,7 @@ import time
 import chess
 import yaml
 
-from lib import lichess_bot
+from lib import engine_wrapper, lichess_bot
 from lib.conversation import ChatLine, Conversation
 from lib.lichess import MAX_CHAT_MESSAGE_LEN
 
@@ -129,8 +132,27 @@ class SnakyConversation(Conversation):
             self.send_reply(line, message)
 
 
+lichess_egtb_move = engine_wrapper.get_lichess_egtb_move
+
+
+def snaky_egtb_move(li, game, board: chess.Board, quality: str, variant: str):
+    """
+    The online tablebases of Lichess (online_egtb) by the result of the position: the perfect move in won endgames,
+    the drawing moves in drawn endgames (Snaky chooses the one that gives the opponent more chances to err), and
+    Snaky alone in lost endgames: the longest defense of the tablebase gives away material without resistance
+    (any move loses against perfect play), while Snaky keeps it and makes the win harder.
+    """
+    move, wdl, comment = lichess_egtb_move(li, game, board, quality, variant)
+    if move is None or wdl == 2:
+        return move, wdl, comment
+    if wdl == -2:
+        return None, -3, {}
+    return lichess_egtb_move(li, game, board, "suggest", variant)
+
+
 # Replaced at import, also in the processes of the games (multiprocessing imports this module again)
 lichess_bot.Conversation = SnakyConversation
+engine_wrapper.get_lichess_egtb_move = snaky_egtb_move
 
 if __name__ == "__main__":
     lichess_bot.start_program()

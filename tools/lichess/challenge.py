@@ -30,6 +30,9 @@ from pathlib import Path
 
 API = 'https://lichess.org'
 
+# Seconds between the checks that Snaky is not playing another game while it waits for an answer
+PLAYING_CHECK_INTERVAL = 5
+
 # Rating of Snaky for the default range of --bot while its own rating is provisional
 PROVISIONAL_RATING = 2500
 
@@ -51,7 +54,7 @@ def set_args():
   parser.add_argument("--tries", help="maximum number of bots challenged with --bot (default: 10)", type=int, default=10)
   parser.add_argument("--wait", help="seconds to wait for each answer (default: 60, 15 for bots)", type=int)
   parser.add_argument("--list", help="list the bots that --bot would challenge, without challenging them", action='store_true')
-  parser.add_argument("--force", help="challenge even if Snaky is playing another game", action='store_true')
+  parser.add_argument("--force", help="challenge even if Snaky is playing (or starts) another game", action='store_true')
   args = parser.parse_args()
   if bool(args.username) == args.bot:
     parser.error('give a username or --bot')
@@ -101,6 +104,7 @@ def challenge(username: str, wait: float) -> str | None:
     return None
   challenge_id = None
   deadline = time.monotonic() + wait
+  next_check = time.monotonic() + PLAYING_CHECK_INTERVAL
   with response:
     # The stream sends the challenge, empty lines to keep it alive, and {"done": "accepted"} (or declined, canceled)
     try:
@@ -113,6 +117,12 @@ def challenge(username: str, wait: float) -> str | None:
             return challenge_id if message['done'] == 'accepted' else None
         if time.monotonic() > deadline:
           break
+        # Snaky plays one game at a time: if another game starts while waiting, the challenge is canceled
+        if not args.force and time.monotonic() > next_check:
+          next_check = time.monotonic() + PLAYING_CHECK_INTERVAL
+          if (game := playing(challenge_id)):
+            cancel(challenge_id)
+            raise AnotherGame(game)
     except TimeoutError:
       pass
     except KeyboardInterrupt:
@@ -123,6 +133,14 @@ def challenge(username: str, wait: float) -> str | None:
   cancel(challenge_id)
   print(f'  {username}: no answer in {wait:.0f} s, canceled')
   return None
+
+class AnotherGame(Exception):
+  """Snaky started another game while waiting for the answer to a challenge."""
+
+def playing(except_game: str | None = None) -> str | None:
+  """A game that Snaky is playing (other than [except_game]), or None."""
+  games = get_json('/api/account/playing').get('nowPlaying', [])
+  return next((game['gameId'] for game in games if game['gameId'] != except_game), None)
 
 def cancel(challenge_id: str | None):
   if challenge_id:
@@ -154,9 +172,8 @@ if __name__ == "__main__":
   me = get_json('/api/account')
   if me.get('title') != 'BOT':
     sys.exit(f'{me["username"]} is not a BOT account')
-  playing = get_json('/api/account/playing').get('nowPlaying', [])
-  if playing and not args.force:
-    sys.exit(f'{me["username"]} is playing {API}/{playing[0]["gameId"]} (--force to challenge anyway)')
+  if (game := playing()) and not args.force:
+    sys.exit(f'{me["username"]} is playing {API}/{game} (--force to challenge anyway)')
 
   game = (args.days and 'correspondence, ' + str(args.days) + ' days per move') or args.tc
   print(f'{me["username"]} challenges ({game}, {args.variant}, {"rated" if args.rated else "casual"}, color {args.color})')
@@ -175,3 +192,5 @@ if __name__ == "__main__":
       sys.exit('No challenge was accepted')
   except KeyboardInterrupt:
     sys.exit('Challenge canceled')
+  except AnotherGame as game:
+    sys.exit(f'Challenge canceled: {me["username"]} started another game, {API}/{game}')
