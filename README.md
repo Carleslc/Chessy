@@ -334,3 +334,8 @@ To watch Snaky play, [`tools/lichess/challenge.py`](tools/lichess/README.md#chal
 challenge a player or an online bot of similar rating.
 
 Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.
+
+## License
+
+Snaky is free software, released under the [GNU General Public License v3.0](LICENSE) (GPLv3): you can use, study,
+modify and share it, and the versions you distribute must keep the same license and include their source code.
