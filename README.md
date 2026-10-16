@@ -327,7 +327,7 @@ or on a server with Docker, so it stays online when your computer is off):
 challenge it from your account,
 from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
 and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
-so the bot plays the default style, Space, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and
+so the bot plays the strongest style, Full, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and
 `UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines,
 so playing on the board against a local Snaky needs the Lichess bot.
 To watch Snaky play, [`tools/lichess/challenge.py`](tools/lichess/README.md#challenge-to-watch-a-game) makes the bot

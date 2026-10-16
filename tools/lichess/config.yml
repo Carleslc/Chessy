@@ -53,7 +53,7 @@ engine:
       enabled: false                # Gaviota: another format of tablebases, with distance to mate
 
   uci_options:
-    Style: Space                    # Space (the constrictor, default), Full (strongest), Material or Greedy (weakest)
+    Style: Full                     # Full (the strongest, plays the bot), Space (the constrictor), Material or Greedy (weakest)
     OwnBook: true                   # Opening book of Snaky (Opening: KingsIndian, French... to play only one opening)
     SyzygyPath: "tools/syzygy"      # Replaced by run.sh with the absolute path of the tablebases (if downloaded)
     # UCI_LimitStrength: true       # A weaker bot: UCI_Elo from 900 to 2800 in steps of 100
