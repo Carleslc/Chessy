@@ -40,7 +40,7 @@ engine:
       enabled: false                # The opening explorer of Lichess: games of masters or of Lichess players
     online_egtb:
       enabled: true                 # The tablebases of Lichess, with perfect moves up to 7 pieces (Snaky has its own up to 5)
-      min_time: 20                  # Seconds left on the clock to ask them (with less, Snaky plays with its own tables)
+      min_time: 10                  # Seconds left on the clock to ask them (with less, Snaky plays with its own tables)
       max_pieces: 7
       source: "lichess"
       move_quality: "best"          # The best move of the tablebase (the fastest win, or the longest defense)
@@ -74,7 +74,7 @@ move_overhead: 1000                 # Milliseconds kept by lichess-bot for netwo
 correspondence:
   move_time: 60                     # Seconds to think per move
   checkin_period: 300               # Seconds between checks for the moves of the opponent, after disconnecting
-  disconnect_time: 150              # Seconds without moves before disconnecting from the game
+  disconnect_time: 180              # Seconds without moves before disconnecting from the game
   ponder: false                     # Do not think on the opponent's time (days)
 
 challenge:
@@ -85,9 +85,9 @@ challenge:
   only_bot: false
   max_increment: 30
   min_increment: 0
-  max_base: 3600
+  max_base: 1800
   min_base: 60
-  max_days: 14                      # Days per move of correspondence games
+  max_days: 7                       # Days per move of correspondence games
   min_days: 1
   variants:
     - standard
@@ -103,9 +103,9 @@ challenge:
     - rated
 
 greeting:
-  hello: "Hi! I'm {me}, a chess engine that likes space. Good luck!"
+  hello: "Hi! I'm {me}, and I like to squeeze my opponents like a boa snake. Will you survive? Good luck! 🐍"
   goodbye: "Good game!"
-  hello_spectators: "I'm {me}: I gain space and squeeze my opponents. https://github.com/Carleslc/Snaky"
+  hello_spectators: "I'm {me}: I try to constrict and suffocate my opponents like a boa snake. 🐍 Commands: !help"
   goodbye_spectators: "Thanks for watching!"
 
 matchmaking:
