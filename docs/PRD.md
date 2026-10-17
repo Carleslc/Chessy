@@ -69,9 +69,10 @@ Snaky/
     ├── board.py, game.py, app/, utils/   Visor de FEN/PGN (PyQt5 + python-chess)
     ├── match.py, sprt.sh, snapshot.sh    Partidas entre motores y SPRT (fastchess)
     ├── epd.py, sts.py, tactics.py, suites/   Suites de test (táctica, WAC, STS)
-    ├── analysis.py, style.py             Análisis de partidas y métricas de estilo
-    ├── texel.py     Posiciones de entrenamiento para el Texel tuning
-    └── lichess/     Configuración de lichess-bot
+    ├── analysis.py, style.py, review.py  Análisis de partidas, métricas de estilo y revisión con Stockfish
+    ├── texel.py, endgames.py             Posiciones de entrenamiento (Texel) y finales equilibrados para matches
+    └── lichess/     BOT: configuración de lichess-bot, snaky_bot.py (comandos del chat), challenge.py, Docker
+LICENSE, NOTICE      GPLv3 y aviso de copyright, atribución y créditos
 ```
 
 El motor se llamaba Chessy hasta v1.01, cuando pasó a llamarse Snaky (una serpiente constrictora, como su estilo; en Lichess, Snaky-Bot). La rama `v0` conserva la primera implementación (2018–2019), Chessy v0, arreglada y con las reglas completas para ser jugable en consola (ver §12). La rama `python-old` conserva el visor de 2022 tal como estaba.
@@ -143,9 +144,9 @@ La profundidad **no es fija**: la búsqueda es por **tiempo**. La profundizació
 - En **finales** hay menos piezas y jugadas (factor de ramificación pequeño) y la tabla de transposición acierta mucho, así que en el mismo tiempo se llega bastante más profundo, lo que permite ver **mates forzados lejanos** y promociones.
 - En posiciones tácticas, las **extensiones** (jaque, única jugada legal) y la quiescencia profundizan solo en las líneas forzadas; las **reducciones** (LMR) y podas recortan las líneas poco prometedoras. Por eso se distingue entre la profundidad nominal (`depth`) y la máxima alcanzada (`seldepth`).
 - **Presupuesto por jugada** a partir de `wtime/btime/winc/binc/movestogo` con margen de seguridad (`Move Overhead`), con dos límites:
-  - *suave*: no empezar una nueva iteración si probablemente no terminará;
-  - *duro*: abortar la búsqueda en curso.
-- **Ajustes dinámicos**: menos tiempo si la mejor jugada es estable entre iteraciones o es la única jugada, más tiempo si cambia o la puntuación cae (*fail low*).
+  - *suave*: el reloj entre 30 jugadas (o `movestogo`) más 3/4 del incremento; no se empieza una nueva iteración pasado el 60 %, porque probablemente no terminará;
+  - *duro*: abortar la búsqueda en curso, a 4 veces el suave y como mucho un tercio del reloj (desde v1.02), para que con poco tiempo las jugadas sean más rápidas y el incremento recupere el reloj.
+- Una sola jugada legal se responde enseguida. Los **ajustes dinámicos** (menos tiempo si la mejor jugada es estable, más si cambia o la puntuación cae) se probaron dos veces y se rechazaron (−12 ± 14 en la Fase 4, −28 ± 20 en v1.02): el tiempo extra en el medio juego falta después.
 - Si se encuentra un mate forzado se deja de profundizar.
 - También se puede limitar por `depth`, `nodes` o `movetime`, o buscar hasta `stop` (`infinite`), para análisis y tests.
 
@@ -228,10 +229,10 @@ Ideas de [chessprogramming.org/Space](https://www.chessprogramming.org/Space), [
 
 Comandos: `uci`, `isready`, `ucinewgame`, `position [startpos|fen …] [moves …]`, `go [wtime btime winc binc movestogo depth nodes movetime infinite]`, `stop`, `quit`, `setoption`.
 Salida `info depth seldepth score cp|mate nodes nps time pv hashfull`.
-Opciones: `Style` (Space, Full, Material, Greedy), `Hash` (256 MB por defecto desde v1.01), `Threads` (4 por defecto desde v1.01, o los procesadores si hay menos), `Move Overhead`, `Ponder`, `Greedy Depth` y `Weights` (fichero de pesos de Space o Full). El *contempt* lo define cada evaluador.
+Opciones: `Style` (Space, Full, Material, Greedy), `Hash` (256 MB por defecto desde v1.01), `Threads` (4 por defecto desde v1.01, o los procesadores si hay menos), `Move Overhead`, `Ponder`, `UCI_LimitStrength` y `UCI_Elo` (niveles de fuerza), `OwnBook`, `Book File` y `Opening` (libro de aperturas), `UCI_Chess960`, `SyzygyPath` y `SyzygyProbeDepth` (tablas de finales), `Greedy Depth` y `Weights` (fichero de pesos de Space o Full). El *contempt* lo define cada evaluador.
 La búsqueda corre en un hilo aparte para atender `stop`/`isready`.
 
-Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perft N`, `eval` (desglose de evaluación), `bench` (posiciones fijas → nodos y nps, útil para detectar cambios de comportamiento).
+Comandos extra (no UCI) para depurar: `d` (mostrar tablero + FEN + clave), `perft N`, `eval` (desglose de evaluación; en la CLI, `snaky eval --format line` lo da en una línea, que usa `!explain` del BOT), `bench` (posiciones fijas → nodos y nps, útil para detectar cambios de comportamiento).
 
 ### 5.5 Paralelismo
 
@@ -261,7 +262,8 @@ En CPU:
 - **Partidas**: el motor exporta las partidas en PGN (comando `play --pgn`, y las partidas de las fases siguientes) para verlas en el visor (`tools/game.py`) o analizarlas en Lichess o Chess.com.
 - **Matches**: scripts para `fastchess`/`cutechess-cli` (SPRT entre versiones, partidas contra Stockfish limitado).
 - **Tuning** (hecho): `tools/texel.py` extrae las posiciones tranquilas de partidas con su resultado y `snaky tune` ajusta los pesos (Texel tuning).
-- **Lichess**: configuración de `lichess-bot` apuntando al ejecutable UCI del motor.
+- **Lichess**: configuración de `lichess-bot` apuntando al ejecutable UCI del motor, `snaky_bot.py` (los comandos del chat de Snaky y el uso de las tablas online), `challenge.py` (retos a petición) y la imagen Docker.
+- **Revisión**: `tools/review.py` compara cada jugada de un jugador con Stockfish (pérdida media por fase, reloj y jaques, y los errores en EPD).
 - **CLI**: lanzadores para jugar contra el motor en consola o en una GUI.
 
 ## 8. Despliegue
@@ -269,6 +271,8 @@ En CPU:
 - Empaquetado: `./gradlew installDist` → script `engine/build/install/snaky/bin/snaky` (UCI), y `./gradlew distZip` → `engine/build/distributions/snaky-<versión>.zip` con los lanzadores `bin/snaky` (macOS, Linux) y `bin/snaky.bat` (Windows) y las librerías (necesita Java 17+). Opcional: GraalVM `native-image` para arrancar al instante y no depender de Java.
 - **Lichess**: cuenta nueva convertida a BOT (irreversible; la cuenta no puede volver a jugar como humano) + `lichess-bot`, arrancado con `tools/lichess/run.sh` (token en la variable de entorno `LICHESS_BOT_TOKEN`). Los bots solo juegan retos (no torneos ni emparejamiento por pools). El bot se ejecuta en la máquina que lo arranca (Lichess solo transmite las jugadas): para tenerlo siempre en línea, imagen Docker con el motor y lichess-bot (`tools/lichess/Dockerfile`, `compose.yaml`; x86-64 y ARM64, 436 MB) para un servidor, con las tablas Syzygy como volumen opcional y los comandos `play`, `upgrade` y `test` (partida sin conexión).
 - Libro de aperturas propio (Polyglot, `OwnBook`) y tablas de finales Syzygy (`SyzygyPath`), desde v1.01.
+- **BOT Snaky-Bot** (desde v1.02): estilo Full con 4 hilos, 256 MB, *pondering*, libro y tablas; retos estándar y Chess960 de 1 a 30 minutos y por correspondencia de 1 a 7 días, casuales y puntuables, de humanos y bots, una partida a la vez. Abandona tras 5 jugadas por debajo de −30 peones. lichess-bot arranca con `snaky_bot.py`, que añade al chat `!explain [jugada]` (la evaluación estática término a término, para los espectadores), quita `!wait` y usa las tablas online de Lichess (hasta 7 piezas) solo en finales ganados: en los de tablas Snaky elige entre las jugadas que las mantienen, y los perdidos los defiende Snaky. `challenge.py` reta a un jugador o a bots en línea de rating parecido cuando se quiere ver una partida, y cancela el reto si el BOT empieza otra partida.
+- **Licencia**: GPLv3 (`LICENSE`), con un término adicional según su sección 7(b) que obliga a conservar la atribución "Snaky by Carleslc" (`NOTICE`, que también da crédito a Stockfish, Syzygy, PolyGlot, lichess-bot y demás). El zip del motor y la imagen Docker incluyen los dos ficheros.
 
 ### Versiones
 
@@ -300,7 +304,7 @@ En CPU:
 
 ### CCRL
 
-La escala `UCI_Elo` de Stockfish está ajustada con partidas contra versiones del motor Stash con rating CCRL Blitz, a 120+1 (`search.h`: de 1320 a 3190; las anclas de Stash están a ±100 Elo de CCRL y la más alta es 2744). Por eso la calibración contra Stockfish limitado da una estimación aproximada del rating en **CCRL Blitz**. A 2+1 Snaky rinde unos 100 Elo más que a 10+0,1 contra Stockfish 2800 (Space 61 %, Full 55 %, 40 partidas cada uno), así que la estimación actual es de **~2800–2850 en CCRL Blitz** (puesto ~295–310 de ~890) y ~2770–2820 en CCRL 40/2 FRC si jugara Chess960 (puesto ~105–110 de 151). Detalles en el README (*Versions and styles*).
+La escala `UCI_Elo` de Stockfish está ajustada con partidas contra versiones del motor Stash con rating CCRL Blitz, a 120+1 (`search.h`: de 1320 a 3190; las anclas de Stash están a ±100 Elo de CCRL y la más alta es 2744). Por eso la calibración contra Stockfish limitado da una estimación aproximada del rating en **CCRL Blitz**. A 2+1 Snaky rinde unos 100 Elo más que a 10+0,1 contra Stockfish 2800 (v1.02: Space 61 %, Full 60 %, 40 partidas cada uno; v1.0: 61 % y 55 %), así que la estimación actual es de **~2800–2850 en CCRL Blitz** (puesto ~295–310 de ~890) y ~2770–2820 en CCRL 40/2 FRC si jugara Chess960 (puesto ~105–110 de 151). Detalles en el README (*Versions and styles*).
 
 Listas y condiciones (máquina de referencia Intel i7-4770K, con el tiempo escalado según el `bench` de Stockfish 10 en la máquina del probador; *pondering* desactivado; sin aprendizaje; tablas de finales de hasta 6 piezas):
 
@@ -596,6 +600,13 @@ Con 300 partidas (±30 Elo) ningún cambio era medible, y las posiciones de los 
 
 Contra Stockfish 2800 (1 hilo, 64 MB, libro y tablas, 100 partidas a 10+0,1): Space v1.02 46,5 % y Full v1.02 45 % (v1.01: 42,5 % los dos).
 
+Medición final de v1.02 para el README (sin otras partidas a la vez en la máquina: una primera medición de Space con otro match en paralelo dio 2687, ~50 Elo menos):
+
+- Contra Stockfish 2400 / 2600 / 2800 / 3000 (aperturas equilibradas, 1 hilo, 64 MB, 100 partidas por nivel a 10+0,1): Space 82,5 / 70,5 / 40,5 / 21,5 % (**2736 ± 40**) y Full 84 / 74 / 37,5 / 20 % (**2738 ± 40**), como v1.0 (2746 y 2741): las mejoras frente a v1.01 en las partidas entre versiones de Snaky (+9 y +22) quedan dentro del margen contra Stockfish. Full y Space empatan en su enfrentamiento directo (−1 ± 18, 1000 partidas; en v1.0 Full ganaba por +37 ± 16).
+- WAC (1 s) 282 y 280 de 300; STS (0,2 s) 10821 y 10783 de 15000; STS Elo 2305 y 2269.
+- Con libro: Space 2802 ± 52 con 1 hilo y 2851 ± 51 con 4 hilos; Full 2806 ± 52 y 2885 ± 50.
+- Estilo contra Stockfish 2600 y 2800: Space deja al rival 26,4 jugadas, espacio +0,82, territorio +0,11, 0,22 piezas atrapadas; Full 25,3 jugadas, +0,46, +0,39, 0,18.
+
 Quedan como herramientas `tools/review.py`, `tools/endgames.py`, `OPENINGS` en `sprt.sh` y `tune --only`, y el tiempo por estabilidad en la rama local `experiment/time-stability`.
 
 ### v1.02 (actualización): tiempo con poco reloj y finales de las tablas online
@@ -605,6 +616,7 @@ Revisión de dos partidas del BOT:
 - **Pérdida por tiempo en un final de tablas** (PeachFruit, 3+2, a 2 jugadas de la regla de los 50 movimientos): con 4–6 s en el reloj, el límite duro llegaba al 75 % del tiempo disponible, y una jugada de 3,5 s con 4,8 s en el reloj (otra partida del BOT a la vez se repartía el procesador) dejó el reloj sin margen. Ahora el límite duro es como mucho un tercio del tiempo disponible (salvo cuando quedan una o dos jugadas para el control de tiempo) y el blando no lo supera: con poco reloj las jugadas son más rápidas y el incremento lo recupera (como el modo pánico de Oxydan, que reserva un margen para la red y juega muy rápido con menos de 2 s). Contra v1.02 (1000 partidas, 8+0,08): **+1,0 ± 17,7**, sin regresión, y **13 derrotas por tiempo frente a 46**.
 - **67...Kg7?? perdiendo el caballo** (Odiodin_ansf, final perdido de 7 piezas): no lo jugó Snaky sino la tabla online de Lichess, que en posiciones perdidas da la defensa más larga por DTZ (distancia hasta la siguiente captura o jugada de peón), que entrega material sin resistencia porque contra un juego perfecto todo pierde. `snaky_bot.py` usa ahora la tabla online solo en finales ganados (la jugada perfecta); en los finales de tablas Snaky elige entre las jugadas que mantienen las tablas, y los perdidos los juega Snaky, que conserva el material.
 - Las dos partidas a la vez venían de un reto de `challenge.py` aceptado mientras el BOT ya jugaba: ahora el reto se cancela si el BOT empieza otra partida mientras espera la respuesta.
+- El BOT juega con el estilo Full (el más fuerte), tiene el comando `!explain` en el chat (sin `!wait`), y el repositorio pasa a GPLv3 con `NOTICE` (atribución y créditos).
 
 Del resto de la gestión del tiempo de Oxydan (porcentajes del reloj por fase: 4 % en la apertura, 6 % en el medio juego, 5 % en el final, más el 75–80 % del incremento), Snaky ya reparte un 3,3 % del reloj más el 75 % del incremento; gastar menos (reloj entre 40 jugadas) dio −12,8 ± 29, y más tiempo cuando cambia la mejor jugada, −28.
 
@@ -662,7 +674,7 @@ Otras referencias:
 - https://chess.phd/learn/terms/space/
 - https://www.chessworld.net/chessclubs/openingguide/chess-space-control.asp
 - https://www.chess.com/article/view/space-and-the-attack
-- https://github.com/lichess-bot-devs/lichess-bot · https://lichess.org/api#tag/Bot
+- https://github.com/lichess-bot-devs/lichess-bot · https://lichess.org/api#tag/Bot · https://github.com/Scriptionz/Oxydan-Chess-Bot (gestión del tiempo con modo pánico)
 - https://github.com/Disservin/fastchess · https://github.com/cutechess/cutechess
 - https://github.com/fsmosca/STS-Rating · https://computerchess.org.uk/404/ (CCRL)
 - https://syzygy-tables.info/
