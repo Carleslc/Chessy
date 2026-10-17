@@ -8,6 +8,8 @@ A chess engine with a "constrictor" playing style: it gains space, controls squa
 
 This project is for personal learning. For professional purposes use advanced chess engines like Stockfish.
 
+*Like the bot?* [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/carleslc)
+
 ## Structure
 
 - [`engine/`](engine): the engine, in Kotlin (bitboards, UCI).
