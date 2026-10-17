@@ -95,7 +95,7 @@ And besides:
 - **Pondering**: `Ponder`, thinking on the opponent's time.
 
 Snaky plays with **4 threads and 256 MB of hash** by default (UCI options `Threads` and `Hash`, `--threads` and `--hash`
-in the command line; fewer threads if the machine has fewer processors), about 90–120 Elo stronger than with one thread
+in the command line; fewer threads if the machine has fewer processors), about 50–120 Elo stronger than with one thread
 (see *Threads and hash*). The tools of `tools/` measure with one thread, as the results of this README.
 Other UCI options: `Move Overhead`, `Greedy Depth`, `SyzygyProbeDepth` and `Weights` (a weights file for Space or Full).
 
@@ -116,12 +116,13 @@ where Snaky would be ~100 Elo higher (see the CCRL estimate below, measured at 2
 | **v1 Greedy** (depth 3) | ~1100 | 22% vs 1320 (50 games) | 91/300 | 5427 | 1368 |
 | **v1 Greedy** (depth 4) | ~1120 | 24% vs 1320 (50 games) | 84/300 | 6030 | 1547 |
 | **v1 Material** | ~2500–2600 | 54% vs 2400, 49.5% vs 2600 | 285/300 | 9631 | 2072 |
-| **v1 Space** (default) | ~2750 | 86% vs 2400, 73.5% vs 2600, 42.5% vs 2800, 17% vs 3000 | 285/300 | 10875 | 2296 |
-| **v1 Full** | ~2750 (+37 ± 16 vs Space) | 90% vs 2400, 76% vs 2600, 36.5% vs 2800, 14.5% vs 3000 | 283/300 | 10868 | 2258 |
+| **v1.02 Space** (default) | ~2740 | 82.5% vs 2400, 70.5% vs 2600, 40.5% vs 2800, 21.5% vs 3000 | 282/300 | 10821 | 2305 |
+| **v1.02 Full** | ~2740 (−1 ± 18 vs Space) | 84% vs 2400, 74% vs 2600, 37.5% vs 2800, 20% vs 3000 | 280/300 | 10783 | 2269 |
 | Stockfish 19 (full strength, reference) | 3804 in CCRL Blitz (8 threads) | | 279/300 | 13876 (0.1 s) | 3832 |
 
-- Against Stockfish, Space and Full score the same within the margin of error (±60–90 Elo per level),
-  but Full wins the direct match against Space by +37 ± 16 (1000 games at 8+0.08).
+- Against Stockfish, Space and Full score the same: 2736 ± 40 and 2738 ± 40 fitting the four levels (v1.0: 2746 and 2741),
+  and since v1.02 they are also equal in their direct match (−1 ± 18 in 1000 games at 8+0.08; in v1.0 Full won by +37 ± 16).
+  The gains of v1.02 against v1.01 (Space +9, Full +22 in their direct matches) are within the margin of error against Stockfish.
 - WAC: [Win At Chess](tools/suites/wac.epd), 300 tactical positions. STS: [Strategic Test Suite](tools/suites/sts.epd),
   1500 positional positions, points out of 15000 with `tools/sts.py`; STS Elo is the CCRL 40/4 estimate of
   [`sts_rating.py`](https://github.com/fsmosca/STS-Rating) (v0: from its score with the same formula).
@@ -157,73 +158,74 @@ and wins more games behind in material, but no longer plays for space; Space kee
 Retuning Space with its style weights fixed was worse (−28), and so was giving more time when the best move changes (−28).
 See the [PRD](docs/PRD.md) (§10, v1.02).
 
-STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Stockfish with 0.1 s):
+STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Space and Full v1.02; Stockfish with 0.1 s):
 
 | Theme | v0 | Greedy | Material | Space | Full | Stockfish 19 |
 |---|---|---|---|---|---|---|
-| Undermining | 317 | 230 | 542 | **679** | 675 | 929 |
-| Open files and diagonals | 344 | 251 | 553 | **681** | 680 | 912 |
-| Knight outposts | 396 | 178 | 632 | 700 | **731** | 923 |
-| Square vacancy | 312 | 197 | 607 | 650 | **686** | 941 |
-| Bishop vs knight | 543 | **857** | 744 | 843 | 841 | 962 |
-| Recapturing | 823 | 767 | 869 | 892 | **898** | 954 |
-| Offer of simplification | 434 | 212 | 631 | 665 | **666** | 902 |
-| Advancement of f/g/h pawns | 305 | 193 | 509 | **645** | 621 | 902 |
-| Advancement of a/b/c pawns | 305 | 190 | 495 | **590** | 521 | 862 |
-| Simplification | 652 | **865** | 726 | 826 | 793 | 967 |
-| King activity | 389 | 276 | 601 | 624 | **693** | 909 |
-| Center control | 436 | 264 | 672 | **774** | 764 | 923 |
-| Pawn play in the center | 524 | 278 | 701 | 752 | **761** | 907 |
-| 7th rank | 491 | 313 | 725 | **827** | 824 | 941 |
-| Avoid pointless exchange | 464 | 485 | 624 | **727** | 714 | 942 |
-| **Total** | 6735 | 5556 | 9631 | **10875** | 10868 | 13876 |
+| Undermining | 317 | 230 | 542 | **666** | 643 | 929 |
+| Open files and diagonals | 344 | 251 | 553 | **688** | 653 | 912 |
+| Knight outposts | 396 | 178 | 632 | 691 | **706** | 923 |
+| Square vacancy | 312 | 197 | 607 | 631 | **728** | 941 |
+| Bishop vs knight | 543 | **857** | 744 | 818 | 815 | 962 |
+| Recapturing | 823 | 767 | 869 | 889 | **893** | 954 |
+| Offer of simplification | 434 | 212 | 631 | **679** | 669 | 902 |
+| Advancement of f/g/h pawns | 305 | 193 | 509 | **678** | 654 | 902 |
+| Advancement of a/b/c pawns | 305 | 190 | 495 | 566 | **570** | 862 |
+| Simplification | 652 | **865** | 726 | 818 | 840 | 967 |
+| King activity | 389 | 276 | 601 | **678** | 641 | 909 |
+| Center control | 436 | 264 | 672 | **771** | 733 | 923 |
+| Pawn play in the center | 524 | 278 | 701 | 731 | **733** | 907 |
+| 7th rank | 491 | 313 | 725 | **810** | 802 | 941 |
+| Avoid pointless exchange | 464 | 485 | 624 | **707** | 703 | 942 |
+| **Total** | 6735 | 5556 | 9631 | **10821** | 10783 | 13876 |
 
-Space is better at pawn play (pawn advances on both wings, undermining) and center control; Full at king activity,
-outposts and square vacancy (piece activity). Greedy only shines where the answer is a capture or an exchange
+Space is better at undermining, open files, king activity, center control and the advance of the king-side pawns;
+Full at square vacancy, outposts and simplification (piece activity). Greedy only shines where the answer is a capture or an exchange
 (bishop vs knight, simplification).
 
 Style metrics (`tools/style.py`, after the opening, against Stockfish at a similar level: v0 and Greedy against
-1320–1600, Material against 2600, Space and Full against 2600 and 2800):
+1320–1600, Material against 2600, Space and Full v1.02 against 2600 and 2800):
 
 | | Opponent mobility | Space | Territory | Opponent trapped pieces | Wins behind in material |
 |---|---|---|---|---|---|
 | **v0** | 27.9 | 0.79 | −1.08 | 0.27 | 10% |
 | **v1 Greedy** | 38.9 | −0.13 | −6.42 | 0.32 | 2 of 7 wins |
 | **v1 Material** | 28.9 | 0.52 | −2.13 | 0.15 | 2% |
-| **v1 Space** | 25.5 | **1.00** | **0.74** | **0.21** | 3% |
-| **v1 Full** | **25.3** | 0.61 | 0.16 | 0.19 | 2% |
-| Stockfish 2600 (against Space) | 26.7 | −0.92 | −0.72 | 0.16 | |
-| Stockfish 2800 (against Space) | 22.3 | −0.95 | 0.08 | 0.16 | |
+| **v1.02 Space** | 26.4 | **0.82** | 0.11 | **0.22** | 3% |
+| **v1.02 Full** | **25.3** | 0.46 | **0.39** | 0.18 | 1% |
+| Stockfish 2600 (against Space) | 26.2 | −0.86 | −0.80 | 0.20 | |
+| Stockfish 2800 (against Space) | 22.6 | −0.67 | 1.33 | 0.17 | |
 
 - **v0**: an alpha-beta search to depth 3–4 with material, piece-square tables and mobility: it already gains some space,
   but it does not control the half of the opponent (negative territory).
 - **Greedy**: grabs material without looking further than two plies: it is passive, gives away territory
   and lets the opponent play (the highest opponent mobility).
 - **Material**: plays sound chess without a plan for space: the opponent keeps its mobility and territory.
-- **Space**: the constrictor. It gains the most space and territory and traps the most pieces.
-- **Full**: as restrictive as Space with the mobility of the opponent, but with less space and territory:
+- **Space**: the constrictor. It gains the most space and traps the most pieces.
+- **Full**: the most restrictive with the mobility of the opponent, with more territory but less space than Space:
   it plays for activity and material more than for space.
-- Against Stockfish 2800, Stockfish restricts Snaky more (Snaky keeps 22.3 moves, Stockfish 24.7),
-  but Snaky still gains more space; against 2600 the restriction is even.
+- Against Stockfish 2800, Stockfish restricts Snaky more (Snaky keeps 22.6 moves, Stockfish 26.5) and takes more
+  territory, but Snaky still gains more space; against 2600 the restriction is even (26.2 moves each) and Snaky
+  gains more space and territory.
 
 ### Threads and hash
 
 Since v1.01 Snaky plays with 4 threads and 256 MB of hash by default (before, 1 thread and 64 MB). Against Stockfish
 (1 thread), with the book and the tablebases, 100 games per level at 10+0.1 (3 games at a time, 14 cores):
 
-| Against Stockfish | 2800 | 3000 | Elo (fit of both levels) |
+| Against Stockfish (v1.02) | 2800 | 3000 | Elo (fit of both levels) |
 |---|---|---|---|
-| Space, 1 thread, 64 MB | 42.5% | 20.5% | 2754 ± 54 |
-| **Space, 4 threads, 256 MB** | 57% | 28% | **2843 ± 51** (+89) |
-| Full, 1 thread, 64 MB | 42.5% | 25.5% | 2775 ± 53 |
-| **Full, 4 threads, 256 MB** | 63.5% | 35% | **2894 ± 50** (+119) |
+| Space, 1 thread, 64 MB | 46.5% | 28% | 2802 ± 52 |
+| **Space, 4 threads, 256 MB** | 54.5% | 32.5% | **2851 ± 51** (+49) |
+| Full, 1 thread, 64 MB | 45% | 30.5% | 2806 ± 52 |
+| **Full, 4 threads, 256 MB** | 55% | 41% | **2885 ± 50** (+79) |
 
-Lazy SMP searches about 2.5 times more nodes per second with 4 threads, which is about +50 Elo per doubling of the threads.
+Lazy SMP searches about 2.5 times more nodes per second with 4 threads, about +50 Elo per doubling of the threads
+(v1.01: +89 for Space and +119 for Full).
 
-At 2+1, closer to a real game, 4 threads against Stockfish 3000 (1 thread): Full 31.7% (30 games, −134 ± 121),
-Space 40% (20 games, −70 ± 92), together 35% in 50 games (**~2890 ± 75**). So the Lichess bot (Space, 4 threads)
-plays at about **2850–2900** in the scale of Stockfish. This is not comparable with CCRL, where both engines play
-with one thread (see below).
+At 2+1, closer to a real game, v1.01 with 4 threads scored 35% in 50 games against Stockfish 3000 (1 thread),
+**~2890 ± 75**, the same as at 10+0.1. So the Lichess bot (Full, 4 threads) plays at about **2850–2900**
+in the scale of Stockfish. This is not comparable with CCRL, where both engines play with one thread (see below).
 
 ### Strength levels (UCI_Elo)
 
@@ -251,12 +253,13 @@ The `UCI_Elo` of Stockfish is fitted to games against versions of the Stash engi
 at 120+1 (Stockfish source, `search.h`; the Stash anchors are within ±100 Elo of CCRL and the highest one is 2744),
 so it is roughly a **CCRL Blitz** scale. At the time control of CCRL Blitz (2+1) Snaky does better than at 10+0.1:
 
-| Against Stockfish 2800 | 10+0.1 (100 games) | 2+1 (40 games) |
+| Against Stockfish 2800 (v1.02) | 10+0.1 (100 games) | 2+1 (40 games) |
 |---|---|---|
-| Space | 42.5% (−53 ± 60) | 61.3% (+80 ± 96) |
-| Full | 36.5% (−96 ± 62) | 55% (+35 ± 105) |
+| Space | 40.5% (−67 ± 69) | 61.3% (+80 ± 107) |
+| Full | 37.5% (−89 ± 67) | 60% (+70 ± 115) |
 
-Estimate: **~2800–2850 in CCRL Blitz** for Space and Full (the same within the margin of error), with one thread
+Estimate: **~2800–2850 in CCRL Blitz** for Space and Full (the same within the margin of error; v1.0 scored 61.3% and 55%
+at 2+1), with one thread
 (CCRL Blitz plays each engine on one CPU; engines with more threads are rated in separate lists), with these caveats:
 few games at 2+1 (±70 Elo for both styles together), this machine is faster than the reference machine of CCRL
 (Intel i7-4770K), which makes 2+1 here a longer time control, and above 2744 the scale of Stockfish is extrapolated.
