@@ -1,10 +1,12 @@
 # Snaky
 
-A chess engine with a "constrictor" playing style: it gains space, controls squares and restricts the opponent's mobility.
+[![Lichess](https://img.shields.io/badge/Lichess-Snaky--Bot-green?style=for-the-badge&logo=lichess&link=https%3A%2F%2Flichess.org%2F%40%2FSnaky-Bot)](https://lichess.org/@/Snaky-Bot)
+
+A chess engine with a "constrictor" playing style: it gains space, controls squares and restricts the opponent's mobility, like a boa snake.
+
+👉 **Play [Snaky-Bot](https://lichess.org/@/Snaky-Bot)** on Lichess.
 
 This project is for personal learning. For professional purposes use advanced chess engines like Stockfish.
-
-See the [PRD](docs/PRD.md) for the design and roadmap.
 
 ## Structure
 
@@ -12,8 +14,9 @@ See the [PRD](docs/PRD.md) for the design and roadmap.
 - [`tools/`](tools): Python tooling around the engine (board and game viewer, analysis scripts, lichess-bot).
 - [`docs/`](docs): documentation.
 
-Snaky was named Chessy until v1.01, and plays on Lichess as [Snaky-Bot](https://lichess.org/@/Snaky-Bot).
-The first implementation (2018-2019), Chessy v0, is kept in the `v0` branch, and the 2022 viewer in the `python-old` branch.
+See the [PRD](docs/PRD.md) for the design.
+
+Snaky was named Chessy until v1.01, and the first implementation (2018-2019), Chessy v0, is kept in the `v0` branch.
 
 ## Engine
 
@@ -180,8 +183,7 @@ STS by theme (`tools/sts.py`, 0.2 s per position, points out of 1000; Space and 
 | **Total** | 6735 | 5556 | 9631 | **10821** | 10783 | 13876 |
 
 Space is better at undermining, open files, king activity, center control and the advance of the king-side pawns;
-Full at square vacancy, outposts and simplification (piece activity). Greedy only shines where the answer is a capture or an exchange
-(bishop vs knight, simplification).
+Full at square vacancy, outposts and simplification (piece activity). Greedy only shines where the answer is a capture or an exchange (bishop vs knight, simplification).
 
 Style metrics (`tools/style.py`, after the opening, against Stockfish at a similar level: v0 and Greedy against
 1320–1600, Material against 2600, Space and Full v1.02 against 2600 and 2800):
@@ -275,6 +277,18 @@ How to get a real CCRL rating is described in the [PRD](docs/PRD.md) (§9, CCRL)
 
 ## Play against Snaky
 
+👉 **Play [Snaky-Bot](https://lichess.org/@/Snaky-Bot)**
+
+### On Lichess (and with an electronic board)
+
+Snaky can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh`,
+or on a server with Docker, so it stays online when your computer is off):
+challenge it from your account, from the web or from an electronic board connected to Lichess (for instance, the ChessUp 2 connects to Lichess directly, and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
+so the bot plays the strongest style, Full, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and `UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines, so playing on the board against a local Snaky needs the Lichess bot.
+To watch Snaky play, [`tools/lichess/challenge.py`](tools/lichess/README.md#challenge-to-watch-a-game) makes the bot challenge a player or an online bot of similar rating.
+
+Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.
+
 ### In the console
 
 Snaky plays in the console with moves in SAN (`e4`, `Nf3`, `O-O`, `exd6`, `a8=Q`) or UCI (`e2e4`).
@@ -313,8 +327,7 @@ cd tools/engines/v0
 mvn -q compile exec:java -Dexec.args="--black --time 5 --pgn games/v0.pgn"
 ```
 
-v0 has no UCI, but [`tools/v0_uci.py`](tools/v0_uci.py) adapts it to play in chess GUIs and fastchess
-(see [tools](tools/README.md)).
+v0 has no UCI, but [`tools/v0_uci.py`](tools/v0_uci.py) adapts it to play in chess GUIs and fastchess (see [tools](tools/README.md)).
 
 ### In a chess GUI
 
@@ -323,28 +336,10 @@ Without a command, `snaky` speaks UCI: add `engine/build/install/snaky/bin/snaky
 (`UCI_LimitStrength` and `UCI_Elo`). Set `OwnBook` to use its opening book (off by default in UCI, as the rating lists
 require); the tablebases of `tools/syzygy` are used by default (`SyzygyPath`).
 
-### On Lichess (and with an electronic board)
-
-Snaky can play on Lichess as a BOT with [lichess-bot](tools/lichess) (`LICHESS_BOT_TOKEN=xxx tools/lichess/run.sh`,
-or on a server with Docker, so it stays online when your computer is off):
-challenge it from your account,
-from the web or from an electronic board connected to Lichess (the ChessUp 2 connects to Lichess directly,
-and [chessconnect](https://chessconnect.de/) connects many boards to Lichess). A bot plays one configuration,
-so the bot plays the strongest style, Full, with 4 threads, pondering, its opening book and the tablebases (set `UCI_LimitStrength` and
-`UCI_Elo` in its configuration for a weaker bot). ChessConnect only connects boards to online sites, not to local engines,
-so playing on the board against a local Snaky needs the Lichess bot.
-To watch Snaky play, [`tools/lichess/challenge.py`](tools/lichess/README.md#challenge-to-watch-a-game) makes the bot
-challenge a player or an online bot of similar rating.
-
-Games are saved in PGN, so they can be opened with the viewer (`python tools/game.py games/last.pgn`) or analyzed in Lichess or Chess.com.
-
 ## License
 
-Copyright (C) 2018-2026 Carleslc. Snaky is free software, released under the
-[GNU General Public License v3.0](LICENSE) (GPLv3): you can use, study, modify and share it, and the versions you
-distribute must keep the same license and include their source code.
+Copyright (C) 2018-2026 Carles Lázaro Costa.
 
-As an additional term of the GPLv3 (section 7(b)), copies and modified versions must keep the attribution to its author,
-"Snaky by Carleslc (https://github.com/Carleslc/Snaky)", in their notices and documentation and as the author of the
-engine (the UCI `id author`), and modified versions must state that they were modified. See [NOTICE](NOTICE),
-which also credits the third-party work that Snaky uses or adapts (Stockfish, Syzygy, PolyGlot, lichess-bot...).
+Snaky is free software, released under the [GNU General Public License v3.0](LICENSE) (GPLv3): you can use, study, modify and share it, and the versions you distribute must keep the same license and include their source code and attribution.
+
+As stated in GPLv3 section 7(b), copies and modified versions must keep the attribution to its author, "Snaky by Carleslc (https://github.com/Carleslc/Snaky)", in their notices and documentation and as the author of the engine (the UCI `id author`), and modified versions must state that they were modified and in what way. See [NOTICE](NOTICE), which also credits the third-party work that Snaky uses or adapts (Stockfish, Syzygy, PolyGlot, lichess-bot...).
